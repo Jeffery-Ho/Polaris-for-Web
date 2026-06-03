@@ -22,22 +22,6 @@
 - 设置菜单会显示当前加载的扩展版本和 build，便于确认是否已经重新加载到最新代码。
 - 前台设置会保存到 `chrome.storage.sync` 并即时生效；同一浏览器账号、同一扩展 ID 下可跨设备同步。
 
-## 排查
-
-如果在 Tabbit 或其他 Chromium 浏览器里看不到段落点：
-
-1. 确认扩展管理页里插件已启用，并且加载的是本目录。
-2. 刷新 ChatGPT 或豆包页面。
-3. 打开开发者工具 Console，查看是否有 `[Polaris for Web] loaded`。
-4. 在 Elements 面板搜索 `data-gpt-paragraph-nav`。
-
-如果属性值是 `loaded:0`，说明插件已经注入，但当前页面没有识别到 `H1-H3` 标题。可以让 ChatGPT 或豆包输出包含 Markdown 标题，例如：
-
-```markdown
-# 一级标题
-## 二级标题
-### 三级标题
-```
 
 ## License
 
