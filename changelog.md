@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-06-04
+
+- 修复：设置菜单增加透明 hover 判定区域，鼠标从“设置”按钮移向左侧空白区域或下方菜单时不再立刻关闭。
+- 版本：修复更新到 `0.3.2 build 11`。
+
 ## 2026-06-03
 
 - 需求：将扩展显示名称从 GPT-Voyager/ChatGPT Paragraph Navigator 改为 Polaris for Web。

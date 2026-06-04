@@ -20,6 +20,7 @@
 - Transparent layout space must not block clicks in the ChatGPT content area.
 - Keep marker hover in a pale blue tone, and marker selected state in a stronger blue, not orange.
 - Keep the settings menu layered above heading markers.
+- The settings menu may use a limited transparent hover guard while open; it must not intercept page clicks when the menu is closed.
 
 ## Toggle Button Rule
 

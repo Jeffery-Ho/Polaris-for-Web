@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 11
+
+- Date: 2026-06-04
+- Version: 0.3.2
+- Summary: Settings menu hover guard keeps the menu open while moving through the left-side blank area.
+- Notes: Bug fix for premature menu close when moving from the settings trigger toward the settings menu.
+
 ## 7
 
 - Date: 2026-06-03
