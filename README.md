@@ -1,14 +1,14 @@
 # Polaris for Web
 
-一个用于 ChatGPT 和豆包网页版的段落导航扩展。它会识别 assistant 回复里的 `H1` 到 `H3` 标题，在页面右侧显示段落点；鼠标移入显示标题文字，点击后滚动到对应标题位置。
+一个用于 ChatGPT 、豆包、kimi、小红书点点网页版的段落导航扩展。它会识别 assistant 回复里的 `H1` 到 `H3` 标题，在页面右侧显示段落点；鼠标移入显示标题文字，点击后滚动到对应标题位置。
 
 ## 安装
 
-1. 打开 Chrome 或 Edge 的扩展管理页面。
+1. 打开浏览器的扩展管理页面。
 2. 开启开发者模式。
 3. 选择“加载已解压的扩展程序”。
-4. 选择本目录：`/Users/hexianji/Downloads/Polaris-for-Web`。
-5. 打开或刷新 `https://chatgpt.com/` 或 `https://www.doubao.com/chat/...`。
+4. 在电脑中选择本插件。
+5. 打开并且刷新你的AI网页版，看看右侧是否已经出现了插件。
 
 ## 行为
 
@@ -25,22 +25,6 @@
 - 首次升级到同步配置时，如果同步区为空，会自动迁移当前站点已有的旧 `localStorage` 配置；扩展源码里的 CSS/JS 改动仍需要重新加载扩展后生效。
 - 如果在 A 电脑修改源码并 `git push`，B 电脑仍需要 `git pull` 后重新加载扩展；设置同步不负责自动更新源码。
 
-## 排查
-
-如果在 Tabbit 或其他 Chromium 浏览器里看不到段落点：
-
-1. 确认扩展管理页里插件已启用，并且加载的是本目录。
-2. 刷新 ChatGPT 或豆包页面。
-3. 打开开发者工具 Console，查看是否有 `[Polaris for Web] loaded`。
-4. 在 Elements 面板搜索 `data-gpt-paragraph-nav`。
-
-如果属性值是 `loaded:0`，说明插件已经注入，但当前页面没有识别到 `H1-H3` 标题。可以让 ChatGPT 或豆包输出包含 Markdown 标题，例如：
-
-```markdown
-# 一级标题
-## 二级标题
-### 三级标题
-```
 
 ## License
 
