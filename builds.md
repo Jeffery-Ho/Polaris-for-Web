@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 21
+
+- Date: 2026-06-05
+- Version: 0.7.6
+- Summary: Inactive markers now use one consistent default grey background.
+- Notes: Removes per-item opacity variation while keeping hover and active colors unchanged.
+
 ## 20
 
 - Date: 2026-06-05

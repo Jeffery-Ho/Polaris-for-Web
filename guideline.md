@@ -29,6 +29,7 @@
 - The right-side navigation container must leave enough horizontal room for marker tooltips.
 - Do not constrain the list to marker width if tooltip labels need to extend left into the page.
 - Transparent layout space must not block clicks in the ChatGPT content area.
+- Inactive markers must use one consistent default grey background without per-item opacity variation.
 - Keep marker hover in a pale blue tone, and marker selected state in a stronger blue, not orange.
 - Only the clicked active marker may use the selected blue state.
 - Active marker matching must use an internal marker key, not the heading DOM id.

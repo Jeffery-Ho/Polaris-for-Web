@@ -61,7 +61,6 @@
   const TOGGLE_CHEVRON_CLASS = "gpt-paragraph-nav__toggle-chevron";
   const FLOATING_ACTIVE_CLASS = "gpt-paragraph-nav__floating-active";
   const QUEUE_MAX_VISIBLE = 30;
-  const MIN_MARKER_OPACITY = 0.28;
   const DEFAULT_HEADER_HEIGHT = 64;
   const CONFIG_STORAGE_KEY = "gpt-paragraph-nav-config";
   const CONVERSATION_HEADER_SELECTOR = [
@@ -867,14 +866,6 @@
     return Array.from(title).slice(0, 16).join("");
   }
 
-  function markerOpacityFor(index, total) {
-    if (total <= 1) {
-      return 1;
-    }
-    const progress = index / Math.max(total - 1, 1);
-    return (MIN_MARKER_OPACITY + progress * (1 - MIN_MARKER_OPACITY)).toFixed(3);
-  }
-
   function markerKeyFor(element) {
     let key = markerKeys.get(element);
     if (!key) {
@@ -935,13 +926,12 @@
       return;
     }
 
-    headings.forEach((heading, index) => {
+    headings.forEach((heading) => {
       const markerKey = markerKeyFor(heading.element);
       const marker = document.createElement("button");
       marker.type = "button";
       marker.className = `gpt-paragraph-nav__marker level-${heading.level}`;
       marker.style.setProperty("--marker-width", `${markerWidthFor(heading.title)}px`);
-      marker.style.setProperty("--marker-opacity", markerOpacityFor(index, headings.length));
       marker.setAttribute("aria-label", heading.title);
       marker.dataset.markerKey = markerKey;
 
