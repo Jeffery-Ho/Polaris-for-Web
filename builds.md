@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 22
+
+- Date: 2026-06-05
+- Version: 0.7.7
+- Summary: Active marker list scrolling now persists briefly after marker clicks.
+- Notes: Re-applies active marker visibility while the host page settles, without permanently fighting manual marker-list scrolling.
+
 ## 21
 
 - Date: 2026-06-05

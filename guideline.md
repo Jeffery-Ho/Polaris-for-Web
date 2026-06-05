@@ -37,6 +37,7 @@
 - If the active marker is fully outside the browser viewport, show one clickable floating active marker 20pt above the bottom of the visible marker list.
 - Clicking the floating active marker must return the marker list to the selected marker and jump the page anchor to the selected heading.
 - Floating active marker clicks must start page anchor scrolling before scrolling or focusing the marker list.
+- Marker and floating marker clicks may briefly re-apply active marker list scrolling while the host page settles, but must not permanently override manual marker-list scrolling.
 - Keep the settings menu layered above heading markers.
 - The settings menu may use a limited transparent hover guard while open; it must not intercept page clicks when the menu is closed.
 

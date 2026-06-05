@@ -61,6 +61,7 @@
   const TOGGLE_CHEVRON_CLASS = "gpt-paragraph-nav__toggle-chevron";
   const FLOATING_ACTIVE_CLASS = "gpt-paragraph-nav__floating-active";
   const QUEUE_MAX_VISIBLE = 30;
+  const MARKER_LIST_SCROLL_PERSIST_MS = 1200;
   const DEFAULT_HEADER_HEIGHT = 64;
   const CONFIG_STORAGE_KEY = "gpt-paragraph-nav-config";
   const CONVERSATION_HEADER_SELECTOR = [
@@ -92,6 +93,8 @@
     scheduled: 0,
     scrollScheduled: 0,
     floatingScheduled: 0,
+    markerListScrollScheduled: 0,
+    markerListScrollUntil: 0,
     lastDebugSignature: "",
     lastRenderedHeadingCount: 0,
     isCollapsed: false,
@@ -153,7 +156,7 @@
           jumpToHeading(heading, "smooth");
         }
         if (marker) {
-          scrollMarkerIntoListView(marker);
+          requestActiveMarkerListScrollPersistence();
           marker.focus({ preventScroll: true });
           updateFloatingActiveMarker(marker);
         }
@@ -895,6 +898,31 @@
     }
   }
 
+  function requestActiveMarkerListScrollPersistence() {
+    state.markerListScrollUntil = performance.now() + MARKER_LIST_SCROLL_PERSIST_MS;
+    persistActiveMarkerListScroll();
+  }
+
+  function persistActiveMarkerListScroll() {
+    if (state.markerListScrollScheduled) {
+      return;
+    }
+    state.markerListScrollScheduled = window.requestAnimationFrame(() => {
+      state.markerListScrollScheduled = 0;
+      const marker = getActiveMarker();
+      if (!(marker instanceof HTMLElement) || state.isCollapsed) {
+        state.markerListScrollUntil = 0;
+        return;
+      }
+
+      scrollMarkerIntoListView(marker);
+      updateFloatingActiveMarker(marker);
+      if (performance.now() < state.markerListScrollUntil) {
+        persistActiveMarkerListScroll();
+      }
+    });
+  }
+
   function render() {
     const root = getRoot();
     applyConfig(root);
@@ -948,6 +976,7 @@
       marker.addEventListener("click", () => {
         state.activeMarkerKey = markerKey;
         syncActiveMarker(state.activeMarkerKey);
+        requestActiveMarkerListScrollPersistence();
         jumpToHeading(heading);
         updateFloatingActiveMarker();
       });
@@ -960,6 +989,9 @@
     });
     state.lastRenderedHeadingCount = headings.length;
     updateActiveMarker();
+    if (performance.now() < state.markerListScrollUntil) {
+      persistActiveMarkerListScroll();
+    }
   }
 
   function scheduleRender() {
