@@ -60,6 +60,15 @@
   const TOGGLE_LABEL_CLASS = "gpt-paragraph-nav__toggle-label";
   const TOGGLE_CHEVRON_CLASS = "gpt-paragraph-nav__toggle-chevron";
   const FLOATING_ACTIVE_CLASS = "gpt-paragraph-nav__floating-active";
+  const LIQUID_GLASS_SELECTOR = [
+    ".gpt-paragraph-nav__settings-trigger",
+    ".gpt-paragraph-nav__settings-menu",
+    ".gpt-paragraph-nav__settings-row input",
+    ".gpt-paragraph-nav__toggle",
+    ".gpt-paragraph-nav__settings-reset",
+    ".gpt-paragraph-nav__marker",
+    ".gpt-paragraph-nav__floating-active"
+  ].join(", ");
   const QUEUE_MAX_VISIBLE = 30;
   const MARKER_LIST_SCROLL_PERSIST_MS = 1200;
   const DEFAULT_HEADER_HEIGHT = 64;
@@ -75,13 +84,25 @@
     { key: "maxVisible", label: "最大数量", min: 1, max: 80, step: 1, unit: "" },
     { key: "tooltipMaxWidth", label: "提示宽度", min: 160, max: 720, step: 10, unit: "px" }
   ];
+  const PLATFORM_KEYS = ["chatgpt", "doubao", "kimi", "qianwen", "yuanbao", "default"];
+  const MARKER_LEVEL_OPTIONS = [1, 2, 3];
+  const DEFAULT_ENABLED_LEVELS_BY_PLATFORM = Object.freeze({
+    chatgpt: [1, 2, 3],
+    doubao: [1, 2, 3],
+    kimi: [1, 2],
+    qianwen: [1, 2, 3],
+    yuanbao: [1, 2],
+    default: [1, 2, 3]
+  });
   const DEFAULT_CONFIG = Object.freeze({
     topGap: 8,
     rightOffset: 14,
     maxVisible: QUEUE_MAX_VISIBLE,
-    tooltipMaxWidth: 360
+    tooltipMaxWidth: 360,
+    enabledLevelsByPlatform: DEFAULT_ENABLED_LEVELS_BY_PLATFORM
   });
   const markerKeys = new WeakMap();
+  const liquidGlassSignatures = new WeakMap();
   let nextMarkerKey = 1;
 
   const state = {
@@ -95,6 +116,8 @@
     floatingScheduled: 0,
     markerListScrollScheduled: 0,
     markerListScrollUntil: 0,
+    liquidGlassObserver: null,
+    liquidGlassElements: new Set(),
     lastDebugSignature: "",
     lastRenderedHeadingCount: 0,
     isCollapsed: false,
@@ -285,12 +308,49 @@
         menu.appendChild(row);
       });
 
+      const levelFilter = document.createElement("div");
+      levelFilter.className = "gpt-paragraph-nav__settings-level-filter";
+      levelFilter.setAttribute("role", "group");
+      levelFilter.setAttribute("aria-label", "Marker 类型");
+
+      const levelLegend = document.createElement("span");
+      levelLegend.className = "gpt-paragraph-nav__settings-level-label";
+      levelLegend.textContent = "Marker 类型";
+      levelFilter.appendChild(levelLegend);
+
+      const levelOptions = document.createElement("div");
+      levelOptions.className = "gpt-paragraph-nav__settings-level-options";
+      MARKER_LEVEL_OPTIONS.forEach((level) => {
+        const option = document.createElement("label");
+        option.className = "gpt-paragraph-nav__settings-level-option";
+        option.dataset.markerLevelOption = String(level);
+
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.dataset.markerLevel = String(level);
+        checkbox.addEventListener("change", () => {
+          updateEnabledLevelForCurrentPlatform(level, checkbox.checked);
+          saveConfig(state.config);
+          syncSettingsInputs(settings);
+          render();
+        });
+        option.appendChild(checkbox);
+
+        const label = document.createElement("span");
+        label.textContent = `H${level}`;
+        option.appendChild(label);
+
+        levelOptions.appendChild(option);
+      });
+      levelFilter.appendChild(levelOptions);
+      menu.appendChild(levelFilter);
+
       const resetButton = document.createElement("button");
       resetButton.type = "button";
       resetButton.className = "gpt-paragraph-nav__settings-reset";
       resetButton.textContent = "重置配置";
       resetButton.addEventListener("click", () => {
-        state.config = { ...DEFAULT_CONFIG };
+        state.config = normalizeConfig(DEFAULT_CONFIG);
         saveConfig(state.config);
         syncSettingsInputs(settings);
         render();
@@ -314,20 +374,66 @@
     return Math.min(Math.max(Math.round(number), min), max);
   }
 
+  function maxHeadingLevelForPlatform(platformKey = currentPlatformKey()) {
+    return platformKey === "yuanbao" || platformKey === "kimi" ? 2 : 3;
+  }
+
+  function supportedMarkerLevelsForPlatform(platformKey = currentPlatformKey()) {
+    const maxLevel = maxHeadingLevelForPlatform(platformKey);
+    return MARKER_LEVEL_OPTIONS.filter((level) => level <= maxLevel);
+  }
+
+  function defaultEnabledLevelsForPlatform(platformKey) {
+    const levels = DEFAULT_ENABLED_LEVELS_BY_PLATFORM[platformKey] || DEFAULT_ENABLED_LEVELS_BY_PLATFORM.default;
+    return [...levels];
+  }
+
+  function normalizeEnabledLevels(levels, platformKey) {
+    const supportedLevels = supportedMarkerLevelsForPlatform(platformKey);
+    const supportedSet = new Set(supportedLevels);
+    const normalizedLevels = Array.isArray(levels)
+      ? Array.from(new Set(levels.map((level) => Number(level))))
+        .filter((level) => supportedSet.has(level))
+        .sort((first, second) => first - second)
+      : [];
+
+    return normalizedLevels.length ? normalizedLevels : defaultEnabledLevelsForPlatform(platformKey);
+  }
+
+  function normalizeEnabledLevelsByPlatform(config) {
+    const source = config && config.enabledLevelsByPlatform;
+    return PLATFORM_KEYS.reduce((result, platformKey) => {
+      result[platformKey] = normalizeEnabledLevels(source && source[platformKey], platformKey);
+      return result;
+    }, {});
+  }
+
   function normalizeConfig(config) {
-    return CONFIG_FIELDS.reduce((result, field) => {
-      result[field.key] = normalizeNumber(
+    const result = CONFIG_FIELDS.reduce((normalizedConfig, field) => {
+      normalizedConfig[field.key] = normalizeNumber(
         config && config[field.key],
         DEFAULT_CONFIG[field.key],
         field.min,
         field.max
       );
-      return result;
+      return normalizedConfig;
     }, {});
+    result.enabledLevelsByPlatform = normalizeEnabledLevelsByPlatform(config);
+    return result;
+  }
+
+  function enabledLevelsByPlatformEqual(first, second) {
+    return PLATFORM_KEYS.every((platformKey) => {
+      const firstLevels = normalizeEnabledLevels(first && first[platformKey], platformKey);
+      const secondLevels = normalizeEnabledLevels(second && second[platformKey], platformKey);
+      return firstLevels.length === secondLevels.length
+        && firstLevels.every((level, index) => level === secondLevels[index]);
+    });
   }
 
   function configsEqual(first, second) {
-    return CONFIG_FIELDS.every((field) => first[field.key] === second[field.key]);
+    return CONFIG_FIELDS.every((field) => first[field.key] === second[field.key])
+      && enabledLevelsByPlatformEqual(first.enabledLevelsByPlatform, second.enabledLevelsByPlatform);
   }
 
   function hasSyncStorage() {
@@ -454,6 +560,62 @@
         input.value = String(state.config[key]);
       }
     });
+    syncLevelFilterInputs(settings);
+  }
+
+  function enabledLevelsForPlatform(platformKey, config = state.config) {
+    return normalizeEnabledLevels(
+      config && config.enabledLevelsByPlatform && config.enabledLevelsByPlatform[platformKey],
+      platformKey
+    );
+  }
+
+  function enabledLevelsForCurrentPlatform(config = state.config) {
+    return enabledLevelsForPlatform(currentPlatformKey(), config);
+  }
+
+  function syncLevelFilterInputs(settings) {
+    const platformKey = currentPlatformKey();
+    const supportedLevels = new Set(supportedMarkerLevelsForPlatform(platformKey));
+    const enabledLevels = enabledLevelsForPlatform(platformKey);
+    const enabledSet = new Set(enabledLevels);
+
+    settings.querySelectorAll("[data-marker-level-option]").forEach((option) => {
+      const level = Number(option.dataset.markerLevelOption);
+      const isSupported = supportedLevels.has(level);
+      option.hidden = !isSupported;
+    });
+
+    settings.querySelectorAll("input[data-marker-level]").forEach((input) => {
+      const level = Number(input.dataset.markerLevel);
+      const isSupported = supportedLevels.has(level);
+      input.checked = isSupported && enabledSet.has(level);
+      input.disabled = !isSupported || (input.checked && enabledLevels.length <= 1);
+    });
+  }
+
+  function updateEnabledLevelForCurrentPlatform(level, isEnabled) {
+    const platformKey = currentPlatformKey();
+    const supportedLevels = new Set(supportedMarkerLevelsForPlatform(platformKey));
+    if (!supportedLevels.has(level)) {
+      return;
+    }
+
+    const currentLevels = enabledLevelsForPlatform(platformKey);
+    const nextLevels = isEnabled
+      ? Array.from(new Set([...currentLevels, level]))
+      : currentLevels.filter((currentLevel) => currentLevel !== level);
+    if (!nextLevels.length) {
+      return;
+    }
+
+    state.config = normalizeConfig({
+      ...state.config,
+      enabledLevelsByPlatform: {
+        ...state.config.enabledLevelsByPlatform,
+        [platformKey]: nextLevels
+      }
+    });
   }
 
   function applyConfig(root) {
@@ -503,6 +665,32 @@
       || window.location.hostname.endsWith(".yb.tencent.com")
       || window.location.hostname === "yuanbao.tencent.com"
       || window.location.hostname.endsWith(".yuanbao.tencent.com");
+  }
+
+  function isChatGPTPage() {
+    return window.location.hostname === "chatgpt.com"
+      || window.location.hostname.endsWith(".chatgpt.com")
+      || window.location.hostname === "chat.openai.com"
+      || window.location.hostname.endsWith(".chat.openai.com");
+  }
+
+  function currentPlatformKey() {
+    if (isChatGPTPage()) {
+      return "chatgpt";
+    }
+    if (isDoubaoPage()) {
+      return "doubao";
+    }
+    if (isKimiPage()) {
+      return "kimi";
+    }
+    if (isQianwenPage()) {
+      return "qianwen";
+    }
+    if (isYuanbaoPage()) {
+      return "yuanbao";
+    }
+    return "default";
   }
 
   function getAssistantContainerSelectors() {
@@ -562,10 +750,6 @@
       title: normalizeTitle(element.textContent || `Heading ${index + 1}`),
       id: element.id || `gpt-paragraph-heading-${index + 1}`
     };
-  }
-
-  function maxHeadingLevelForSite() {
-    return isYuanbaoPage() || isKimiPage() ? 2 : 3;
   }
 
   function markdownLevelFromText(text) {
@@ -781,8 +965,14 @@
     collectYuanbaoVideoCardHeadings(seen, headings);
     collectQianwenVideoListHeadings(seen, headings);
 
-    const maxHeadingLevel = maxHeadingLevelForSite();
-    const usableHeadings = headings.filter((item) => item.title.length > 0 && item.level <= maxHeadingLevel);
+    const platformKey = currentPlatformKey();
+    const maxHeadingLevel = maxHeadingLevelForPlatform(platformKey);
+    const enabledLevels = new Set(enabledLevelsForCurrentPlatform());
+    const usableHeadings = headings.filter((item) => (
+      item.title.length > 0
+      && item.level <= maxHeadingLevel
+      && enabledLevels.has(item.level)
+    ));
     debugCollection(containers, usableHeadings);
     return usableHeadings;
   }
@@ -898,6 +1088,129 @@
     }
   }
 
+  function getLiquidGlassDisplacementMap({ height, width, radius, depth }) {
+    const yStart = Math.ceil((radius / height) * 15);
+    const yEnd = Math.floor(100 - (radius / height) * 15);
+    const xStart = Math.ceil((radius / width) * 15);
+    const xEnd = Math.floor(100 - (radius / width) * 15);
+    return "data:image/svg+xml;utf8," + encodeURIComponent(`<svg height="${height}" width="${width}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
+  <style>.mix { mix-blend-mode: screen; }</style>
+  <defs>
+    <linearGradient id="Y" x1="0" x2="0" y1="${yStart}%" y2="${yEnd}%">
+      <stop offset="0%" stop-color="#0F0" />
+      <stop offset="100%" stop-color="#000" />
+    </linearGradient>
+    <linearGradient id="X" x1="${xStart}%" x2="${xEnd}%" y1="0" y2="0">
+      <stop offset="0%" stop-color="#F00" />
+      <stop offset="100%" stop-color="#000" />
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" height="${height}" width="${width}" fill="#808080" />
+  <g filter="blur(2px)">
+    <rect x="0" y="0" height="${height}" width="${width}" fill="#000080" />
+    <rect x="0" y="0" height="${height}" width="${width}" fill="url(#Y)" class="mix" />
+    <rect x="0" y="0" height="${height}" width="${width}" fill="url(#X)" class="mix" />
+    <rect x="${depth}" y="${depth}" height="${Math.max(1, height - 2 * depth)}" width="${Math.max(1, width - 2 * depth)}" fill="#808080" rx="${radius}" ry="${radius}" filter="blur(${depth}px)" />
+  </g>
+</svg>`);
+  }
+
+  function getLiquidGlassDisplacementFilter({ height, width, radius, depth, strength, chromaticAberration }) {
+    const displacementMap = getLiquidGlassDisplacementMap({ height, width, radius, depth });
+    return "data:image/svg+xml;utf8," + encodeURIComponent(`<svg height="${height}" width="${width}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <filter id="displace" color-interpolation-filters="sRGB">
+      <feImage x="0" y="0" height="${height}" width="${width}" href="${displacementMap}" result="displacementMap" />
+      <feDisplacementMap in="SourceGraphic" in2="displacementMap" scale="${strength + chromaticAberration * 2}" xChannelSelector="R" yChannelSelector="G" />
+      <feColorMatrix type="matrix" values="1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0" result="displacedR" />
+      <feDisplacementMap in="SourceGraphic" in2="displacementMap" scale="${strength + chromaticAberration}" xChannelSelector="R" yChannelSelector="G" />
+      <feColorMatrix type="matrix" values="0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 1 0" result="displacedG" />
+      <feDisplacementMap in="SourceGraphic" in2="displacementMap" scale="${strength}" xChannelSelector="R" yChannelSelector="G" />
+      <feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 1 0" result="displacedB" />
+      <feBlend in="displacedR" in2="displacedG" mode="screen" />
+      <feBlend in2="displacedB" mode="screen" />
+    </filter>
+  </defs>
+</svg>`) + "#displace";
+  }
+
+  function getLiquidGlassObserver() {
+    if (typeof ResizeObserver === "undefined") {
+      return null;
+    }
+    if (!state.liquidGlassObserver) {
+      state.liquidGlassObserver = new ResizeObserver((entries) => {
+        entries.forEach((entry) => {
+          if (entry.target instanceof HTMLElement) {
+            updateLiquidGlassFilter(entry.target);
+          }
+        });
+      });
+    }
+    return state.liquidGlassObserver;
+  }
+
+  function syncLiquidGlassElements(root = getRoot()) {
+    state.liquidGlassElements.forEach((element) => {
+      if (!element.isConnected || !root.contains(element)) {
+        const observer = getLiquidGlassObserver();
+        if (observer) {
+          observer.unobserve(element);
+        }
+        state.liquidGlassElements.delete(element);
+        liquidGlassSignatures.delete(element);
+      }
+    });
+    root.querySelectorAll(LIQUID_GLASS_SELECTOR).forEach((element) => {
+      if (element instanceof HTMLElement) {
+        observeLiquidGlassElement(element);
+      }
+    });
+  }
+
+  function observeLiquidGlassElement(element) {
+    if (!state.liquidGlassElements.has(element)) {
+      state.liquidGlassElements.add(element);
+      const observer = getLiquidGlassObserver();
+      if (observer) {
+        observer.observe(element);
+      }
+    }
+    updateLiquidGlassFilter(element);
+  }
+
+  function updateLiquidGlassFilter(element) {
+    const rect = element.getBoundingClientRect();
+    const width = Math.round(rect.width);
+    const height = Math.round(rect.height);
+    if (width <= 0 || height <= 0) {
+      element.style.removeProperty("--gpt-liquid-glass-filter");
+      liquidGlassSignatures.delete(element);
+      return;
+    }
+
+    const style = window.getComputedStyle(element);
+    const radius = Math.max(0, Math.round(parseFloat(style.borderTopLeftRadius) || 0));
+    const depth = Math.max(3, Math.min(10, Math.round(Math.min(width, height) / 4)));
+    const strength = Math.max(18, Math.min(42, Math.round(Math.min(width, height) * 1.2)));
+    const chromaticAberration = element.classList.contains(FLOATING_ACTIVE_CLASS) || element.classList.contains("is-active") ? 2 : 1;
+    const signature = `${width}:${height}:${radius}:${depth}:${strength}:${chromaticAberration}`;
+    if (liquidGlassSignatures.get(element) === signature) {
+      return;
+    }
+
+    const filterUrl = getLiquidGlassDisplacementFilter({
+      height,
+      width,
+      radius,
+      depth,
+      strength,
+      chromaticAberration
+    });
+    element.style.setProperty("--gpt-liquid-glass-filter", `url("${filterUrl}")`);
+    liquidGlassSignatures.set(element, signature);
+  }
+
   function requestActiveMarkerListScrollPersistence() {
     state.markerListScrollUntil = performance.now() + MARKER_LIST_SCROLL_PERSIST_MS;
     persistActiveMarkerListScroll();
@@ -989,6 +1302,7 @@
     });
     state.lastRenderedHeadingCount = headings.length;
     updateActiveMarker();
+    syncLiquidGlassElements(root);
     if (performance.now() < state.markerListScrollUntil) {
       persistActiveMarkerListScroll();
     }
@@ -1032,6 +1346,7 @@
         activeMarker = marker;
         hasMarkedActive = true;
       }
+      updateLiquidGlassFilter(marker);
     });
     return activeMarker;
   }
@@ -1064,6 +1379,7 @@
     floating.style.setProperty("--marker-width", activeMarker.style.getPropertyValue("--marker-width") || "24px");
     floating.style.setProperty("--floating-active-bottom", `calc(${Math.max(0, rootRect.bottom - listRect.bottom)}px + 20pt)`);
     floating.hidden = false;
+    updateLiquidGlassFilter(floating);
   }
 
   function updateActiveMarker() {
@@ -1101,6 +1417,79 @@
     });
   }
 
+  function wheelDeltaYInPixels(event) {
+    if (event.deltaMode === WheelEvent.DOM_DELTA_LINE) {
+      return event.deltaY * 16;
+    }
+    if (event.deltaMode === WheelEvent.DOM_DELTA_PAGE) {
+      return event.deltaY * window.innerHeight;
+    }
+    return event.deltaY;
+  }
+
+  function markerListWheelHitWidth(root, list) {
+    const controls = root.querySelector(`.${CONTROLS_CLASS}`);
+    const controlWidth = controls instanceof HTMLElement ? controls.getBoundingClientRect().width : 0;
+    const markerWidths = Array.from(list.querySelectorAll(".gpt-paragraph-nav__marker"))
+      .filter((marker) => marker instanceof HTMLElement)
+      .map((marker) => marker.getBoundingClientRect().width);
+    const maxMarkerWidth = markerWidths.length ? Math.max(...markerWidths) : 0;
+    const configuredMaxWidth = state.config.tooltipMaxWidth || DEFAULT_CONFIG.tooltipMaxWidth;
+    return Math.min(
+      root.getBoundingClientRect().width,
+      Math.max(configuredMaxWidth, controlWidth, maxMarkerWidth)
+    );
+  }
+
+  function handleMarkerListWheel(event) {
+    const deltaY = wheelDeltaYInPixels(event);
+    if (!deltaY) {
+      return;
+    }
+
+    const root = document.getElementById(ROOT_ID);
+    if (!(root instanceof HTMLElement) || root.classList.contains("is-empty") || root.classList.contains("is-collapsed")) {
+      return;
+    }
+
+    const controls = root.querySelector(`.${CONTROLS_CLASS}`);
+    if (controls instanceof HTMLElement && event.target instanceof Node && controls.contains(event.target)) {
+      return;
+    }
+
+    const list = root.querySelector(`#${LIST_ID}`);
+    if (!(list instanceof HTMLElement)) {
+      return;
+    }
+
+    const maxScrollTop = list.scrollHeight - list.clientHeight;
+    if (maxScrollTop <= 0) {
+      return;
+    }
+
+    const listRect = list.getBoundingClientRect();
+    if (event.clientY < listRect.top || event.clientY > listRect.bottom) {
+      return;
+    }
+
+    const rootRect = root.getBoundingClientRect();
+    const hitWidth = markerListWheelHitWidth(root, list);
+    const hitRight = rootRect.right;
+    const hitLeft = Math.max(rootRect.left, hitRight - hitWidth);
+    if (event.clientX < hitLeft || event.clientX > hitRight) {
+      return;
+    }
+
+    const nextScrollTop = Math.min(maxScrollTop, Math.max(0, list.scrollTop + deltaY));
+    if (nextScrollTop === list.scrollTop) {
+      return;
+    }
+
+    event.preventDefault();
+    list.scrollTop = nextScrollTop;
+    scheduleFloatingActiveUpdate();
+  }
+
   async function start() {
     document.documentElement.setAttribute(DEBUG_ATTR, "loaded:0");
     state.config = await loadConfig();
@@ -1115,6 +1504,7 @@
     });
 
     window.addEventListener("scroll", scheduleScrollWork, { passive: true });
+    window.addEventListener("wheel", handleMarkerListWheel, { passive: false, capture: true });
     window.addEventListener("resize", scheduleRender, { passive: true });
     console.info("[Polaris for Web] loaded");
   }

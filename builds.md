@@ -10,6 +10,111 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 37
+
+- Date: 2026-06-07
+- Version: 0.10.1
+- Summary: Settings menu controls now follow an Arco Design inspired style.
+- Notes: Refines settings input, checkbox, reset button, spacing, text hierarchy, and hover states with Arco-like tokens while retaining the liquid glass menu shell.
+
+## 36
+
+- Date: 2026-06-07
+- Version: 0.10.0
+- Summary: Settings can filter marker heading levels per platform.
+- Notes: Adds per-platform H1/H2/H3 marker type filters in the settings menu, preserves at least one enabled level, and migrates old configs with defaults.
+
+## 35
+
+- Date: 2026-06-07
+- Version: 0.9.9
+- Summary: Marker list wheel scrolling now uses the plugin maximum width as its hit area.
+- Notes: Adds a non-click-blocking wheel hit test across the right-side plugin width so users can scroll the marker list without aiming directly at a marker pill.
+
+## 34
+
+- Date: 2026-06-05
+- Version: 0.9.8
+- Summary: Settings input focus and reset button strokes are removed.
+- Notes: Removes the yellow focused outline from settings inputs and strips the glass outline stroke from the reset button.
+
+## 33
+
+- Date: 2026-06-05
+- Version: 0.9.7
+- Summary: Settings controls now better match the liquid glass styling.
+- Notes: Removes the settings trigger outline stroke, sets settings inputs and reset button to #f5f5f5, and strengthens the settings menu glass material.
+
+## 32
+
+- Date: 2026-06-05
+- Version: 0.9.6
+- Summary: Marker list content now right-aligns with the collapse button.
+- Notes: Keeps a right-side shadow buffer outside the marker content edge so marker pills align with the toggle while glass shadows remain unclipped.
+
+## 31
+
+- Date: 2026-06-05
+- Version: 0.9.5
+- Summary: Settings button hover now matches the collapse button pale blue state.
+- Notes: Reuses the collapse button hover color for the settings trigger to avoid the dark liquid-glass hover.
+
+## 30
+
+- Date: 2026-06-05
+- Version: 0.9.4
+- Summary: Inactive markers now use a white glass background.
+- Notes: Replaces the grey inactive marker fill with a translucent white material to better match liquid glass styling.
+
+## 29
+
+- Date: 2026-06-05
+- Version: 0.9.3
+- Summary: Settings menu and inputs now participate in the liquid glass material.
+- Notes: Adds the menu panel and settings inputs to the per-element liquid glass filter pipeline.
+
+## 28
+
+- Date: 2026-06-05
+- Version: 0.9.2
+- Summary: Marker list scrolling no longer clips marker glass shadows.
+- Notes: Adds a compensated shadow buffer around the marker list scroll area.
+
+## 27
+
+- Date: 2026-06-05
+- Version: 0.9.1
+- Summary: Liquid glass now follows the nikdelvin data-URL displacement filter approach.
+- Notes: Generates per-element SVG displacement filters from element size and observes glass controls with ResizeObserver.
+
+## 26
+
+- Date: 2026-06-05
+- Version: 0.9.0
+- Summary: Liquid glass styling now uses a local JS-injected SVG filter enhancement.
+- Notes: Adds a hidden SVG filter with turbulence, displacement, and blur, while retaining the pure CSS glass fallback and avoiding WebGL, canvas, and third-party dependencies.
+
+## 25
+
+- Date: 2026-06-05
+- Version: 0.8.1
+- Summary: Marker pills and the collapse toggle no longer show grey outline strokes.
+- Notes: Keeps the glass shadow and material blur while removing the 1px border-like stroke from marker and toggle surfaces.
+
+## 24
+
+- Date: 2026-06-05
+- Version: 0.8.0
+- Summary: Markers and navigation buttons now use pure CSS glass material styling.
+- Notes: Adds backdrop blur, saturation, translucent fills, and inner highlights while preserving inactive, hover, and active color semantics.
+
+## 23
+
+- Date: 2026-06-05
+- Version: 0.7.8
+- Summary: Settings reset hover state now uses marker-like pale blue contrast.
+- Notes: Applies the same visible hover/focus color in dark and light menu themes.
+
 ## 22
 
 - Date: 2026-06-05

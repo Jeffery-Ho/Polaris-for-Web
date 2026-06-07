@@ -1,7 +1,52 @@
 # Changelog
 
+## 2026-06-07
+
+- 调整：设置菜单控件参考 Arco Design 风格，统一 input、checkbox、重置按钮、间距和文字层级。
+- 实现：新增 Arco-like 颜色变量，保留 liquid glass 外层菜单，同时让表单控件使用浅灰背景、浅边框、蓝色选中态和轻量 hover。
+- 版本：修复更新到 `0.10.1 build 37`。
+- 功能：设置菜单新增按当前平台过滤 marker 类型，可独立控制 H1/H2/H3。
+- 实现：新增 `enabledLevelsByPlatform` 同步配置，ChatGPT、豆包、Kimi、千问、元宝分别保存启用级别，并防止关闭最后一个级别。
+- 版本：功能更新到 `0.10.0 build 36`。
+- 优化：marker 列表滚轮命中区域扩大到右侧插件最大宽度，不再需要精确滚到 marker pill 上。
+- 实现：新增非点击拦截的 wheel 捕获检测，只在 marker 列表可视纵向范围和右侧插件宽度内转发滚动到列表。
+- 版本：修复更新到 `0.9.9 build 35`。
+
 ## 2026-06-05
 
+- 调整：设置输入框聚焦态去掉黄色边框。
+- 调整：重置按钮去掉玻璃态 1px 描边。
+- 版本：修复更新到 `0.9.8 build 34`。
+- 调整：设置按钮去掉玻璃态 1px 描边。
+- 调整：设置输入框和重置按钮默认背景改为 `#f5f5f5`。
+- 调整：设置菜单面板加强 blur、saturate 和玻璃阴影，提升液态玻璃效果。
+- 版本：修复更新到 `0.9.7 build 33`。
+- 修复：marker 列表内容右边缘和收起按钮右边缘对齐。
+- 实现：列表滚动区域改为右侧外扩阴影缓冲，marker 内容边缘保持在导航 root 右侧。
+- 版本：修复更新到 `0.9.6 build 32`。
+- 调整：设置按钮 hover/focus 颜色改为和收起按钮一致的淡蓝玻璃态。
+- 版本：修复更新到 `0.9.5 build 31`。
+- 调整：inactive marker 默认背景从灰色玻璃改为白色半透明玻璃，更贴合 liquid glass 视觉。
+- 版本：修复更新到 `0.9.4 build 30`。
+- 调整：设置菜单面板和设置输入框加入 liquid glass 材质，视觉上和 marker/button 的液态玻璃保持一致。
+- 实现：将 `.gpt-paragraph-nav__settings-menu` 和设置输入框加入 per-element filter pipeline，并使用独立玻璃背景变量。
+- 版本：修复更新到 `0.9.3 build 29`。
+- 修复：右侧 marker 列表滚动容器不再截断 marker 玻璃阴影。
+- 实现：为列表滚动区域增加阴影缓冲 padding，并用负 margin 抵消布局尺寸变化。
+- 版本：修复更新到 `0.9.2 build 28`。
+- 调整：liquid glass 改为参考 `nikdelvin/liquid-glass` 的 data-URL SVG displacement filter 方案。
+- 实现：按每个 marker/button 的尺寸和圆角生成 `feImage` + `feDisplacementMap` filter，并用 `ResizeObserver` 在尺寸变化时重算 CSS 变量。
+- 版本：修复更新到 `0.9.1 build 27`。
+- 功能：玻璃材质新增本地 JS 注入 SVG filter 的 liquid glass 增强。
+- 实现：在导航 root 内幂等注入隐藏 SVG filter，使用 `feTurbulence`、`feDisplacementMap` 和 `feGaussianBlur`，CSS 在支持时叠加 `url("#gpt-paragraph-nav-liquid-glass")`，并保留纯 CSS fallback。
+- 版本：功能更新到 `0.9.0 build 26`。
+- 调整：统一去掉 marker、底部悬浮 active marker 和收起按钮玻璃态上的灰色描边，保留玻璃阴影和模糊材质。
+- 版本：修复更新到 `0.8.1 build 25`。
+- 功能：marker、底部悬浮 active marker、设置按钮、收起按钮和重置按钮新增纯 CSS 玻璃材质。
+- 实现：使用半透明背景、`backdrop-filter` / `-webkit-backdrop-filter`、玻璃边框和内高光，不引入 JS/SVG filter 或第三方库。
+- 版本：功能更新到 `0.8.0 build 24`。
+- 调整：设置菜单重置按钮 hover/focus 改为参考 marker hover 的浅蓝背景，避免浅色菜单中不可见。
+- 版本：修复更新到 `0.7.8 build 23`。
 - 修复：点击 marker 或底部悬浮 active marker 后，右侧列表会短时间持续校正到 active marker，避免网页自身滚动或重排打断定位。
 - 版本：修复更新到 `0.7.7 build 22`。
 - 调整：移除 inactive marker 的位置透明度渐变，默认灰色背景保持一致；hover 和 active 颜色不变。

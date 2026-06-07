@@ -29,15 +29,32 @@
 - The right-side navigation container must leave enough horizontal room for marker tooltips.
 - Do not constrain the list to marker width if tooltip labels need to extend left into the page.
 - Transparent layout space must not block clicks in the ChatGPT content area.
-- Inactive markers must use one consistent default grey background without per-item opacity variation.
+- Inactive markers must use one consistent translucent white glass background without per-item opacity variation.
+- Marker and navigation button glass styling must use pure CSS only: translucent backgrounds, `backdrop-filter`, `-webkit-backdrop-filter`, border highlights, and shadows. Do not add external libraries, JS filters, or SVG filters for this effect unless explicitly requested.
+- Settings menu panels and settings inputs should use the same liquid glass material family as markers and navigation buttons.
+- Settings trigger must not show the glass-mode 1px outline stroke.
+- Settings inputs and the settings reset button should use `#f5f5f5` as their default background.
+- Settings inputs must not show a separate focus outline.
+- The settings reset button must not show the glass-mode 1px outline stroke.
+- Settings menu panels should use a stronger liquid glass treatment than compact buttons through higher blur/saturation and menu-specific glass shadow.
+- Settings menu form controls should follow an Arco Design inspired style: compact 32px inputs/buttons, 6px radius, light border tokens, blue checkbox selected state, and subtle grey hover fills.
+- Liquid glass enhancement must use only a local JS-generated SVG data-URL filter with pure CSS glass fallback; do not add external libraries, remote scripts, WebGL, canvas, or html2canvas unless explicitly requested.
+- Liquid glass displacement should follow the nikdelvin-style per-element data-URL SVG filter, recomputed from element size with `ResizeObserver`.
+- Marker pills, floating active markers, and the collapse toggle must not show a grey 1px outline stroke in glass mode.
 - Keep marker hover in a pale blue tone, and marker selected state in a stronger blue, not orange.
 - Only the clicked active marker may use the selected blue state.
 - Active marker matching must use an internal marker key, not the heading DOM id.
 - Marker focus must not add a separate visual highlight.
+- Marker type filtering must be saved per platform with fixed keys `chatgpt`, `doubao`, `kimi`, `qianwen`, `yuanbao`, and `default`.
+- Marker type filtering is based on heading levels H1/H2/H3 only; do not mix it with heading source types unless explicitly requested.
+- Marker type filtering must keep at least one enabled level for the current platform.
 - If the active marker is fully outside the browser viewport, show one clickable floating active marker 20pt above the bottom of the visible marker list.
 - Clicking the floating active marker must return the marker list to the selected marker and jump the page anchor to the selected heading.
 - Floating active marker clicks must start page anchor scrolling before scrolling or focusing the marker list.
 - Marker and floating marker clicks may briefly re-apply active marker list scrolling while the host page settles, but must not permanently override manual marker-list scrolling.
+- Marker list content must right-align with the collapse toggle, while any shadow buffer expands outside that content edge.
+- Marker list scroll containers must leave compensated padding for marker glass shadows so shadows are not visibly clipped.
+- Marker list wheel scrolling should use the right-side plugin maximum width as its hit area without enabling transparent click interception.
 - Keep the settings menu layered above heading markers.
 - The settings menu may use a limited transparent hover guard while open; it must not intercept page clicks when the menu is closed.
 
@@ -55,6 +72,7 @@
 - Show the loaded extension `version_name` in the settings menu as read-only version/build information.
 - Place version/build text to the right of sync status with `12pt` spacing.
 - When sync config is empty, migrate valid legacy `localStorage` config without deleting the legacy value.
+- The settings reset button hover/focus state must remain visible on light menus and may reuse the marker hover pale blue.
 
 ## Version And Build Rule
 
