@@ -2,6 +2,27 @@
 
 ## 2026-06-07
 
+- 修复：当过滤后没有可见 marker 时，不再隐藏整个导航控件，保留“收起全部”和“设置”以便重新启用 marker 类型。
+- 调整：浅色模式恢复此前的浅白玻璃背景变量，仅暗色模式保留 BoomBranch 风格深色 glass。
+- 版本：修复更新到 `0.13.2 build 46`。
+- 调整：全局 glass 视觉改为参考 BoomBranch 的亮色/暗色双主题，暗色使用深色半透明卡片、细白描边和柔和阴影，亮色使用白色半透明玻璃。
+- 实现：统一 marker、按钮、设置菜单、输入框和 tooltip 的 glass 变量，减少浅白玻璃与暗色按钮混用。
+- 版本：修复更新到 `0.13.1 build 45`。
+- 功能：全平台无序列表标题 marker 改为独立“无序列表”开关，不再复用 H3 过滤。
+- 实现：新增 `enabledUnorderedListByPlatform` 同步配置和 `unordered-list` 来源类型，旧配置默认全平台启用无序列表 marker。
+- 版本：功能更新到 `0.13.0 build 44`。
+- 修复：小红书主站 `/ai_chat` 点点 AI 页面补齐内容脚本注入和 `xhs-ai-chat-page` 聊天容器识别。
+- 版本：修复更新到 `0.12.1 build 43`。
+- 功能：小红书点点 AI 页面 assistant Markdown 正文支持扩展到 H4 marker，设置面板在点点平台展示 H4 开关。
+- 版本：功能更新到 `0.12.0 build 42`。
+- 修复：小红书点点 AI 页面补齐 `www.askdiandian.com` 和 `www.diandianlife.top` 注入范围，避免实际访问域名未注入导致 marker 不生效。
+- 修复：点点深度研究页补充 `markdown-styles-deep-research` 容器识别。
+- 版本：修复更新到 `0.11.1 build 41`。
+- 功能：新增小红书点点 AI 网页支持，assistant Markdown 正文可生成 H1-H3 marker。
+- 功能：全平台新增无序列表标题 marker，识别加粗标题、`标题：正文` 和短独立标题，统一作为 H3 marker。
+- 版本：功能更新到 `0.11.0 build 40`。
+- 修复：默认展开状态下“收起全部”箭头改为朝上，收起后箭头朝下。
+- 版本：修复更新到 `0.10.3 build 39`。
 - 文档：README 改为 GitHub 展示用的最简版本，补充按平台 Marker 类型过滤、liquid glass 和滚轮命中区优化。
 - 版本：文档更新到 `0.10.2 build 38`。
 - 调整：设置菜单控件参考 Arco Design 风格，统一 input、checkbox、重置按钮、间距和文字层级。

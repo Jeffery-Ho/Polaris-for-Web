@@ -2,16 +2,21 @@
 
 ## Heading Marker Rule
 
-- Only recognize and render `gpt-paragraph-nav__marker level-1`, `level-2`, and `level-3`.
-- Do not recognize, count, or render `level-4` markers.
-- `usableHeadings` must contain only heading items whose `level <= 3`.
-- Future changes to heading extraction must preserve this rule unless the user explicitly asks to change it.
+- Recognize and render heading markers according to the current platform level limit.
+- `level-4` markers are only supported on Xiaohongshu Diandian.
+- `usableHeadings` may include unordered-list marker items independently from heading level filters.
+- Future changes to heading extraction must preserve per-platform level limits unless the user explicitly asks to change them.
 - Kimi pages must only render assistant Markdown body headings up to `H2`.
 - Kimi share page titles such as `.share-title` must not render as markers.
 - Qianwen pages may render assistant Markdown body headings up to `H3`.
 - Qianwen video lists may render one `level-2` marker using the first visible video title only.
 - Yuanbao pages must only render Markdown body headings up to `H2`.
 - Yuanbao video big-card titles may render as `level-2` markers.
+- Xiaohongshu Diandian pages may render assistant Markdown body headings up to `H4`.
+- Xiaohongshu Diandian support must cover `diandian.xiaohongshu.com`, `www.xiaohongshu.com/ai_chat`, `www.askdiandian.com`, and `www.diandianlife.top`.
+- Unordered list heading markers must use a separate unordered-list marker option and must not be controlled by the H3 marker filter.
+- Unordered list extraction must only accept clear title items: leading bold title, `标题：正文` style title, or short standalone title text.
+- Unordered list extraction must ignore nested list items, tables, code blocks, blockquotes, and long body-like list content.
 
 ## Assistant Container Rule
 
@@ -21,6 +26,9 @@
 - On Kimi, prefer assistant containers under `.segment-assistant .markdown`.
 - On Qianwen, prefer assistant containers under `[class*="message-select-wrapper-answer"] .qk-markdown`.
 - On Yuanbao, prefer AI response containers under `data-conv-speaker="ai"` and include `hyc-common-markdown` content plus video big-card titles.
+- On Xiaohongshu Diandian, prefer Markdown containers using `markdown-styles-diandian-main`, `markdown-styles-pc-main`, or `markdown-styles-xhs-main`.
+- On Xiaohongshu Diandian deep research pages, include `markdown-styles-deep-research`.
+- On Xiaohongshu main-site AI chat pages, include `xhs-ai-chat-page` chat containers such as `round-item`, `scroll-container`, and `chat-container`.
 
 ## Floating Tooltip Rule
 
@@ -29,11 +37,11 @@
 - The right-side navigation container must leave enough horizontal room for marker tooltips.
 - Do not constrain the list to marker width if tooltip labels need to extend left into the page.
 - Transparent layout space must not block clicks in the ChatGPT content area.
-- Inactive markers must use one consistent translucent white glass background without per-item opacity variation.
+- Inactive markers must use one consistent theme-aware translucent glass background without per-item opacity variation.
 - Marker and navigation button glass styling must use pure CSS only: translucent backgrounds, `backdrop-filter`, `-webkit-backdrop-filter`, border highlights, and shadows. Do not add external libraries, JS filters, or SVG filters for this effect unless explicitly requested.
 - Settings menu panels and settings inputs should use the same liquid glass material family as markers and navigation buttons.
 - Settings trigger must not show the glass-mode 1px outline stroke.
-- Settings inputs and the settings reset button should use `#f5f5f5` as their default background.
+- Settings inputs and the settings reset button should inherit the theme-aware glass input/reset background variables.
 - Settings inputs must not show a separate focus outline.
 - The settings reset button must not show the glass-mode 1px outline stroke.
 - Settings menu panels should use a stronger liquid glass treatment than compact buttons through higher blur/saturation and menu-specific glass shadow.
@@ -45,9 +53,11 @@
 - Only the clicked active marker may use the selected blue state.
 - Active marker matching must use an internal marker key, not the heading DOM id.
 - Marker focus must not add a separate visual highlight.
-- Marker type filtering must be saved per platform with fixed keys `chatgpt`, `doubao`, `kimi`, `qianwen`, `yuanbao`, and `default`.
-- Marker type filtering is based on heading levels H1/H2/H3 only; do not mix it with heading source types unless explicitly requested.
+- Marker type filtering must be saved per platform with fixed keys `chatgpt`, `doubao`, `kimi`, `qianwen`, `yuanbao`, `xiaohongshu`, and `default`.
+- Marker type filtering is based on supported heading levels for the current platform; Xiaohongshu Diandian includes H4, while other existing platforms keep their prior H1-H3 or H1-H2 limits.
+- Unordered list marker filtering is a separate per-platform boolean and must not affect the heading level filters.
 - Marker type filtering must keep at least one enabled level for the current platform.
+- If filtering leaves zero visible markers, keep the navigation controls visible so users can reopen settings and re-enable marker types.
 - If the active marker is fully outside the browser viewport, show one clickable floating active marker 20pt above the bottom of the visible marker list.
 - Clicking the floating active marker must return the marker list to the selected marker and jump the page anchor to the selected heading.
 - Floating active marker clicks must start page anchor scrolling before scrolling or focusing the marker list.
@@ -58,11 +68,20 @@
 - Keep the settings menu layered above heading markers.
 - The settings menu may use a limited transparent hover guard while open; it must not intercept page clicks when the menu is closed.
 
+## Glass Theme Rule
+
+- Global extension surfaces should use BoomBranch-like glass styling: dark mode uses near-black translucent backgrounds, subtle `white/10` borders, and soft dark shadows.
+- Light mode should mirror the same hierarchy with bright translucent backgrounds, low-contrast slate borders, and soft shadows.
+- Light mode should keep the earlier Polaris light glass backgrounds for marker, toggle, settings menu, inputs, and reset controls.
+- Marker pills, floating active marker, settings trigger, collapse toggle, settings menu, inputs, options, and reset button should inherit from shared glass variables instead of one-off hardcoded backgrounds.
+- Active markers may use a cyan/blue accent, but inactive and hover states should stay quiet and glass-like.
+
 ## Toggle Button Rule
 
 - The collapse toggle should include the extension icon in a 32px shell, using a 96px image resource for high-density displays.
 - Keep the icon decorative for assistive technology; the button label comes from the action text and `aria-expanded`.
 - Keep the collapse toggle background in a pale blue, Polaris-like tone, separate from the settings trigger color.
+- The collapse toggle chevron must point up while the marker list is expanded and down while it is collapsed.
 
 ## Config Storage Rule
 

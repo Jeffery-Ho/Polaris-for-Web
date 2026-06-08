@@ -1,7 +1,7 @@
 (() => {
   const ROOT_ID = "gpt-paragraph-nav";
   const DEBUG_ATTR = "data-gpt-paragraph-nav";
-  const HEADING_SELECTOR = "h1, h2, h3";
+  const HEADING_SELECTOR = "h1, h2, h3, h4";
   const ROLE_HEADING_SELECTOR = '[role="heading"][aria-level]';
   const STRONG_HEADING_SELECTOR = "p, li";
   const NUMBERED_HEADING_SELECTOR = "p, div";
@@ -35,6 +35,24 @@
     '[data-conv-speaker="ai"] .hyc-common-markdown',
     '[data-conv-speaker="ai"]',
     ".agent-chat__list__item--ai .hyc-common-markdown"
+  ].join(", ");
+  const XIAOHONGSHU_ASSISTANT_MESSAGE_SELECTOR = [
+    ".markdown-styles-diandian-main-v3",
+    ".markdown-styles-diandian-main-v2",
+    ".markdown-styles-diandian-main",
+    ".markdown-styles-deep-research",
+    ".markdown-styles-pc-main",
+    ".markdown-styles-xhs-main",
+    ".xhs-ai-chat-page .round-item",
+    ".xhs-ai-chat-page .scroll-container",
+    ".xhs-ai-chat-page .chat-container",
+    '[class*="markdown-styles-diandian-main"]',
+    '[class*="markdown-styles-deep-research"]',
+    '[class*="markdown-styles-pc-main"]',
+    '[class*="markdown-styles-xhs-main"]',
+    '[class*="xhs-ai-chat-page"] [class*="round-item"]',
+    '[class*="xhs-ai-chat-page"] [class*="scroll-container"]',
+    '[class*="xhs-ai-chat-page"] [class*="chat-container"]'
   ].join(", ");
   const YUANBAO_VIDEO_CARD_SELECTOR = [
     ".ybc-chat-videoBoxV2-bigCard",
@@ -73,6 +91,7 @@
   const MARKER_LIST_SCROLL_PERSIST_MS = 1200;
   const DEFAULT_HEADER_HEIGHT = 64;
   const CONFIG_STORAGE_KEY = "gpt-paragraph-nav-config";
+  const CONFIG_SCHEMA_VERSION = 3;
   const CONVERSATION_HEADER_SELECTOR = [
     '[data-testid="conversation-header"]',
     '[data-testid="chat-header"]',
@@ -84,22 +103,34 @@
     { key: "maxVisible", label: "最大数量", min: 1, max: 80, step: 1, unit: "" },
     { key: "tooltipMaxWidth", label: "提示宽度", min: 160, max: 720, step: 10, unit: "px" }
   ];
-  const PLATFORM_KEYS = ["chatgpt", "doubao", "kimi", "qianwen", "yuanbao", "default"];
-  const MARKER_LEVEL_OPTIONS = [1, 2, 3];
+  const PLATFORM_KEYS = ["chatgpt", "doubao", "kimi", "qianwen", "yuanbao", "xiaohongshu", "default"];
+  const MARKER_LEVEL_OPTIONS = [1, 2, 3, 4];
   const DEFAULT_ENABLED_LEVELS_BY_PLATFORM = Object.freeze({
     chatgpt: [1, 2, 3],
     doubao: [1, 2, 3],
     kimi: [1, 2],
     qianwen: [1, 2, 3],
     yuanbao: [1, 2],
+    xiaohongshu: [1, 2, 3, 4],
     default: [1, 2, 3]
+  });
+  const DEFAULT_UNORDERED_LIST_BY_PLATFORM = Object.freeze({
+    chatgpt: true,
+    doubao: true,
+    kimi: true,
+    qianwen: true,
+    yuanbao: true,
+    xiaohongshu: true,
+    default: true
   });
   const DEFAULT_CONFIG = Object.freeze({
     topGap: 8,
     rightOffset: 14,
     maxVisible: QUEUE_MAX_VISIBLE,
     tooltipMaxWidth: 360,
-    enabledLevelsByPlatform: DEFAULT_ENABLED_LEVELS_BY_PLATFORM
+    configVersion: CONFIG_SCHEMA_VERSION,
+    enabledLevelsByPlatform: DEFAULT_ENABLED_LEVELS_BY_PLATFORM,
+    enabledUnorderedListByPlatform: DEFAULT_UNORDERED_LIST_BY_PLATFORM
   });
   const markerKeys = new WeakMap();
   const liquidGlassSignatures = new WeakMap();
@@ -197,6 +228,9 @@
       button.type = "button";
       button.className = "gpt-paragraph-nav__toggle";
       button.addEventListener("click", () => {
+        if (!state.headings.length) {
+          return;
+        }
         if (!state.isCollapsed) {
           state.collapsedListHeight = getList(root).offsetHeight;
         }
@@ -342,6 +376,27 @@
 
         levelOptions.appendChild(option);
       });
+
+      const unorderedListOption = document.createElement("label");
+      unorderedListOption.className = "gpt-paragraph-nav__settings-level-option";
+      unorderedListOption.dataset.markerUnorderedListOption = "true";
+
+      const unorderedListCheckbox = document.createElement("input");
+      unorderedListCheckbox.type = "checkbox";
+      unorderedListCheckbox.dataset.markerUnorderedList = "true";
+      unorderedListCheckbox.addEventListener("change", () => {
+        updateEnabledUnorderedListForCurrentPlatform(unorderedListCheckbox.checked);
+        saveConfig(state.config);
+        syncSettingsInputs(settings);
+        render();
+      });
+      unorderedListOption.appendChild(unorderedListCheckbox);
+
+      const unorderedListLabel = document.createElement("span");
+      unorderedListLabel.textContent = "无序列表";
+      unorderedListOption.appendChild(unorderedListLabel);
+
+      levelOptions.appendChild(unorderedListOption);
       levelFilter.appendChild(levelOptions);
       menu.appendChild(levelFilter);
 
@@ -375,7 +430,10 @@
   }
 
   function maxHeadingLevelForPlatform(platformKey = currentPlatformKey()) {
-    return platformKey === "yuanbao" || platformKey === "kimi" ? 2 : 3;
+    if (platformKey === "yuanbao" || platformKey === "kimi") {
+      return 2;
+    }
+    return platformKey === "xiaohongshu" ? 4 : 3;
   }
 
   function supportedMarkerLevelsForPlatform(platformKey = currentPlatformKey()) {
@@ -408,6 +466,16 @@
     }, {});
   }
 
+  function normalizeUnorderedListByPlatform(config) {
+    const source = config && config.enabledUnorderedListByPlatform;
+    return PLATFORM_KEYS.reduce((result, platformKey) => {
+      result[platformKey] = source && Object.prototype.hasOwnProperty.call(source, platformKey)
+        ? Boolean(source[platformKey])
+        : DEFAULT_UNORDERED_LIST_BY_PLATFORM[platformKey];
+      return result;
+    }, {});
+  }
+
   function normalizeConfig(config) {
     const result = CONFIG_FIELDS.reduce((normalizedConfig, field) => {
       normalizedConfig[field.key] = normalizeNumber(
@@ -419,6 +487,14 @@
       return normalizedConfig;
     }, {});
     result.enabledLevelsByPlatform = normalizeEnabledLevelsByPlatform(config);
+    result.enabledUnorderedListByPlatform = normalizeUnorderedListByPlatform(config);
+    if ((Number(config && config.configVersion) || 1) < 2) {
+      result.enabledLevelsByPlatform.xiaohongshu = normalizeEnabledLevels(
+        [...result.enabledLevelsByPlatform.xiaohongshu, 4],
+        "xiaohongshu"
+      );
+    }
+    result.configVersion = CONFIG_SCHEMA_VERSION;
     return result;
   }
 
@@ -427,13 +503,26 @@
       const firstLevels = normalizeEnabledLevels(first && first[platformKey], platformKey);
       const secondLevels = normalizeEnabledLevels(second && second[platformKey], platformKey);
       return firstLevels.length === secondLevels.length
-        && firstLevels.every((level, index) => level === secondLevels[index]);
+      && firstLevels.every((level, index) => level === secondLevels[index]);
+    });
+  }
+
+  function enabledUnorderedListByPlatformEqual(first, second) {
+    return PLATFORM_KEYS.every((platformKey) => {
+      const firstEnabled = first && Object.prototype.hasOwnProperty.call(first, platformKey)
+        ? Boolean(first[platformKey])
+        : DEFAULT_UNORDERED_LIST_BY_PLATFORM[platformKey];
+      const secondEnabled = second && Object.prototype.hasOwnProperty.call(second, platformKey)
+        ? Boolean(second[platformKey])
+        : DEFAULT_UNORDERED_LIST_BY_PLATFORM[platformKey];
+      return firstEnabled === secondEnabled;
     });
   }
 
   function configsEqual(first, second) {
     return CONFIG_FIELDS.every((field) => first[field.key] === second[field.key])
-      && enabledLevelsByPlatformEqual(first.enabledLevelsByPlatform, second.enabledLevelsByPlatform);
+      && enabledLevelsByPlatformEqual(first.enabledLevelsByPlatform, second.enabledLevelsByPlatform)
+      && enabledUnorderedListByPlatformEqual(first.enabledUnorderedListByPlatform, second.enabledUnorderedListByPlatform);
   }
 
   function hasSyncStorage() {
@@ -592,6 +681,11 @@
       input.checked = isSupported && enabledSet.has(level);
       input.disabled = !isSupported || (input.checked && enabledLevels.length <= 1);
     });
+
+    settings.querySelectorAll("input[data-marker-unordered-list]").forEach((input) => {
+      input.checked = enabledUnorderedListForPlatform(platformKey);
+      input.disabled = false;
+    });
   }
 
   function updateEnabledLevelForCurrentPlatform(level, isEnabled) {
@@ -614,6 +708,24 @@
       enabledLevelsByPlatform: {
         ...state.config.enabledLevelsByPlatform,
         [platformKey]: nextLevels
+      }
+    });
+  }
+
+  function enabledUnorderedListForPlatform(platformKey, config = state.config) {
+    const source = config && config.enabledUnorderedListByPlatform;
+    return source && Object.prototype.hasOwnProperty.call(source, platformKey)
+      ? Boolean(source[platformKey])
+      : DEFAULT_UNORDERED_LIST_BY_PLATFORM[platformKey];
+  }
+
+  function updateEnabledUnorderedListForCurrentPlatform(isEnabled) {
+    const platformKey = currentPlatformKey();
+    state.config = normalizeConfig({
+      ...state.config,
+      enabledUnorderedListByPlatform: {
+        ...state.config.enabledUnorderedListByPlatform,
+        [platformKey]: Boolean(isEnabled)
       }
     });
   }
@@ -667,6 +779,20 @@
       || window.location.hostname.endsWith(".yuanbao.tencent.com");
   }
 
+  function isXiaohongshuPage() {
+    return window.location.hostname === "diandian.xiaohongshu.com"
+      || window.location.hostname.endsWith(".diandian.xiaohongshu.com")
+      || (window.location.hostname === "www.xiaohongshu.com" && window.location.pathname.startsWith("/ai_chat"))
+      || window.location.hostname === "www.askdiandian.com"
+      || window.location.hostname.endsWith(".askdiandian.com")
+      || window.location.hostname === "www.diandianlife.top"
+      || window.location.hostname.endsWith(".diandianlife.top");
+  }
+
+  function isUnsupportedXiaohongshuMainPage() {
+    return window.location.hostname === "www.xiaohongshu.com" && !window.location.pathname.startsWith("/ai_chat");
+  }
+
   function isChatGPTPage() {
     return window.location.hostname === "chatgpt.com"
       || window.location.hostname.endsWith(".chatgpt.com")
@@ -690,10 +816,21 @@
     if (isYuanbaoPage()) {
       return "yuanbao";
     }
+    if (isXiaohongshuPage()) {
+      return "xiaohongshu";
+    }
     return "default";
   }
 
   function getAssistantContainerSelectors() {
+    if (isUnsupportedXiaohongshuMainPage()) {
+      return [];
+    }
+
+    if (isXiaohongshuPage()) {
+      return [XIAOHONGSHU_ASSISTANT_MESSAGE_SELECTOR, ASSISTANT_MESSAGE_SELECTOR, MARKDOWN_FALLBACK_SELECTOR];
+    }
+
     if (isYuanbaoPage()) {
       return [YUANBAO_ASSISTANT_MESSAGE_SELECTOR, ASSISTANT_MESSAGE_SELECTOR, MARKDOWN_FALLBACK_SELECTOR];
     }
@@ -737,23 +874,24 @@
   }
 
   function headingLevelFor(element) {
-    if (/^H[1-3]$/.test(element.tagName)) {
+    if (/^H[1-4]$/.test(element.tagName)) {
       return Number(element.tagName.slice(1));
     }
     return clampLevel(Number(element.getAttribute("aria-level")));
   }
 
-  function makeHeadingItem(element, index, level) {
+  function makeHeadingItem(element, index, level, sourceType = "heading") {
     return {
       element,
       level: clampLevel(level),
       title: normalizeTitle(element.textContent || `Heading ${index + 1}`),
-      id: element.id || `gpt-paragraph-heading-${index + 1}`
+      id: element.id || `gpt-paragraph-heading-${index + 1}`,
+      sourceType
     };
   }
 
   function markdownLevelFromText(text) {
-    const match = text.match(/^(#{1,3})\s+\S/);
+    const match = text.match(/^(#{1,4})\s+\S/);
     return match ? match[1].length : null;
   }
 
@@ -816,6 +954,70 @@
 
     const nestedBlocks = element.querySelectorAll("p, div, ul, ol, table, pre, blockquote");
     return nestedBlocks.length === 0;
+  }
+
+  function isUnorderedListItem(element) {
+    const parentList = element.parentElement;
+    return parentList instanceof HTMLElement && parentList.tagName === "UL";
+  }
+
+  function firstListItemBlock(element) {
+    return Array.from(element.children)
+      .find((child) => child instanceof HTMLElement
+        && !child.matches("ul, ol, table, pre, blockquote")
+        && normalizeTitle(child.textContent || ""));
+  }
+
+  function isTopLevelUnorderedListItem(element, container) {
+    const parentList = element.parentElement;
+    if (!(parentList instanceof HTMLElement) || parentList.tagName !== "UL") {
+      return false;
+    }
+
+    return !parentList.parentElement
+      || parentList.parentElement === container
+      || !parentList.parentElement.closest("li");
+  }
+
+  function titleFromListItemStrong(element) {
+    const titleElement = getLeadingStrong(element) || (firstListItemBlock(element) && getLeadingStrong(firstListItemBlock(element)));
+    if (!titleElement) {
+      return "";
+    }
+
+    const title = normalizeTitle(titleElement.textContent || "");
+    return title && title.length <= 80 ? title : "";
+  }
+
+  function titleFromListItemText(element) {
+    const sourceElement = firstListItemBlock(element) || element;
+    const text = normalizeTitle(sourceElement.textContent || element.textContent || "");
+    if (!text || text.length > 180) {
+      return "";
+    }
+
+    const separatedTitle = text.match(/^([^:：]{2,80})[:：]\s*\S/);
+    if (separatedTitle) {
+      return normalizeTitle(separatedTitle[1]);
+    }
+
+    if (text.length <= 48 && !/[。！？.!?；;，,]\s*\S/.test(text)) {
+      return text;
+    }
+
+    return "";
+  }
+
+  function unorderedListHeadingTitle(element, container) {
+    if (!isTopLevelUnorderedListItem(element, container)) {
+      return "";
+    }
+
+    if (element.querySelector("ul, ol, table, pre, blockquote")) {
+      return "";
+    }
+
+    return titleFromListItemStrong(element) || titleFromListItemText(element);
   }
 
   function titleFromAttribute(element) {
@@ -937,6 +1139,9 @@
         if (!(heading instanceof HTMLElement) || !isVisible(heading) || seen.has(heading)) {
           return;
         }
+        if (heading.tagName === "LI" && isUnorderedListItem(heading)) {
+          return;
+        }
         if (!isStandaloneStrongHeading(heading)) {
           return;
         }
@@ -962,17 +1167,44 @@
       });
     });
 
+    containers.forEach((container) => {
+      container.querySelectorAll("ul > li").forEach((heading) => {
+        if (!(heading instanceof HTMLElement) || !isVisible(heading) || seen.has(heading)) {
+          return;
+        }
+
+        const title = unorderedListHeadingTitle(heading, container);
+        if (!title) {
+          return;
+        }
+
+        seen.add(heading);
+        headings.push({
+          element: heading,
+          level: 3,
+          title,
+          id: heading.id || `gpt-paragraph-heading-${headings.length + 1}`,
+          sourceType: "unordered-list"
+        });
+      });
+    });
+
     collectYuanbaoVideoCardHeadings(seen, headings);
     collectQianwenVideoListHeadings(seen, headings);
 
     const platformKey = currentPlatformKey();
     const maxHeadingLevel = maxHeadingLevelForPlatform(platformKey);
     const enabledLevels = new Set(enabledLevelsForCurrentPlatform());
-    const usableHeadings = headings.filter((item) => (
-      item.title.length > 0
-      && item.level <= maxHeadingLevel
-      && enabledLevels.has(item.level)
-    ));
+    const unorderedListEnabled = enabledUnorderedListForPlatform(platformKey);
+    const usableHeadings = headings.filter((item) => {
+      if (item.title.length <= 0) {
+        return false;
+      }
+      if (item.sourceType === "unordered-list") {
+        return unorderedListEnabled;
+      }
+      return item.level <= maxHeadingLevel && enabledLevels.has(item.level);
+    });
     debugCollection(containers, usableHeadings);
     return usableHeadings;
   }
@@ -1254,9 +1486,9 @@
 
     root.classList.toggle("is-empty", headings.length === 0);
     root.classList.toggle("is-collapsed", state.isCollapsed && headings.length > 0);
-    toggle.hidden = headings.length === 0;
-    toggle.querySelector(`.${TOGGLE_LABEL_CLASS}`).textContent = state.isCollapsed ? "展开全部" : "收起全部";
-    toggle.setAttribute("aria-expanded", String(!state.isCollapsed));
+    toggle.hidden = false;
+    toggle.querySelector(`.${TOGGLE_LABEL_CLASS}`).textContent = headings.length > 0 && state.isCollapsed ? "展开全部" : "收起全部";
+    toggle.setAttribute("aria-expanded", String(headings.length === 0 || !state.isCollapsed));
     list.style.height = state.isCollapsed && state.collapsedListHeight > 0 ? `${state.collapsedListHeight}px` : "";
     list.setAttribute("aria-hidden", String(state.isCollapsed));
     list.textContent = "";

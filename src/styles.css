@@ -4,27 +4,27 @@
   right: var(--gpt-nav-right-offset, 14px);
   bottom: 16px;
   z-index: 2147483647;
-  --gpt-glass-blur: 14px;
-  --gpt-glass-saturate: 180%;
-  --gpt-glass-bg: rgba(255, 255, 255, 0.18);
+  --gpt-glass-blur: 18px;
+  --gpt-glass-saturate: 190%;
+  --gpt-glass-bg: rgba(20, 22, 30, 0.72);
   --gpt-liquid-glass-filter: none;
-  --gpt-glass-border: rgba(255, 255, 255, 0.36);
-  --gpt-glass-shadow: 0 10px 28px rgba(15, 23, 42, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.42);
-  --gpt-glass-marker-bg: rgba(255, 255, 255, 0.56);
-  --gpt-glass-hover-bg: rgba(219, 234, 254, 0.78);
-  --gpt-glass-active-bg: rgba(37, 99, 235, 0.84);
-  --gpt-glass-dark-button-bg: rgba(15, 23, 42, 0.62);
-  --gpt-glass-toggle-bg: rgba(219, 234, 254, 0.76);
-  --gpt-glass-reset-bg: #f5f5f5;
-  --gpt-glass-menu-bg: rgba(255, 255, 255, 0.26);
-  --gpt-glass-input-bg: #f5f5f5;
-  --gpt-arco-primary: rgb(22, 93, 255);
-  --gpt-arco-text-1: rgb(29, 33, 41);
-  --gpt-arco-text-2: rgb(78, 89, 105);
-  --gpt-arco-text-3: rgb(134, 144, 156);
-  --gpt-arco-border: rgba(20, 33, 51, 0.1);
-  --gpt-arco-fill-2: rgb(242, 243, 245);
-  --gpt-arco-fill-3: rgb(229, 230, 235);
+  --gpt-glass-border: rgba(255, 255, 255, 0.1);
+  --gpt-glass-shadow: 0 18px 42px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  --gpt-glass-marker-bg: rgba(255, 255, 255, 0.08);
+  --gpt-glass-hover-bg: rgba(255, 255, 255, 0.16);
+  --gpt-glass-active-bg: rgba(34, 211, 238, 0.84);
+  --gpt-glass-dark-button-bg: rgba(20, 22, 30, 0.76);
+  --gpt-glass-toggle-bg: rgba(255, 255, 255, 0.08);
+  --gpt-glass-reset-bg: rgba(255, 255, 255, 0.08);
+  --gpt-glass-menu-bg: rgba(20, 22, 30, 0.76);
+  --gpt-glass-input-bg: rgba(255, 255, 255, 0.08);
+  --gpt-arco-primary: rgb(34, 211, 238);
+  --gpt-arco-text-1: rgb(248, 250, 252);
+  --gpt-arco-text-2: rgb(203, 213, 225);
+  --gpt-arco-text-3: rgb(148, 163, 184);
+  --gpt-arco-border: rgba(255, 255, 255, 0.12);
+  --gpt-arco-fill-2: rgba(255, 255, 255, 0.08);
+  --gpt-arco-fill-3: rgba(255, 255, 255, 0.14);
   --gpt-marker-shadow-buffer: 18px;
   width: var(--gpt-nav-width, calc(100vw - 28px));
   display: flex;
@@ -33,10 +33,6 @@
   justify-content: flex-start;
   gap: 8px;
   pointer-events: none;
-}
-
-#gpt-paragraph-nav.is-empty {
-  display: none;
 }
 
 .gpt-paragraph-nav__controls {
@@ -123,7 +119,7 @@
   border: 0;
   border-radius: 999px;
   background: var(--gpt-glass-dark-button-bg);
-  color: #f8fafc;
+  color: var(--gpt-arco-text-1);
   font: 600 12px/1 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   cursor: pointer;
   pointer-events: auto;
@@ -144,7 +140,7 @@
   padding: 6px 12px 6px 6px;
   background: var(--gpt-glass-toggle-bg);
   box-shadow: var(--gpt-glass-shadow);
-  color: #0f3d5e;
+  color: var(--gpt-arco-text-1);
 }
 
 .gpt-paragraph-nav__toggle-icon {
@@ -163,12 +159,12 @@
   height: 8px;
   border-right: 2px solid currentColor;
   border-bottom: 2px solid currentColor;
-  transform: rotate(45deg);
+  transform: rotate(-135deg);
   transition: transform 120ms ease;
 }
 
 #gpt-paragraph-nav.is-collapsed .gpt-paragraph-nav__toggle-chevron {
-  transform: rotate(-135deg);
+  transform: rotate(45deg);
 }
 
 .gpt-paragraph-nav__settings-trigger:hover,
@@ -182,30 +178,30 @@
 .gpt-paragraph-nav__settings-trigger:focus-visible,
 .gpt-paragraph-nav__toggle:hover,
 .gpt-paragraph-nav__toggle:focus-visible {
-  background: rgba(191, 219, 254, 0.82);
-  color: #082f49;
+  background: var(--gpt-glass-hover-bg);
+  color: var(--gpt-arco-text-1);
 }
 
 .gpt-paragraph-nav__settings-trigger:focus-visible,
 .gpt-paragraph-nav__toggle:focus-visible {
-  outline: 2px solid #fbbf24;
+  outline: 2px solid var(--gpt-arco-primary);
   outline-offset: 3px;
 }
 
 .gpt-paragraph-nav__settings-menu {
-  --gpt-glass-blur: 22px;
-  --gpt-glass-saturate: 230%;
+  --gpt-glass-blur: 24px;
+  --gpt-glass-saturate: 210%;
   position: absolute;
   top: calc(100% + 8px);
   right: 0;
   display: none;
   width: 276px;
   padding: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.34);
-  border-radius: 10px;
+  border: 1px solid var(--gpt-glass-border);
+  border-radius: 14px;
   background: var(--gpt-glass-menu-bg);
   color: var(--gpt-arco-text-1);
-  box-shadow: 0 18px 46px rgba(15, 23, 42, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.72), inset 0 -1px 0 rgba(255, 255, 255, 0.18);
+  box-shadow: var(--gpt-glass-shadow);
   pointer-events: auto;
   z-index: 3;
 }
@@ -340,7 +336,7 @@
   border: 1px solid var(--gpt-arco-border);
   border-radius: 3px;
   appearance: none;
-  background: #ffffff;
+  background: rgba(255, 255, 255, 0.1);
   cursor: inherit;
 }
 
@@ -391,7 +387,7 @@
 
 .gpt-paragraph-nav__list::-webkit-scrollbar-thumb {
   border-radius: 999px;
-  background: rgba(34, 34, 34, 0.18);
+  background: rgba(255, 255, 255, 0.18);
 }
 
 .gpt-paragraph-nav__marker {
@@ -407,7 +403,7 @@
   border-radius: 999px;
   background: var(--gpt-glass-marker-bg);
   box-shadow: var(--gpt-glass-shadow);
-  color: #222222;
+  color: var(--gpt-arco-text-1);
   cursor: pointer;
   pointer-events: auto;
   transition: background 120ms ease, color 120ms ease, transform 120ms ease;
@@ -415,14 +411,14 @@
 
 .gpt-paragraph-nav__marker:hover {
   background: var(--gpt-glass-hover-bg);
-  color: #0f3d5e;
+  color: var(--gpt-arco-text-1);
   opacity: 1;
   transform: scale(1.04);
 }
 
 .gpt-paragraph-nav__marker.is-active {
   background: var(--gpt-glass-active-bg);
-  color: #ffffff;
+  color: #031014;
   opacity: 1;
   transform: scale(1.04);
 }
@@ -443,7 +439,7 @@
   border-radius: 999px;
   background: var(--gpt-glass-active-bg);
   box-shadow: var(--gpt-glass-shadow);
-  color: #ffffff;
+  color: #031014;
   cursor: pointer;
   font: 500 11px/1.2 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   letter-spacing: 0;
@@ -476,9 +472,9 @@
   right: calc(100% + 8px);
   max-width: min(var(--gpt-nav-tooltip-max-width, 360px), calc(100vw - 72px));
   padding: 8px 10px;
-  border: 1px solid rgba(148, 163, 184, 0.28);
+  border: 1px solid var(--gpt-glass-border);
   border-radius: 8px;
-  background: rgba(15, 23, 42, 0.95);
+  background: rgba(20, 22, 30, 0.94);
   color: #f8fafc;
   font: 500 13px/1.35 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   text-align: left;
@@ -499,10 +495,24 @@
 
 @media (prefers-color-scheme: light) {
   #gpt-paragraph-nav {
+    --gpt-glass-bg: rgba(255, 255, 255, 0.18);
     --gpt-glass-border: rgba(15, 23, 42, 0.12);
     --gpt-glass-shadow: 0 10px 28px rgba(15, 23, 42, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.72);
+    --gpt-glass-marker-bg: rgba(255, 255, 255, 0.56);
+    --gpt-glass-hover-bg: rgba(219, 234, 254, 0.78);
+    --gpt-glass-active-bg: rgba(37, 99, 235, 0.84);
     --gpt-glass-dark-button-bg: rgba(255, 255, 255, 0.72);
+    --gpt-glass-toggle-bg: rgba(219, 234, 254, 0.76);
+    --gpt-glass-reset-bg: #f5f5f5;
     --gpt-glass-menu-bg: rgba(255, 255, 255, 0.46);
+    --gpt-glass-input-bg: #f5f5f5;
+    --gpt-arco-primary: rgb(22, 93, 255);
+    --gpt-arco-text-1: rgb(29, 33, 41);
+    --gpt-arco-text-2: rgb(78, 89, 105);
+    --gpt-arco-text-3: rgb(134, 144, 156);
+    --gpt-arco-border: rgba(20, 33, 51, 0.1);
+    --gpt-arco-fill-2: rgb(242, 243, 245);
+    --gpt-arco-fill-3: rgb(229, 230, 235);
   }
 
   .gpt-paragraph-nav__settings-trigger {
@@ -551,6 +561,12 @@
 
   .gpt-paragraph-nav__marker {
     background: var(--gpt-glass-marker-bg);
+    color: var(--gpt-arco-text-1);
+  }
+
+  .gpt-paragraph-nav__marker.is-active,
+  .gpt-paragraph-nav__floating-active {
+    color: #ffffff;
   }
 
   .gpt-paragraph-nav__label {

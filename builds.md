@@ -10,6 +10,62 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 46
+
+- Date: 2026-06-07
+- Version: 0.13.2
+- Summary: Navigation controls remain visible when filters hide every marker.
+- Notes: Keeps the toggle and settings controls available after marker filters produce an empty list, and restores the previous light-mode glass background variables while retaining the BoomBranch-like dark theme.
+
+## 45
+
+- Date: 2026-06-07
+- Version: 0.13.1
+- Summary: Global glass styling now follows a BoomBranch-like light and dark theme.
+- Notes: Updates shared glass variables so markers, controls, settings, inputs, and tooltips use consistent translucent surfaces, subtle borders, and soft shadows across light and dark modes.
+
+## 44
+
+- Date: 2026-06-07
+- Version: 0.13.0
+- Summary: Unordered-list heading markers now have their own marker option.
+- Notes: Adds a per-platform `enabledUnorderedListByPlatform` setting and `unordered-list` source type so unordered-list markers are no longer controlled by H3.
+
+## 43
+
+- Date: 2026-06-07
+- Version: 0.12.1
+- Summary: Xiaohongshu main-site AI chat now receives the Diandian content script.
+- Notes: Adds `www.xiaohongshu.com` injection for SPA navigation into `/ai_chat`, keeps collection disabled on ordinary Xiaohongshu pages, and recognizes `xhs-ai-chat-page` chat containers used by the main-site Diandian page.
+
+## 42
+
+- Date: 2026-06-07
+- Version: 0.12.0
+- Summary: Xiaohongshu Diandian now supports H4 heading markers.
+- Notes: Extends Diandian Markdown heading collection and marker settings to H1-H4, migrates old Diandian settings to enable H4 once, and preserves the previous limits for other platforms.
+
+## 41
+
+- Date: 2026-06-07
+- Version: 0.11.1
+- Summary: Xiaohongshu Diandian injection now covers the actual production domains.
+- Notes: Adds `www.askdiandian.com` and `www.diandianlife.top` to extension matches, and includes deep research Markdown containers for Diandian pages.
+
+## 40
+
+- Date: 2026-06-07
+- Version: 0.11.0
+- Summary: Xiaohongshu Diandian and unordered list heading markers are now supported.
+- Notes: Adds Diandian host injection with H1-H3 assistant Markdown markers, and recognizes clear unordered-list title items across platforms as level-3 markers.
+
+## 39
+
+- Date: 2026-06-07
+- Version: 0.10.3
+- Summary: Collapse toggle chevron now points up when expanded and down when collapsed.
+- Notes: Fixes the default expanded state direction so the icon matches the "collapse all" action.
+
 ## 38
 
 - Date: 2026-06-07
