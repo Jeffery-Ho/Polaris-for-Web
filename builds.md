@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 47
+
+- Date: 2026-06-08
+- Version: 0.13.3
+- Summary: Typing in chat input no longer causes marker churn.
+- Notes: Ignores mutations inside user input editors and the extension navigation root, and excludes editable input containers from assistant Markdown container collection.
+
 ## 46
 
 - Date: 2026-06-07

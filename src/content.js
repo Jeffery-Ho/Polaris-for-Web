@@ -71,6 +71,14 @@
     '[class*="md-box"]',
     '[class*="mdbox"]'
   ].join(", ");
+  const USER_INPUT_SELECTOR = [
+    "textarea",
+    "input",
+    '[contenteditable="true"]',
+    '[contenteditable=""]',
+    '[role="textbox"]',
+    ".ProseMirror"
+  ].join(", ");
   const CONTROLS_CLASS = "gpt-paragraph-nav__controls";
   const SETTINGS_CLASS = "gpt-paragraph-nav__settings";
   const LIST_ID = "gpt-paragraph-nav-list";
@@ -743,6 +751,23 @@
     return rect.width > 0 && rect.height > 0 && style.visibility !== "hidden" && style.display !== "none";
   }
 
+  function elementFromNode(node) {
+    if (node instanceof HTMLElement) {
+      return node;
+    }
+    return node && node.parentElement instanceof HTMLElement ? node.parentElement : null;
+  }
+
+  function isInsideNavigationRoot(node) {
+    const root = document.getElementById(ROOT_ID);
+    return root instanceof HTMLElement && node instanceof Node && root.contains(node);
+  }
+
+  function isUserInputContext(node) {
+    const element = elementFromNode(node);
+    return element instanceof HTMLElement && Boolean(element.closest(USER_INPUT_SELECTOR));
+  }
+
   function getConversationHeaderHeight() {
     const headers = Array.from(document.querySelectorAll(CONVERSATION_HEADER_SELECTOR))
       .filter((header) => header instanceof HTMLElement && isVisible(header))
@@ -853,7 +878,10 @@
   function getAssistantContainers() {
     for (const selector of getAssistantContainerSelectors()) {
       const containers = Array.from(document.querySelectorAll(selector))
-        .filter((node) => node instanceof HTMLElement && isVisible(node));
+        .filter((node) => node instanceof HTMLElement
+          && isVisible(node)
+          && !isInsideNavigationRoot(node)
+          && !isUserInputContext(node));
       if (containers.length > 0) {
         return containers;
       }
@@ -1545,6 +1573,17 @@
     state.scheduled = window.setTimeout(render, 120);
   }
 
+  function shouldIgnoreMutation(mutation) {
+    return isInsideNavigationRoot(mutation.target) || isUserInputContext(mutation.target);
+  }
+
+  function handleDocumentMutations(mutations) {
+    if (mutations.every(shouldIgnoreMutation)) {
+      return;
+    }
+    scheduleRender();
+  }
+
   function getActiveMarker() {
     const list = getList();
     if (!state.activeMarkerKey) {
@@ -1728,7 +1767,7 @@
     watchConfigChanges();
     render();
 
-    state.observer = new MutationObserver(scheduleRender);
+    state.observer = new MutationObserver(handleDocumentMutations);
     state.observer.observe(document.body, {
       childList: true,
       subtree: true,
