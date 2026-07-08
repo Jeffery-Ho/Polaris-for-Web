@@ -10,6 +10,20 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 50
+
+- Date: 2026-07-06
+- Version: 0.14.0
+- Summary: Explosion mode now reuses marker sections across every supported platform.
+- Notes: Switches section boundary detection from native DOM headings to the sorted `collectHeadings()` result so chips and adjacent reading blocks stay aligned on ChatGPT, Doubao, Kimi, Qianwen, Yuanbao, and Xiaohongshu Diandian.
+
+## 49
+
+- Date: 2026-07-06
+- Version: 0.14.0
+- Summary: Adds a full-screen explosion mode for selecting AI reply text.
+- Notes: Reuses assistant container detection to collect only AI replies, opens from a control button or `Cmd/Ctrl+Shift+F`, locks background scroll, and supports copying the current text selection.
+
 ## 48
 
 - Date: 2026-06-11

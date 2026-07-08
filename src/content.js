@@ -83,11 +83,14 @@
   const SETTINGS_CLASS = "gpt-paragraph-nav__settings";
   const LIST_ID = "gpt-paragraph-nav-list";
   const TOGGLE_ID = "gpt-paragraph-nav-toggle";
+  const EXPLOSION_TOGGLE_ID = "gpt-paragraph-nav-explosion-toggle";
   const TOGGLE_LABEL_CLASS = "gpt-paragraph-nav__toggle-label";
   const TOGGLE_CHEVRON_CLASS = "gpt-paragraph-nav__toggle-chevron";
   const FLOATING_ACTIVE_CLASS = "gpt-paragraph-nav__floating-active";
+  const EXPLOSION_CONTEXT_OFFSETS = [-1, 0, 1];
   const LIQUID_GLASS_SELECTOR = [
     ".gpt-paragraph-nav__settings-trigger",
+    ".gpt-paragraph-nav__explosion-toggle",
     ".gpt-paragraph-nav__settings-menu",
     ".gpt-paragraph-nav__settings-row input",
     ".gpt-paragraph-nav__toggle",
@@ -100,6 +103,8 @@
   const DEFAULT_HEADER_HEIGHT = 64;
   const CONFIG_STORAGE_KEY = "gpt-paragraph-nav-config";
   const CONFIG_SCHEMA_VERSION = 3;
+  const EXPLOSION_EMPTY_TEXT = "当前页面没有可提取的 AI 回复正文。";
+  const EXPLOSION_BLOCK_SELECTOR = "p, li, h1, h2, h3, h4, pre";
   const CONVERSATION_HEADER_SELECTOR = [
     '[data-testid="conversation-header"]',
     '[data-testid="chat-header"]',
@@ -162,7 +167,13 @@
     isCollapsed: false,
     collapsedListHeight: 0,
     syncEnabled: false,
-    config: { ...DEFAULT_CONFIG }
+    config: { ...DEFAULT_CONFIG },
+    isExplosionOpen: false,
+    explosionSections: [],
+    activeExplosionSectionIndex: 0,
+    selectedExplosionText: "",
+    lastExplosionRenderSignature: "",
+    scrollLock: null
   };
 
   function getRoot() {
@@ -267,6 +278,23 @@
       chevron.setAttribute("aria-hidden", "true");
       button.appendChild(chevron);
     }
+    getControls(root).appendChild(button);
+    return button;
+  }
+
+  function getExplosionToggleButton(root = getRoot()) {
+    let button = root.querySelector(`#${EXPLOSION_TOGGLE_ID}`);
+    if (!button) {
+      button = document.createElement("button");
+      button.id = EXPLOSION_TOGGLE_ID;
+      button.type = "button";
+      button.className = "gpt-paragraph-nav__explosion-toggle";
+      button.textContent = "爆炸模式";
+      button.addEventListener("click", () => {
+        toggleExplosionOverlay();
+      });
+    }
+
     getControls(root).appendChild(button);
     return button;
   }
@@ -427,6 +455,56 @@
     syncSettingsStatus(settings);
     syncSettingsInputs(settings);
     return settings;
+  }
+
+  function getExplosionOverlay(root = getRoot()) {
+    let overlay = root.querySelector(".gpt-paragraph-nav__explosion-overlay");
+    if (!overlay) {
+      overlay = document.createElement("div");
+      overlay.className = "gpt-paragraph-nav__explosion-overlay";
+      overlay.hidden = true;
+
+      const actions = document.createElement("div");
+      actions.className = "gpt-paragraph-nav__explosion-actions";
+
+      const copyButton = document.createElement("button");
+      copyButton.type = "button";
+      copyButton.className = "gpt-paragraph-nav__explosion-action";
+      copyButton.dataset.explosionAction = "copy-selection";
+      copyButton.textContent = "复制选中";
+      copyButton.addEventListener("click", async () => {
+        await copyExplosionSelection();
+      });
+      actions.appendChild(copyButton);
+
+      const closeButton = document.createElement("button");
+      closeButton.type = "button";
+      closeButton.className = "gpt-paragraph-nav__explosion-action is-secondary";
+      closeButton.dataset.explosionAction = "close";
+      closeButton.textContent = "关闭";
+      closeButton.addEventListener("click", () => {
+        closeExplosionOverlay();
+      });
+      actions.appendChild(closeButton);
+      overlay.appendChild(actions);
+
+      const content = document.createElement("div");
+      content.className = "gpt-paragraph-nav__explosion-content";
+      content.setAttribute("aria-label", "AI 回复全文");
+      const chips = document.createElement("div");
+      chips.className = "gpt-paragraph-nav__explosion-chips";
+      content.appendChild(chips);
+
+      const body = document.createElement("div");
+      body.className = "gpt-paragraph-nav__explosion-body";
+      content.appendChild(body);
+      overlay.appendChild(content);
+
+      root.appendChild(overlay);
+    }
+
+    syncExplosionOverlay(overlay);
+    return overlay;
   }
 
   function normalizeNumber(value, fallback, min, max) {
@@ -756,6 +834,451 @@
       return node;
     }
     return node && node.parentElement instanceof HTMLElement ? node.parentElement : null;
+  }
+
+  function getExplosionContent() {
+    const content = document.querySelector(`#${ROOT_ID} .gpt-paragraph-nav__explosion-content`);
+    return content instanceof HTMLElement ? content : null;
+  }
+
+  function getExplosionBody() {
+    const body = document.querySelector(`#${ROOT_ID} .gpt-paragraph-nav__explosion-body`);
+    return body instanceof HTMLElement ? body : null;
+  }
+
+  function isExplosionOpen() {
+    return state.isExplosionOpen;
+  }
+
+  function isEditableElement(element) {
+    return element instanceof HTMLElement && Boolean(element.closest(USER_INPUT_SELECTOR));
+  }
+
+  function isShortcutTargetEditable() {
+    const activeElement = document.activeElement;
+    return isEditableElement(activeElement);
+  }
+
+  function normalizeExplosionText(text) {
+    return text
+      .replace(/\r\n/g, "\n")
+      .replace(/\u00a0/g, " ")
+      .replace(/[ \t]+\n/g, "\n")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+  }
+
+  function isDecorativeExplosionText(text) {
+    return !text || /^[\-–—_*#>|=\s]+$/.test(text);
+  }
+
+  function isExplosionBlockElement(element, container) {
+    if (!(element instanceof HTMLElement) || !isVisible(element) || !container.contains(element)) {
+      return false;
+    }
+
+    if (isInsideNavigationRoot(element) || isUserInputContext(element)) {
+      return false;
+    }
+
+    if (element.matches("li li")) {
+      return false;
+    }
+
+    const nestedBlock = element.parentElement && element.parentElement.closest(EXPLOSION_BLOCK_SELECTOR);
+    return !(nestedBlock instanceof HTMLElement && container.contains(nestedBlock));
+  }
+
+  function collectExplosionParagraphsFromContainer(container) {
+    const paragraphs = [];
+    container.querySelectorAll(EXPLOSION_BLOCK_SELECTOR).forEach((block) => {
+      if (!(block instanceof HTMLElement) || !isExplosionBlockElement(block, container)) {
+        return;
+      }
+
+      const text = normalizeExplosionText(block.innerText || block.textContent || "");
+      if (!text || isDecorativeExplosionText(text)) {
+        return;
+      }
+
+      paragraphs.push(text);
+    });
+
+    if (paragraphs.length) {
+      return paragraphs;
+    }
+
+    return normalizeExplosionText(container.innerText || container.textContent || "")
+      .split(/\n{2,}/)
+      .map((segment) => normalizeExplosionText(segment))
+      .filter((segment) => segment && !isDecorativeExplosionText(segment));
+  }
+
+  function collectExplosionParagraphs(containers = getAssistantContainers()) {
+    return containers
+      .filter((container) => container instanceof HTMLElement && !isInsideNavigationRoot(container))
+      .flatMap((container) => collectExplosionParagraphsFromContainer(container));
+  }
+
+  function containerForHeading(headings, containers) {
+    const headingToContainer = new Map();
+    containers.forEach((container) => {
+      headings.forEach((heading) => {
+        if (container.contains(heading.element)) {
+          headingToContainer.set(heading.element, container);
+        }
+      });
+    });
+    return headingToContainer;
+  }
+
+  function nextHeadingItemInContainer(headings, currentHeading, headingToContainer) {
+    const container = headingToContainer.get(currentHeading.element);
+    if (!container) {
+      return null;
+    }
+
+    const currentIndex = headings.findIndex((heading) => heading.element === currentHeading.element);
+    if (currentIndex < 0) {
+      return null;
+    }
+
+    for (let index = currentIndex + 1; index < headings.length; index += 1) {
+      const nextHeading = headings[index];
+      if (headingToContainer.get(nextHeading.element) === container) {
+        return nextHeading;
+      }
+    }
+
+    return null;
+  }
+
+  function nodesBetweenHeadingBounds(container, startHeading, endHeading) {
+    const blocks = Array.from(container.querySelectorAll(EXPLOSION_BLOCK_SELECTOR))
+      .filter((block) => block instanceof HTMLElement && isExplosionBlockElement(block, container));
+
+    return blocks.filter((block) => {
+      if (!(block instanceof HTMLElement)) {
+        return false;
+      }
+      const startsAtOrAfterHeading = startHeading === block || Boolean(startHeading.compareDocumentPosition(block) & Node.DOCUMENT_POSITION_FOLLOWING);
+      const beforeNextHeading = !endHeading || Boolean(block.compareDocumentPosition(endHeading) & Node.DOCUMENT_POSITION_FOLLOWING);
+      return startsAtOrAfterHeading && beforeNextHeading;
+    });
+  }
+
+  function sectionParagraphsFromHeading(container, heading, nextHeading) {
+    const blocks = nodesBetweenHeadingBounds(container, heading, nextHeading);
+    const paragraphs = [];
+
+    blocks.forEach((block) => {
+      const text = normalizeExplosionText(block.innerText || block.textContent || "");
+      if (!text || isDecorativeExplosionText(text)) {
+        return;
+      }
+      paragraphs.push(text);
+    });
+
+    const headingText = normalizeExplosionText(heading.innerText || heading.textContent || "");
+    return paragraphs.filter((paragraph, index) => !(index === 0 && paragraph === headingText));
+  }
+
+  function fallbackExplosionSection(paragraphs = collectExplosionParagraphs()) {
+    return {
+      id: "explosion-fallback-section",
+      title: "全文",
+      markerKey: "",
+      startElement: null,
+      endElement: null,
+      paragraphs
+    };
+  }
+
+  function collectExplosionSections(headings = state.headings, containers = getAssistantContainers()) {
+    if (!headings.length) {
+      return [fallbackExplosionSection()];
+    }
+
+    const headingToContainer = containerForHeading(headings, containers);
+
+    return headings.map((heading) => {
+      const container = headingToContainer.get(heading.element);
+      const nextHeading = nextHeadingItemInContainer(headings, heading, headingToContainer);
+      const paragraphs = container ? sectionParagraphsFromHeading(container, heading.element, nextHeading?.element || null) : [];
+      return {
+        id: heading.id,
+        title: heading.title,
+        markerKey: markerKeyFor(heading.element),
+        startElement: heading.element,
+        endElement: nextHeading?.element || null,
+        paragraphs
+      };
+    });
+  }
+
+  function activeExplosionSectionIndexFromState(sections = state.explosionSections) {
+    if (!sections.length) {
+      return 0;
+    }
+
+    if (state.activeMarkerKey) {
+      const sectionIndex = sections.findIndex((section) => section.markerKey === state.activeMarkerKey);
+      if (sectionIndex >= 0) {
+        return sectionIndex;
+      }
+    }
+
+    return Math.min(Math.max(state.activeExplosionSectionIndex, 0), sections.length - 1);
+  }
+
+  function renderExplosionSectionParagraphs(container, paragraphs, sectionRole) {
+    if (!paragraphs.length) {
+      const empty = document.createElement("p");
+      empty.className = "gpt-paragraph-nav__explosion-empty";
+      empty.textContent = EXPLOSION_EMPTY_TEXT;
+      container.appendChild(empty);
+      return;
+    }
+
+    paragraphs.forEach((paragraph, index) => {
+      const group = document.createElement("p");
+      group.className = "gpt-paragraph-nav__explosion-paragraph";
+      group.dataset.explosionParagraphIndex = String(index);
+      group.dataset.explosionSectionRole = sectionRole;
+      group.textContent = paragraph;
+      container.appendChild(group);
+    });
+  }
+
+  function renderExplosionSections(body, sections = state.explosionSections) {
+    body.textContent = "";
+
+    if (!sections.length) {
+      const empty = document.createElement("p");
+      empty.className = "gpt-paragraph-nav__explosion-empty";
+      empty.textContent = EXPLOSION_EMPTY_TEXT;
+      body.appendChild(empty);
+      return;
+    }
+
+    const activeIndex = activeExplosionSectionIndexFromState(sections);
+    EXPLOSION_CONTEXT_OFFSETS.forEach((offset) => {
+      const index = activeIndex + offset;
+      if (index < 0 || index >= sections.length) {
+        return;
+      }
+
+      const section = sections[index];
+      const role = offset === 0 ? "current" : "adjacent";
+      const sectionNode = document.createElement("section");
+      sectionNode.className = `gpt-paragraph-nav__explosion-section is-${role}`;
+      sectionNode.dataset.explosionSectionIndex = String(index);
+
+      const title = document.createElement("div");
+      title.className = "gpt-paragraph-nav__explosion-section-title";
+      title.textContent = section.title;
+      sectionNode.appendChild(title);
+
+      renderExplosionSectionParagraphs(sectionNode, section.paragraphs, role);
+      body.appendChild(sectionNode);
+    });
+  }
+
+  function renderExplosionChips(container, sections = state.explosionSections) {
+    container.textContent = "";
+    if (!sections.length || (sections.length === 1 && sections[0].markerKey === "")) {
+      container.hidden = true;
+      return;
+    }
+
+    container.hidden = false;
+    const activeIndex = activeExplosionSectionIndexFromState(sections);
+    sections.forEach((section, index) => {
+      const chip = document.createElement("button");
+      chip.type = "button";
+      chip.className = "gpt-paragraph-nav__explosion-chip";
+      chip.textContent = section.title;
+      chip.classList.toggle("is-active", index === activeIndex);
+      chip.addEventListener("click", () => {
+        state.activeExplosionSectionIndex = index;
+        state.selectedExplosionText = "";
+        const selection = window.getSelection();
+        if (selection) {
+          selection.removeAllRanges();
+        }
+        syncExplosionOverlay(getExplosionOverlay());
+      });
+      container.appendChild(chip);
+    });
+  }
+
+  function explosionRenderSignature(sections = state.explosionSections) {
+    const activeIndex = activeExplosionSectionIndexFromState(sections);
+    return JSON.stringify({
+      activeIndex,
+      sections: sections.map((section) => ({
+        id: section.id,
+        title: section.title,
+        markerKey: section.markerKey,
+        paragraphs: section.paragraphs
+      }))
+    });
+  }
+
+  function nodeWithinExplosionContent(node) {
+    const content = getExplosionContent();
+    if (!content || !(node instanceof Node)) {
+      return false;
+    }
+
+    const target = node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement;
+    return target instanceof Node && content.contains(target);
+  }
+
+  function currentExplosionSelectionText() {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
+      return "";
+    }
+
+    const range = selection.getRangeAt(0);
+    if (!nodeWithinExplosionContent(range.commonAncestorContainer)) {
+      return "";
+    }
+
+    return normalizeExplosionText(selection.toString());
+  }
+
+  function syncExplosionSelectionState() {
+    state.selectedExplosionText = currentExplosionSelectionText();
+
+    const overlay = document.querySelector(`#${ROOT_ID} .gpt-paragraph-nav__explosion-overlay`);
+    if (overlay instanceof HTMLElement) {
+      syncExplosionOverlay(overlay);
+    }
+  }
+
+  function syncExplosionOverlay(overlay) {
+    const body = overlay.querySelector(".gpt-paragraph-nav__explosion-body");
+    const chips = overlay.querySelector(".gpt-paragraph-nav__explosion-chips");
+    const signature = explosionRenderSignature();
+    if (body instanceof HTMLElement && signature !== state.lastExplosionRenderSignature) {
+      renderExplosionSections(body);
+      if (chips instanceof HTMLElement) {
+        renderExplosionChips(chips);
+      }
+      state.lastExplosionRenderSignature = signature;
+    }
+
+    overlay.hidden = !state.isExplosionOpen;
+    overlay.classList.toggle("is-open", state.isExplosionOpen);
+
+    const copyButton = overlay.querySelector('[data-explosion-action="copy-selection"]');
+    if (copyButton instanceof HTMLButtonElement) {
+      copyButton.disabled = !state.selectedExplosionText;
+    }
+  }
+
+  function lockPageScroll() {
+    if (state.scrollLock) {
+      return;
+    }
+
+    state.scrollLock = {
+      htmlOverflow: document.documentElement.style.overflow,
+      bodyOverflow: document.body.style.overflow
+    };
+    document.documentElement.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
+  }
+
+  function unlockPageScroll() {
+    if (!state.scrollLock) {
+      return;
+    }
+
+    document.documentElement.style.overflow = state.scrollLock.htmlOverflow;
+    document.body.style.overflow = state.scrollLock.bodyOverflow;
+    state.scrollLock = null;
+  }
+
+  function openExplosionOverlay() {
+    state.explosionSections = collectExplosionSections();
+    state.activeExplosionSectionIndex = activeExplosionSectionIndexFromState(state.explosionSections);
+    state.lastExplosionRenderSignature = "";
+    state.isExplosionOpen = true;
+    state.selectedExplosionText = "";
+    lockPageScroll();
+    const overlay = getExplosionOverlay();
+    syncExplosionOverlay(overlay);
+    const body = getExplosionBody();
+    if (body) {
+      requestAnimationFrame(() => {
+        body.scrollTop = 0;
+      });
+    }
+  }
+
+  function closeExplosionOverlay() {
+    if (!state.isExplosionOpen) {
+      return;
+    }
+
+    state.isExplosionOpen = false;
+    state.explosionSections = [];
+    state.activeExplosionSectionIndex = 0;
+    state.selectedExplosionText = "";
+    state.lastExplosionRenderSignature = "";
+    unlockPageScroll();
+    const selection = window.getSelection();
+    if (selection) {
+      selection.removeAllRanges();
+    }
+    const overlay = document.querySelector(`#${ROOT_ID} .gpt-paragraph-nav__explosion-overlay`);
+    if (overlay instanceof HTMLElement) {
+      syncExplosionOverlay(overlay);
+    }
+  }
+
+  function toggleExplosionOverlay() {
+    if (isExplosionOpen()) {
+      closeExplosionOverlay();
+      return;
+    }
+    openExplosionOverlay();
+  }
+
+  async function writeTextToClipboard(text) {
+    if (!text) {
+      return false;
+    }
+
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+      try {
+        await navigator.clipboard.writeText(text);
+        return true;
+      } catch {}
+    }
+
+    if (!currentExplosionSelectionText()) {
+      return false;
+    }
+
+    let copied = false;
+    try {
+      copied = document.execCommand("copy");
+    } catch {
+      copied = false;
+    }
+    syncExplosionSelectionState();
+    return copied;
+  }
+
+  async function copyExplosionSelection() {
+    if (!state.selectedExplosionText) {
+      return;
+    }
+    await writeTextToClipboard(state.selectedExplosionText);
   }
 
   function isInsideNavigationRoot(node) {
@@ -1501,8 +2024,10 @@
     applyConfig(root);
     updateHeaderOffset(root);
     getSettings(root);
+    getExplosionToggleButton(root);
     const list = getList(root);
     const toggle = getToggleButton(root);
+    getExplosionOverlay(root);
     const containers = getAssistantContainers();
     const headings = collectHeadings();
     const metrics = getConversationMetrics(containers);
@@ -1713,6 +2238,10 @@
   }
 
   function handleMarkerListWheel(event) {
+    if (state.isExplosionOpen) {
+      return;
+    }
+
     const deltaY = wheelDeltaYInPixels(event);
     if (!deltaY) {
       return;
@@ -1761,6 +2290,35 @@
     scheduleFloatingActiveUpdate();
   }
 
+  function handleKeydown(event) {
+    if (event.defaultPrevented) {
+      return;
+    }
+
+    if (event.key === "Escape" && state.isExplosionOpen) {
+      event.preventDefault();
+      closeExplosionOverlay();
+      return;
+    }
+
+    if (isShortcutTargetEditable()) {
+      return;
+    }
+
+    if ((event.metaKey || event.ctrlKey) && event.shiftKey && !event.altKey && event.key.toLowerCase() === "f") {
+      event.preventDefault();
+      toggleExplosionOverlay();
+    }
+  }
+
+  function handleDocumentSelectionChange() {
+    if (!state.isExplosionOpen) {
+      return;
+    }
+
+    syncExplosionSelectionState();
+  }
+
   async function start() {
     document.documentElement.setAttribute(DEBUG_ATTR, "loaded:0");
     state.config = await loadConfig();
@@ -1777,6 +2335,8 @@
     window.addEventListener("scroll", scheduleScrollWork, { passive: true });
     window.addEventListener("wheel", handleMarkerListWheel, { passive: false, capture: true });
     window.addEventListener("resize", scheduleRender, { passive: true });
+    window.addEventListener("keydown", handleKeydown, { capture: true });
+    document.addEventListener("selectionchange", handleDocumentSelectionChange);
     console.info("[Polaris for Web] loaded");
   }
 
