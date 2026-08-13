@@ -1,69 +1,73 @@
 # Polaris for Web
 
-一个给 AI 网页回复增加右侧段落导航的浏览器扩展。
+A browser extension that adds section navigation to AI-generated web responses.
 
-插件会自动识别 AI 回复里的标题和列表标题，在网页右侧生成 marker。点击 marker 后会跳转到对应段落，适合阅读长回复、报告、步骤说明和研究结果。
+Polaris for Web automatically detects headings and list titles in AI responses and displays navigation markers along the right edge of the page. Click a marker to jump directly to the corresponding section—ideal for reading long answers, reports, step-by-step guides, and research results.
 
-## 支持平台
+## Supported Platforms
 
 - ChatGPT
-- 豆包
+- Doubao
 - Kimi
-- 千问
-- 元宝
-- 小红书点点 AI
+- Qianwen
+- Yuanbao
+- Xiaohongshu Diandian AI
 
-## Marker 规则
+## Marker Rules
 
-- 自动识别 H1/H2/H3/H4 标题，并按平台规则适配。
-- 自动识别全平台 assistant 回复里的无序列表标题，并使用独立“无序列表”开关控制。
-- Kimi、元宝默认只展示 H1/H2。
-- ChatGPT、豆包、千问默认展示 H1/H2/H3。
-- 小红书点点默认展示 H1/H2/H3/H4。
-- 千问视频列表和元宝视频大卡可展示视频标题 marker。
+- Automatically detects H1, H2, H3, and H4 headings according to platform-specific rules.
+- Detects headings in unordered lists across all supported platforms, controlled by a separate **Unordered Lists** setting.
+- Kimi and Yuanbao display H1 and H2 markers by default.
+- ChatGPT, Doubao, and Qianwen display H1, H2, and H3 markers by default.
+- Xiaohongshu Diandian AI displays H1, H2, H3, and H4 markers by default.
+- Video titles in Qianwen video lists and Yuanbao large video cards can also appear as markers.
 
-## 主要功能
+## Features
 
-- 右侧 marker 支持点击跳转、当前选中高亮、滚动列表。
-- 设置中可按当前平台过滤 Marker 类型：H1 / H2 / H3 / H4 / 无序列表。
-- 设置会通过 `chrome.storage.sync` 同步。
-- marker、按钮、设置菜单使用亮色/暗色自适应 glass 视觉。
-- marker 列表支持更宽的滚轮命中区域，滚动更容易。
-- 新增“爆炸模式”：可在全部已支持平台上按 marker section 展开 AI 回复正文，自由选词并复制。
+- Click-to-jump navigation, active-section highlighting, and a scrollable marker list.
+- Platform-specific marker filters for H1, H2, H3, H4, and unordered lists.
+- Settings synchronization through `chrome.storage.sync`.
+- Light and dark adaptive glass styling for markers, buttons, and the settings panel.
+- An expanded mouse-wheel hit area that makes the marker list easier to scroll.
+- **Explosion Mode**, which organizes AI response content by marker section for convenient text selection and copying on every supported platform.
 
-## 设置
+## Settings
 
-在右侧控制区打开“设置”后可以调整：
+Open **Settings** from the control area on the right to adjust:
 
-- 顶部间距
-- 右侧间距
-- 最大显示数量
-- 提示宽度
-- 当前平台的 H1/H2/H3/H4 marker 开关和无序列表开关
+- Top spacing
+- Right spacing
+- Maximum number of visible markers
+- Tooltip width
+- H1, H2, H3, H4, and unordered-list marker visibility for the current platform
 
-配置会保存到 `chrome.storage.sync`。同步可用时，设置面板会显示“同步已启用”。
+Preferences are saved to `chrome.storage.sync`. When synchronization is available, the settings panel displays **Sync enabled**.
 
-## 全屏选词模式
+## Full-Screen Text Selection
 
-- 在右侧控制区点击“爆炸模式”，或按 `Cmd/Ctrl+Shift+F` 打开。
-- 适用于当前扩展已支持的全部平台：ChatGPT、豆包、Kimi、千问、元宝、小红书点点 AI。
-- 只收集当前页面中的 AI 回复正文，不包含输入框、侧边栏和扩展自身 UI。
-- 弹层带半透明 mask，正文收在约 `524pt` 宽的中等大小弹窗中，并直接复用当前平台 marker 结果切成多个 section。
-- 弹窗顶部会显示横向 section chips，正文默认展示当前 section 及其前后相邻 section。
-- 右上角保留“复制选中”和“关闭”按钮；未选中文本时复制按钮会置灰。
-- 按 `Escape` 或点击“关闭”可退出，并恢复页面滚动。
+- Click **Explosion Mode** in the control area on the right, or press `Cmd/Ctrl+Shift+F`.
+- Available on every supported platform: ChatGPT, Doubao, Kimi, Qianwen, Yuanbao, and Xiaohongshu Diandian AI.
+- Processes only AI response content on the current page; input fields, sidebars, and the extension's own interface are excluded.
+- Displays the response in a medium-sized modal approximately `524pt` wide, with a translucent backdrop, and divides the content into sections using the platform's existing marker results.
+- Horizontal section chips appear at the top of the modal. By default, the current section and its adjacent sections are displayed.
+- **Copy selection** and **Close** controls remain available in the upper-right corner. The copy control is disabled when no text is selected.
+- Press `Escape` or click **Close** to exit and restore page scrolling.
 
-## 安装
+## Installation
 
-1. 打开浏览器扩展管理页面。
-2. 开启开发者模式。
-3. 选择“加载已解压的扩展程序”。
-4. 选择本项目文件夹。
-5. 刷新 AI 网页。
+1. Open your browser's extensions management page.
+2. Enable **Developer mode**.
+3. Select **Load unpacked**.
+4. Choose this project directory.
+5. Refresh the AI website.
 
-## 版本
+## Privacy
 
-当前版本：`0.14.0 build 50`
+Polaris for Web processes AI response content locally in your browser and does not transmit it to the developer or third-party servers. See the [Privacy Policy](https://jeffery-ho.github.io/Polaris-for-Web/privacy-policy.html) for details.
+
+## Version
+
+Current version: `0.14.0 build 50`
 
 ## License
 
