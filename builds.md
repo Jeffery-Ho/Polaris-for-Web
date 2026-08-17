@@ -10,6 +10,69 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 59
+
+- Date: 2026-08-17
+- Version: 0.14.9
+- Summary: Markers return to a 12pt-spaced document-order queue.
+- Notes: Restores queue scrolling, the expanded wheel hit area and the floating active marker; clicking scrolls directly to its matching heading.
+
+## 58
+
+- Date: 2026-08-17
+- Version: 0.14.8
+- Summary: Markers now follow their mapped heading rows in the visible conversation.
+- Notes: Replaces the scrollable queue with a DOM-positioned rail, hides off-screen headings, and keeps the legacy maximum-count preference only for backward compatibility.
+
+## 57
+
+- Date: 2026-08-17
+- Version: 0.14.7
+- Summary: Restores the marker queue and scrolls selected messages to the conversation top.
+- Notes: Restores queue scrolling, floating active marker and height limit; clicking uses the containing AI message container, falling back to the heading.
+
+## 56
+
+- Date: 2026-08-17
+- Version: 0.14.6
+- Summary: Visible messages retain all of their markers.
+- Notes: A marker stays eligible while its AI message is visible; its own heading DOM remains the position anchor and is clamped to the rail edge when off-screen.
+
+## 55
+
+- Date: 2026-08-17
+- Version: 0.14.5
+- Summary: Marker positions now follow their individual heading DOM targets.
+- Notes: Replaces whole-message centering with the visible marker target's vertical center while retaining the message container as a layout-change observer.
+
+## 54
+
+- Date: 2026-08-17
+- Version: 0.14.4
+- Summary: Right-side markers now follow the visible AI message DOM.
+- Notes: Groups markers at each message center, avoids collisions, limits dense views by the configured maximum, and updates positions on scroll and message resizing.
+
+## 53
+
+- Date: 2026-08-17
+- Version: 0.14.3
+- Summary: Markers no longer use soft drop shadows.
+- Notes: Removes the shared glass shadow from regular and floating active markers while retaining their one-pixel glass border.
+
+## 52
+
+- Date: 2026-08-17
+- Version: 0.14.2
+- Summary: Navigation hover backgrounds now match the reset button hover state.
+- Notes: Reuses the same shared hover fill for markers and top controls while preserving the active selection color.
+
+## 51
+
+- Date: 2026-08-17
+- Version: 0.14.1
+- Summary: Navigation control backgrounds now match the settings panel.
+- Notes: Makes the inactive marker and top control backgrounds reuse the settings panel's shared glass background while preserving hover, active, and form-control surfaces.
+
 ## 50
 
 - Date: 2026-07-06

@@ -1742,7 +1742,6 @@
 
     collectYuanbaoVideoCardHeadings(seen, headings);
     collectQianwenVideoListHeadings(seen, headings);
-
     const platformKey = currentPlatformKey();
     const maxHeadingLevel = maxHeadingLevelForPlatform(platformKey);
     const enabledLevels = new Set(enabledLevelsForCurrentPlatform());
@@ -2036,7 +2035,6 @@
     state.conversationMetrics = metrics;
     document.documentElement.setAttribute(DEBUG_ATTR, `loaded:${headings.length}:${Math.round(metrics.length)}`);
     root.style.setProperty("--queue-visible-count", String(Math.min(headings.length || 1, state.config.maxVisible)));
-
     root.classList.toggle("is-empty", headings.length === 0);
     root.classList.toggle("is-collapsed", state.isCollapsed && headings.length > 0);
     toggle.hidden = false;
@@ -2109,6 +2107,13 @@
     scheduleRender();
   }
 
+  function getActiveHeading() {
+    if (!state.activeMarkerKey) {
+      return null;
+    }
+    return state.headings.find((heading) => markerKeyFor(heading.element) === state.activeMarkerKey) || null;
+  }
+
   function getActiveMarker() {
     const list = getList();
     if (!state.activeMarkerKey) {
@@ -2116,13 +2121,6 @@
     }
     const activeMarker = list.querySelector(`[data-marker-key="${CSS.escape(state.activeMarkerKey)}"]`);
     return activeMarker instanceof HTMLElement ? activeMarker : null;
-  }
-
-  function getActiveHeading() {
-    if (!state.activeMarkerKey) {
-      return null;
-    }
-    return state.headings.find((heading) => markerKeyFor(heading.element) === state.activeMarkerKey) || null;
   }
 
   function clearActiveMarker() {
@@ -2145,6 +2143,21 @@
       updateLiquidGlassFilter(marker);
     });
     return activeMarker;
+  }
+
+  function updateActiveMarker() {
+    if (!state.headings.length || !state.activeMarkerKey) {
+      clearActiveMarker();
+      return;
+    }
+
+    const active = getActiveHeading();
+    if (!active) {
+      clearActiveMarker();
+      return;
+    }
+    state.activeHeading = active ? active.element : null;
+    updateFloatingActiveMarker(syncActiveMarker(markerKeyFor(active.element)));
   }
 
   function isMarkerVisibleInViewport(marker) {
@@ -2176,21 +2189,6 @@
     floating.style.setProperty("--floating-active-bottom", `calc(${Math.max(0, rootRect.bottom - listRect.bottom)}px + 20pt)`);
     floating.hidden = false;
     updateLiquidGlassFilter(floating);
-  }
-
-  function updateActiveMarker() {
-    if (!state.headings.length || !state.activeMarkerKey) {
-      clearActiveMarker();
-      return;
-    }
-
-    const active = getActiveHeading();
-    if (!active) {
-      clearActiveMarker();
-      return;
-    }
-    state.activeHeading = active ? active.element : null;
-    updateFloatingActiveMarker(syncActiveMarker(markerKeyFor(active.element)));
   }
 
   function scheduleFloatingActiveUpdate() {
@@ -2231,10 +2229,7 @@
       .map((marker) => marker.getBoundingClientRect().width);
     const maxMarkerWidth = markerWidths.length ? Math.max(...markerWidths) : 0;
     const configuredMaxWidth = state.config.tooltipMaxWidth || DEFAULT_CONFIG.tooltipMaxWidth;
-    return Math.min(
-      root.getBoundingClientRect().width,
-      Math.max(configuredMaxWidth, controlWidth, maxMarkerWidth)
-    );
+    return Math.min(root.getBoundingClientRect().width, Math.max(configuredMaxWidth, controlWidth, maxMarkerWidth));
   }
 
   function handleMarkerListWheel(event) {
@@ -2273,9 +2268,8 @@
     }
 
     const rootRect = root.getBoundingClientRect();
-    const hitWidth = markerListWheelHitWidth(root, list);
     const hitRight = rootRect.right;
-    const hitLeft = Math.max(rootRect.left, hitRight - hitWidth);
+    const hitLeft = Math.max(rootRect.left, hitRight - markerListWheelHitWidth(root, list));
     if (event.clientX < hitLeft || event.clientX > hitRight) {
       return;
     }

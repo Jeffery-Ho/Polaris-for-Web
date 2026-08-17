@@ -5,7 +5,17 @@
 - 全局扩展控件使用亮色/暗色自适应 glass 视觉。
 - 暗色模式使用接近 BoomBranch 的深色半透明背景、`white/10` 级别细描边、柔和暗色阴影和轻内高光。
 - 亮色模式沿用此前 Polaris 浅白玻璃背景，保留低对比描边和柔和阴影。
-- marker、悬浮 active marker、设置按钮、收起按钮、设置菜单、输入框、选项和重置按钮必须优先继承共享 glass 变量。
+- marker、设置按钮、收起按钮、设置菜单、输入框、选项和重置按钮必须优先继承共享 glass 变量。
+- 非交互态的 marker 与顶部按钮背景必须和设置面板共用 `--gpt-glass-bg`，避免同一导航出现不同底色。
+- marker 与顶部按钮的 hover 背景必须复用重置按钮的 `--gpt-arco-fill-3`，选中态保留强调色。
+- marker 不使用柔和投影，仅保留一像素 glass 描边；设置面板与顶部按钮的投影不受影响。
+
+## Marker Queue
+
+- marker 按文档顺序在右侧可滚动队列中显示，项目之间固定 12pt 间距。
+- “最大数量”限制队列可见高度，超出部分通过队列内部滚动查看。
+- 点击 marker 后将对应标题元素滚动到会话可视区顶部。
+- active marker 离开队列视区时显示可点击的悬浮入口。
 - active marker 使用 cyan/blue 强调色；inactive 和 hover 状态保持安静的玻璃质感。
 
 ## Verification

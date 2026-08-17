@@ -24,7 +24,7 @@ Polaris for Web automatically detects headings and list titles in AI responses a
 
 ## Features
 
-- Click-to-jump navigation, active-section highlighting, and a scrollable marker list.
+- Click-to-jump navigation, active-section highlighting, and a scrollable marker queue.
 - Platform-specific marker filters for H1, H2, H3, H4, and unordered lists.
 - Settings synchronization through `chrome.storage.sync`.
 - Light and dark adaptive glass styling for markers, buttons, and the settings panel.
@@ -67,7 +67,7 @@ Polaris for Web processes AI response content locally in your browser and does n
 
 ## Version
 
-Current version: `0.14.0 build 50`
+Current version: `0.14.9 build 59`
 
 ## License
 

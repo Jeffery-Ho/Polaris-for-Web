@@ -6,17 +6,17 @@
   z-index: 2147483647;
   --gpt-glass-blur: 18px;
   --gpt-glass-saturate: 190%;
-  --gpt-glass-bg: rgba(20, 22, 30, 0.72);
+  --gpt-glass-bg: rgba(20, 22, 30, 0.76);
   --gpt-liquid-glass-filter: none;
   --gpt-glass-border: rgba(255, 255, 255, 0.1);
   --gpt-glass-shadow: 0 18px 42px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.12);
-  --gpt-glass-marker-bg: rgba(255, 255, 255, 0.08);
-  --gpt-glass-hover-bg: rgba(255, 255, 255, 0.16);
+  --gpt-glass-marker-bg: var(--gpt-glass-bg);
+  --gpt-glass-hover-bg: var(--gpt-arco-fill-3);
   --gpt-glass-active-bg: rgba(34, 211, 238, 0.84);
-  --gpt-glass-dark-button-bg: rgba(20, 22, 30, 0.76);
-  --gpt-glass-toggle-bg: rgba(255, 255, 255, 0.08);
+  --gpt-glass-dark-button-bg: var(--gpt-glass-bg);
+  --gpt-glass-toggle-bg: var(--gpt-glass-bg);
   --gpt-glass-reset-bg: rgba(255, 255, 255, 0.08);
-  --gpt-glass-menu-bg: rgba(20, 22, 30, 0.76);
+  --gpt-glass-menu-bg: var(--gpt-glass-bg);
   --gpt-glass-input-bg: rgba(255, 255, 255, 0.08);
   --gpt-arco-primary: rgb(34, 211, 238);
   --gpt-arco-text-1: rgb(248, 250, 252);
@@ -49,9 +49,9 @@
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 8px;
+  gap: 12pt;
   width: calc(100% + var(--gpt-marker-shadow-buffer));
-  max-height: min(calc(var(--queue-visible-count, 30) * 30px + var(--gpt-marker-shadow-buffer) * 2), max(0px, calc(100% - 52px + var(--gpt-marker-shadow-buffer) * 2)));
+  max-height: min(calc(var(--queue-visible-count, 30) * 44px + var(--gpt-marker-shadow-buffer) * 2), max(0px, calc(100% - 52px + var(--gpt-marker-shadow-buffer) * 2)));
   margin: calc(var(--gpt-marker-shadow-buffer) * -1) calc(var(--gpt-marker-shadow-buffer) * -1) calc(var(--gpt-marker-shadow-buffer) * -1) 0;
   overflow-y: auto;
   padding: var(--gpt-marker-shadow-buffer) var(--gpt-marker-shadow-buffer) var(--gpt-marker-shadow-buffer) 0;
@@ -97,6 +97,14 @@
 .gpt-paragraph-nav__floating-active {
   -webkit-backdrop-filter: blur(var(--gpt-glass-blur)) saturate(var(--gpt-glass-saturate));
   backdrop-filter: blur(var(--gpt-glass-blur)) saturate(var(--gpt-glass-saturate));
+}
+
+.gpt-paragraph-nav__settings-trigger,
+.gpt-paragraph-nav__explosion-toggle,
+.gpt-paragraph-nav__settings-menu,
+.gpt-paragraph-nav__settings-row input,
+.gpt-paragraph-nav__toggle,
+.gpt-paragraph-nav__settings-reset {
   box-shadow: var(--gpt-glass-shadow), 0 0 0 1px var(--gpt-glass-border);
 }
 
@@ -681,7 +689,7 @@
   border: 0;
   border-radius: 999px;
   background: var(--gpt-glass-marker-bg);
-  box-shadow: var(--gpt-glass-shadow);
+  box-shadow: 0 0 0 1px var(--gpt-glass-border);
   color: var(--gpt-arco-text-1);
   cursor: pointer;
   pointer-events: auto;
@@ -717,7 +725,7 @@
   border: 0;
   border-radius: 999px;
   background: var(--gpt-glass-active-bg);
-  box-shadow: var(--gpt-glass-shadow);
+  box-shadow: 0 0 0 1px var(--gpt-glass-border);
   color: #031014;
   cursor: pointer;
   font: 500 11px/1.2 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -775,16 +783,16 @@
 
 @media (prefers-color-scheme: light) {
   #gpt-paragraph-nav {
-    --gpt-glass-bg: rgba(255, 255, 255, 0.18);
+    --gpt-glass-bg: rgba(255, 255, 255, 0.46);
     --gpt-glass-border: rgba(15, 23, 42, 0.12);
     --gpt-glass-shadow: 0 10px 28px rgba(15, 23, 42, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.72);
-    --gpt-glass-marker-bg: rgba(255, 255, 255, 0.56);
-    --gpt-glass-hover-bg: rgba(219, 234, 254, 0.78);
+    --gpt-glass-marker-bg: var(--gpt-glass-bg);
+    --gpt-glass-hover-bg: var(--gpt-arco-fill-3);
     --gpt-glass-active-bg: rgba(37, 99, 235, 0.84);
-    --gpt-glass-dark-button-bg: rgba(255, 255, 255, 0.72);
-    --gpt-glass-toggle-bg: rgba(219, 234, 254, 0.76);
+    --gpt-glass-dark-button-bg: var(--gpt-glass-bg);
+    --gpt-glass-toggle-bg: var(--gpt-glass-bg);
     --gpt-glass-reset-bg: #f5f5f5;
-    --gpt-glass-menu-bg: rgba(255, 255, 255, 0.46);
+    --gpt-glass-menu-bg: var(--gpt-glass-bg);
     --gpt-glass-input-bg: #f5f5f5;
     --gpt-arco-primary: rgb(22, 93, 255);
     --gpt-arco-text-1: rgb(29, 33, 41);
