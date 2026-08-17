@@ -282,14 +282,11 @@
 }
 
 .gpt-paragraph-nav__explosion-actions {
-  position: relative;
-  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 8px;
-  width: min(524pt, calc(100vw - 48px));
-  margin: 0 auto 12px;
   padding: 0;
 }
 
@@ -320,12 +317,6 @@
   outline-offset: 2px;
 }
 
-.gpt-paragraph-nav__explosion-action:disabled {
-  opacity: 0.42;
-  cursor: not-allowed;
-  transform: none;
-}
-
 .gpt-paragraph-nav__explosion-action.is-secondary {
   border-color: var(--gpt-explosion-close-border);
   background: var(--gpt-explosion-close-bg);
@@ -352,6 +343,14 @@
   color: var(--gpt-explosion-text);
   font: 400 17px/1.88 "SF Pro Text", "PingFang SC", "Hiragino Sans GB", "Noto Sans CJK SC", "Segoe UI", sans-serif;
   letter-spacing: 0.01em;
+}
+
+.gpt-paragraph-nav__explosion-header {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-height: 34px;
+  margin: 0 0 16px;
 }
 
 .gpt-paragraph-nav__explosion-chips {
@@ -443,11 +442,6 @@
     padding: 16px;
   }
 
-  .gpt-paragraph-nav__explosion-actions {
-    width: min(524pt, calc(100vw - 32px));
-    margin-bottom: 22px;
-  }
-
   .gpt-paragraph-nav__explosion-action {
     min-height: 32px;
     padding: 0 12px;
@@ -459,6 +453,10 @@
     padding: 20px 18px 24px;
     font-size: 16px;
     line-height: 1.82;
+  }
+
+  .gpt-paragraph-nav__explosion-header {
+    margin-bottom: 14px;
   }
 
   .gpt-paragraph-nav__explosion-chips {

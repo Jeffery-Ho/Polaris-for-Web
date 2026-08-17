@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 60
+
+- Date: 2026-08-17
+- Version: 0.15.0
+- Summary: Renames Explosion Mode to Chapter View and adds chapter/full-text copying.
+- Notes: Fixes selected chapter chips being overridden by the right-rail active marker, and moves all modal actions into the content header.
+
 ## 59
 
 - Date: 2026-08-17

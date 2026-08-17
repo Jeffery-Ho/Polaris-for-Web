@@ -29,7 +29,7 @@ Polaris for Web automatically detects headings and list titles in AI responses a
 - Settings synchronization through `chrome.storage.sync`.
 - Light and dark adaptive glass styling for markers, buttons, and the settings panel.
 - An expanded mouse-wheel hit area that makes the marker list easier to scroll.
-- **Explosion Mode**, which organizes AI response content by marker section for convenient text selection and copying on every supported platform.
+- **Chapter View**, which organizes AI response content by marker section for convenient reading and copying on every supported platform.
 
 ## Settings
 
@@ -43,14 +43,14 @@ Open **Settings** from the control area on the right to adjust:
 
 Preferences are saved to `chrome.storage.sync`. When synchronization is available, the settings panel displays **Sync enabled**.
 
-## Full-Screen Text Selection
+## Chapter View
 
-- Click **Explosion Mode** in the control area on the right, or press `Cmd/Ctrl+Shift+F`.
+- Click **Chapter View** in the control area on the right, or press `Cmd/Ctrl+Shift+F`.
 - Available on every supported platform: ChatGPT, Doubao, Kimi, Qianwen, Yuanbao, and Xiaohongshu Diandian AI.
 - Processes only AI response content on the current page; input fields, sidebars, and the extension's own interface are excluded.
 - Displays the response in a medium-sized modal approximately `524pt` wide, with a translucent backdrop, and divides the content into sections using the platform's existing marker results.
 - Horizontal section chips appear at the top of the modal. By default, the current section and its adjacent sections are displayed.
-- **Copy selection** and **Close** controls remain available in the upper-right corner. The copy control is disabled when no text is selected.
+- **Copy current chapter**, **Copy full text**, and **Close** controls appear in the modal's upper-right corner.
 - Press `Escape` or click **Close** to exit and restore page scrolling.
 
 ## Installation
@@ -67,7 +67,7 @@ Polaris for Web processes AI response content locally in your browser and does n
 
 ## Version
 
-Current version: `0.14.9 build 59`
+Current version: `0.15.0 build 60`
 
 ## License
 

@@ -171,7 +171,6 @@
     isExplosionOpen: false,
     explosionSections: [],
     activeExplosionSectionIndex: 0,
-    selectedExplosionText: "",
     lastExplosionRenderSignature: "",
     scrollLock: null
   };
@@ -289,7 +288,7 @@
       button.id = EXPLOSION_TOGGLE_ID;
       button.type = "button";
       button.className = "gpt-paragraph-nav__explosion-toggle";
-      button.textContent = "爆炸模式";
+      button.textContent = "章节视图";
       button.addEventListener("click", () => {
         toggleExplosionOverlay();
       });
@@ -464,33 +463,46 @@
       overlay.className = "gpt-paragraph-nav__explosion-overlay";
       overlay.hidden = true;
 
+      const content = document.createElement("div");
+      content.className = "gpt-paragraph-nav__explosion-content";
+      content.setAttribute("aria-label", "AI 回复章节视图");
+
+      const header = document.createElement("div");
+      header.className = "gpt-paragraph-nav__explosion-header";
+
       const actions = document.createElement("div");
       actions.className = "gpt-paragraph-nav__explosion-actions";
 
-      const copyButton = document.createElement("button");
-      copyButton.type = "button";
-      copyButton.className = "gpt-paragraph-nav__explosion-action";
-      copyButton.dataset.explosionAction = "copy-selection";
-      copyButton.textContent = "复制选中";
-      copyButton.addEventListener("click", async () => {
-        await copyExplosionSelection();
+      const currentSectionButton = document.createElement("button");
+      currentSectionButton.type = "button";
+      currentSectionButton.className = "gpt-paragraph-nav__explosion-action";
+      currentSectionButton.dataset.explosionAction = "copy-current-section";
+      currentSectionButton.textContent = "复制当前章节";
+      currentSectionButton.addEventListener("click", async () => {
+        await copyCurrentExplosionSection();
       });
-      actions.appendChild(copyButton);
+      actions.appendChild(currentSectionButton);
+
+      const fullTextButton = document.createElement("button");
+      fullTextButton.type = "button";
+      fullTextButton.className = "gpt-paragraph-nav__explosion-action";
+      fullTextButton.dataset.explosionAction = "copy-full-text";
+      fullTextButton.textContent = "复制全文";
+      fullTextButton.addEventListener("click", async () => {
+        await copyFullExplosionText();
+      });
+      actions.appendChild(fullTextButton);
 
       const closeButton = document.createElement("button");
       closeButton.type = "button";
       closeButton.className = "gpt-paragraph-nav__explosion-action is-secondary";
       closeButton.dataset.explosionAction = "close";
       closeButton.textContent = "关闭";
-      closeButton.addEventListener("click", () => {
-        closeExplosionOverlay();
-      });
+      closeButton.addEventListener("click", closeExplosionOverlay);
       actions.appendChild(closeButton);
-      overlay.appendChild(actions);
 
-      const content = document.createElement("div");
-      content.className = "gpt-paragraph-nav__explosion-content";
-      content.setAttribute("aria-label", "AI 回复全文");
+      header.appendChild(actions);
+      content.appendChild(header);
       const chips = document.createElement("div");
       chips.className = "gpt-paragraph-nav__explosion-chips";
       content.appendChild(chips);
@@ -836,11 +848,6 @@
     return node && node.parentElement instanceof HTMLElement ? node.parentElement : null;
   }
 
-  function getExplosionContent() {
-    const content = document.querySelector(`#${ROOT_ID} .gpt-paragraph-nav__explosion-content`);
-    return content instanceof HTMLElement ? content : null;
-  }
-
   function getExplosionBody() {
     const body = document.querySelector(`#${ROOT_ID} .gpt-paragraph-nav__explosion-body`);
     return body instanceof HTMLElement ? body : null;
@@ -1021,7 +1028,7 @@
       return 0;
     }
 
-    if (state.activeMarkerKey) {
+    if (!state.isExplosionOpen && state.activeMarkerKey) {
       const sectionIndex = sections.findIndex((section) => section.markerKey === state.activeMarkerKey);
       if (sectionIndex >= 0) {
         return sectionIndex;
@@ -1101,7 +1108,6 @@
       chip.classList.toggle("is-active", index === activeIndex);
       chip.addEventListener("click", () => {
         state.activeExplosionSectionIndex = index;
-        state.selectedExplosionText = "";
         const selection = window.getSelection();
         if (selection) {
           selection.removeAllRanges();
@@ -1125,39 +1131,6 @@
     });
   }
 
-  function nodeWithinExplosionContent(node) {
-    const content = getExplosionContent();
-    if (!content || !(node instanceof Node)) {
-      return false;
-    }
-
-    const target = node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement;
-    return target instanceof Node && content.contains(target);
-  }
-
-  function currentExplosionSelectionText() {
-    const selection = window.getSelection();
-    if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
-      return "";
-    }
-
-    const range = selection.getRangeAt(0);
-    if (!nodeWithinExplosionContent(range.commonAncestorContainer)) {
-      return "";
-    }
-
-    return normalizeExplosionText(selection.toString());
-  }
-
-  function syncExplosionSelectionState() {
-    state.selectedExplosionText = currentExplosionSelectionText();
-
-    const overlay = document.querySelector(`#${ROOT_ID} .gpt-paragraph-nav__explosion-overlay`);
-    if (overlay instanceof HTMLElement) {
-      syncExplosionOverlay(overlay);
-    }
-  }
-
   function syncExplosionOverlay(overlay) {
     const body = overlay.querySelector(".gpt-paragraph-nav__explosion-body");
     const chips = overlay.querySelector(".gpt-paragraph-nav__explosion-chips");
@@ -1172,11 +1145,6 @@
 
     overlay.hidden = !state.isExplosionOpen;
     overlay.classList.toggle("is-open", state.isExplosionOpen);
-
-    const copyButton = overlay.querySelector('[data-explosion-action="copy-selection"]');
-    if (copyButton instanceof HTMLButtonElement) {
-      copyButton.disabled = !state.selectedExplosionText;
-    }
   }
 
   function lockPageScroll() {
@@ -1207,7 +1175,6 @@
     state.activeExplosionSectionIndex = activeExplosionSectionIndexFromState(state.explosionSections);
     state.lastExplosionRenderSignature = "";
     state.isExplosionOpen = true;
-    state.selectedExplosionText = "";
     lockPageScroll();
     const overlay = getExplosionOverlay();
     syncExplosionOverlay(overlay);
@@ -1227,7 +1194,6 @@
     state.isExplosionOpen = false;
     state.explosionSections = [];
     state.activeExplosionSectionIndex = 0;
-    state.selectedExplosionText = "";
     state.lastExplosionRenderSignature = "";
     unlockPageScroll();
     const selection = window.getSelection();
@@ -1260,25 +1226,43 @@
       } catch {}
     }
 
-    if (!currentExplosionSelectionText()) {
-      return false;
-    }
-
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.setAttribute("readonly", "");
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    textarea.style.pointerEvents = "none";
+    document.body.appendChild(textarea);
+    textarea.select();
     let copied = false;
     try {
       copied = document.execCommand("copy");
     } catch {
       copied = false;
     }
-    syncExplosionSelectionState();
+    textarea.remove();
     return copied;
   }
 
-  async function copyExplosionSelection() {
-    if (!state.selectedExplosionText) {
-      return;
+  function currentExplosionSectionText() {
+    const section = state.explosionSections[activeExplosionSectionIndexFromState()];
+    if (!section) {
+      return "";
     }
-    await writeTextToClipboard(state.selectedExplosionText);
+    const parts = section.markerKey ? [section.title, ...section.paragraphs] : section.paragraphs;
+    return normalizeExplosionText(parts.filter(Boolean).join("\n\n"));
+  }
+
+  function fullExplosionText() {
+    return normalizeExplosionText(collectExplosionParagraphs().join("\n\n"));
+  }
+
+  async function copyCurrentExplosionSection() {
+    await writeTextToClipboard(currentExplosionSectionText());
+  }
+
+  async function copyFullExplosionText() {
+    await writeTextToClipboard(fullExplosionText());
   }
 
   function isInsideNavigationRoot(node) {
@@ -2305,14 +2289,6 @@
     }
   }
 
-  function handleDocumentSelectionChange() {
-    if (!state.isExplosionOpen) {
-      return;
-    }
-
-    syncExplosionSelectionState();
-  }
-
   async function start() {
     document.documentElement.setAttribute(DEBUG_ATTR, "loaded:0");
     state.config = await loadConfig();
@@ -2330,7 +2306,6 @@
     window.addEventListener("wheel", handleMarkerListWheel, { passive: false, capture: true });
     window.addEventListener("resize", scheduleRender, { passive: true });
     window.addEventListener("keydown", handleKeydown, { capture: true });
-    document.addEventListener("selectionchange", handleDocumentSelectionChange);
     console.info("[Polaris for Web] loaded");
   }
 
