@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 65
+
+- Date: 2026-08-18
+- Version: 0.16.4
+- Summary: Fixes dark-mode marker overrides.
+- Notes: Moves the dark-mode marker rules after their base styles so normal, selected, and floating active markers render with white backgrounds.
+
 ## 64
 
 - Date: 2026-08-18

@@ -182,23 +182,7 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  .gpt-paragraph-nav__marker {
-    background: #ffffff;
-    color: #000000;
-  }
-
-  .gpt-paragraph-nav__marker:hover {
-    background: #f5f5f5;
-    color: #000000;
-  }
-
   .gpt-paragraph-nav__control-tab.is-active {
-    background: #ffffff;
-    color: #000000;
-  }
-
-  .gpt-paragraph-nav__marker.is-active,
-  .gpt-paragraph-nav__floating-active {
     background: #ffffff;
     color: #000000;
   }
@@ -681,6 +665,24 @@
 
 .gpt-paragraph-nav__floating-active[hidden] {
   display: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  .gpt-paragraph-nav__marker {
+    background: #ffffff;
+    color: #000000;
+  }
+
+  .gpt-paragraph-nav__marker:hover {
+    background: #f5f5f5;
+    color: #000000;
+  }
+
+  .gpt-paragraph-nav__marker.is-active,
+  .gpt-paragraph-nav__floating-active {
+    background: #ffffff;
+    color: #000000;
+  }
 }
 
 .gpt-paragraph-nav__preview {
