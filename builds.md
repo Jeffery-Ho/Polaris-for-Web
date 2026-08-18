@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 66
+
+- Date: 2026-08-18
+- Version: 0.16.5
+- Summary: Restores the dark glass surface for normal markers in dark mode.
+- Notes: Hovered, selected, and floating active markers remain white with black text.
+
 ## 65
 
 - Date: 2026-08-18
