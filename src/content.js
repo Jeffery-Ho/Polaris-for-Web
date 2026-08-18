@@ -80,20 +80,17 @@
     ".ProseMirror"
   ].join(", ");
   const CONTROLS_CLASS = "gpt-paragraph-nav__controls";
+  const CONTROL_CAPSULE_CLASS = "gpt-paragraph-nav__control-capsule";
   const SETTINGS_CLASS = "gpt-paragraph-nav__settings";
   const LIST_ID = "gpt-paragraph-nav-list";
-  const TOGGLE_ID = "gpt-paragraph-nav-toggle";
-  const EXPLOSION_TOGGLE_ID = "gpt-paragraph-nav-explosion-toggle";
-  const TOGGLE_LABEL_CLASS = "gpt-paragraph-nav__toggle-label";
-  const TOGGLE_CHEVRON_CLASS = "gpt-paragraph-nav__toggle-chevron";
+  const SETTINGS_PANEL_ID = "gpt-paragraph-nav-settings-panel";
+  const ROUTE_CHANGE_EVENT = "polaris-for-web-route-change";
   const FLOATING_ACTIVE_CLASS = "gpt-paragraph-nav__floating-active";
   const EXPLOSION_CONTEXT_OFFSETS = [-1, 0, 1];
   const LIQUID_GLASS_SELECTOR = [
-    ".gpt-paragraph-nav__settings-trigger",
-    ".gpt-paragraph-nav__explosion-toggle",
+    `.${CONTROL_CAPSULE_CLASS}`,
     ".gpt-paragraph-nav__settings-menu",
     ".gpt-paragraph-nav__settings-row input",
-    ".gpt-paragraph-nav__toggle",
     ".gpt-paragraph-nav__settings-reset",
     ".gpt-paragraph-nav__marker",
     ".gpt-paragraph-nav__floating-active"
@@ -168,11 +165,13 @@
     collapsedListHeight: 0,
     syncEnabled: false,
     config: { ...DEFAULT_CONFIG },
+    activeControlTab: "navigation",
     isExplosionOpen: false,
     explosionSections: [],
     activeExplosionSectionIndex: 0,
     lastExplosionRenderSignature: "",
-    scrollLock: null
+    scrollLock: null,
+    routeKey: ""
   };
 
   function getRoot() {
@@ -203,6 +202,8 @@
       list = document.createElement("div");
       list.id = LIST_ID;
       list.className = "gpt-paragraph-nav__list";
+      list.setAttribute("role", "tabpanel");
+      list.setAttribute("aria-labelledby", "gpt-paragraph-nav-tab-navigation");
       list.addEventListener("scroll", scheduleFloatingActiveUpdate, { passive: true });
       root.appendChild(list);
     }
@@ -238,64 +239,98 @@
     return floating;
   }
 
-  function getToggleButton(root = getRoot()) {
-    let button = root.querySelector(`#${TOGGLE_ID}`);
-    if (!button) {
-      button = document.createElement("button");
-      button.id = TOGGLE_ID;
-      button.type = "button";
-      button.className = "gpt-paragraph-nav__toggle";
-      button.addEventListener("click", () => {
-        if (!state.headings.length) {
-          return;
-        }
-        if (!state.isCollapsed) {
-          state.collapsedListHeight = getList(root).offsetHeight;
-        }
-        state.isCollapsed = !state.isCollapsed;
-        render();
-      });
+  function toggleNavigation() {
+    if (!state.headings.length) {
+      return;
     }
-
-    if (!button.querySelector(".gpt-paragraph-nav__toggle-icon")) {
-      button.textContent = "";
-
-      const icon = document.createElement("img");
-      icon.className = "gpt-paragraph-nav__toggle-icon";
-      icon.alt = "";
-      icon.width = 32;
-      icon.height = 32;
-      icon.src = chrome.runtime.getURL("icons/gpt-voyager-icon-96.png");
-      button.appendChild(icon);
-
-      const label = document.createElement("span");
-      label.className = TOGGLE_LABEL_CLASS;
-      button.appendChild(label);
-
-      const chevron = document.createElement("span");
-      chevron.className = TOGGLE_CHEVRON_CLASS;
-      chevron.setAttribute("aria-hidden", "true");
-      button.appendChild(chevron);
+    if (!state.isCollapsed) {
+      state.collapsedListHeight = getList().offsetHeight;
     }
-    getControls(root).appendChild(button);
-    return button;
+    state.isCollapsed = !state.isCollapsed;
   }
 
-  function getExplosionToggleButton(root = getRoot()) {
-    let button = root.querySelector(`#${EXPLOSION_TOGGLE_ID}`);
-    if (!button) {
-      button = document.createElement("button");
-      button.id = EXPLOSION_TOGGLE_ID;
-      button.type = "button";
-      button.className = "gpt-paragraph-nav__explosion-toggle";
-      button.textContent = "章节视图";
-      button.addEventListener("click", () => {
-        toggleExplosionOverlay();
-      });
-    }
+  function syncControlTabs(root = getRoot()) {
+    root.querySelectorAll("[data-control-tab]").forEach((tab) => {
+      const isActive = tab.dataset.controlTab === state.activeControlTab;
+      tab.classList.toggle("is-active", isActive);
+      tab.setAttribute("aria-selected", String(isActive));
+      tab.tabIndex = isActive ? 0 : -1;
+    });
 
-    getControls(root).appendChild(button);
-    return button;
+    const settings = root.querySelector(`.${SETTINGS_CLASS}`);
+    if (settings instanceof HTMLElement) {
+      settings.hidden = state.activeControlTab !== "settings";
+    }
+  }
+
+  function activateControlTab(tabKey, { toggleNavigationWhenActive = false } = {}) {
+    const isActive = state.activeControlTab === tabKey;
+    state.activeControlTab = tabKey;
+    if (tabKey === "navigation" && isActive && toggleNavigationWhenActive) {
+      toggleNavigation();
+    }
+    if (tabKey === "chapters") {
+      openExplosionOverlay();
+    }
+    render();
+  }
+
+  function getControlCapsule(root = getRoot()) {
+    const controls = getControls(root);
+    let capsule = controls.querySelector(`.${CONTROL_CAPSULE_CLASS}`);
+    if (!capsule) {
+      capsule = document.createElement("div");
+      capsule.className = CONTROL_CAPSULE_CLASS;
+      capsule.setAttribute("role", "tablist");
+      capsule.setAttribute("aria-label", "Polaris 控制面板");
+
+      [
+        { key: "navigation", label: "导航", controls: LIST_ID },
+        { key: "chapters", label: "章节", controls: "gpt-paragraph-nav-chapters" },
+        { key: "settings", label: "设置", controls: SETTINGS_PANEL_ID }
+      ].forEach(({ key, label, controls: controlsId }) => {
+        const tab = document.createElement("button");
+        tab.type = "button";
+        tab.className = "gpt-paragraph-nav__control-tab";
+        tab.dataset.controlTab = key;
+        tab.id = `gpt-paragraph-nav-tab-${key}`;
+        tab.setAttribute("role", "tab");
+        tab.setAttribute("aria-controls", controlsId);
+        tab.textContent = label;
+        tab.addEventListener("click", () => {
+          activateControlTab(key, { toggleNavigationWhenActive: key === "navigation" });
+        });
+        capsule.appendChild(tab);
+      });
+
+      capsule.addEventListener("keydown", (event) => {
+        const tabs = Array.from(capsule.querySelectorAll("[data-control-tab]"));
+        const currentIndex = tabs.indexOf(document.activeElement);
+        if (currentIndex < 0) {
+          return;
+        }
+        let nextIndex = currentIndex;
+        if (event.key === "ArrowRight") {
+          nextIndex = (currentIndex + 1) % tabs.length;
+        } else if (event.key === "ArrowLeft") {
+          nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+        } else if (event.key === "Home") {
+          nextIndex = 0;
+        } else if (event.key === "End") {
+          nextIndex = tabs.length - 1;
+        } else {
+          return;
+        }
+        event.preventDefault();
+        const nextTab = tabs[nextIndex];
+        activateControlTab(nextTab.dataset.controlTab);
+        nextTab.focus();
+      });
+
+      controls.appendChild(capsule);
+    }
+    syncControlTabs(root);
+    return capsule;
   }
 
   function getSettings(root = getRoot()) {
@@ -304,17 +339,15 @@
     if (!settings) {
       settings = document.createElement("div");
       settings.className = SETTINGS_CLASS;
-
-      const trigger = document.createElement("button");
-      trigger.type = "button";
-      trigger.className = "gpt-paragraph-nav__settings-trigger";
-      trigger.textContent = "设置";
-      trigger.setAttribute("aria-label", "导航设置");
-      settings.appendChild(trigger);
+      settings.id = SETTINGS_PANEL_ID;
+      settings.setAttribute("role", "tabpanel");
+      settings.setAttribute("aria-labelledby", "gpt-paragraph-nav-tab-settings");
+      settings.tabIndex = -1;
 
       const menu = document.createElement("div");
       menu.className = "gpt-paragraph-nav__settings-menu";
-      menu.setAttribute("role", "menu");
+      menu.setAttribute("role", "region");
+      menu.setAttribute("aria-label", "导航设置");
 
       const meta = document.createElement("div");
       meta.className = "gpt-paragraph-nav__settings-meta";
@@ -448,11 +481,12 @@
       menu.appendChild(resetButton);
 
       settings.appendChild(menu);
-      controls.prepend(settings);
+      controls.appendChild(settings);
     }
 
     syncSettingsStatus(settings);
     syncSettingsInputs(settings);
+    settings.hidden = state.activeControlTab !== "settings";
     return settings;
   }
 
@@ -460,7 +494,11 @@
     let overlay = root.querySelector(".gpt-paragraph-nav__explosion-overlay");
     if (!overlay) {
       overlay = document.createElement("div");
+      overlay.id = "gpt-paragraph-nav-chapters";
       overlay.className = "gpt-paragraph-nav__explosion-overlay";
+      overlay.setAttribute("role", "dialog");
+      overlay.setAttribute("aria-modal", "true");
+      overlay.setAttribute("aria-label", "AI 回复章节视图");
       overlay.hidden = true;
 
       const content = document.createElement("div");
@@ -1196,6 +1234,11 @@
     state.activeExplosionSectionIndex = 0;
     state.lastExplosionRenderSignature = "";
     unlockPageScroll();
+    state.activeControlTab = "navigation";
+    const root = document.getElementById(ROOT_ID);
+    if (root instanceof HTMLElement) {
+      syncControlTabs(root);
+    }
     const selection = window.getSelection();
     if (selection) {
       selection.removeAllRanges();
@@ -1211,7 +1254,12 @@
       closeExplosionOverlay();
       return;
     }
+    state.activeControlTab = "chapters";
     openExplosionOverlay();
+    const root = document.getElementById(ROOT_ID);
+    if (root instanceof HTMLElement) {
+      syncControlTabs(root);
+    }
   }
 
   async function writeTextToClipboard(text) {
@@ -1323,6 +1371,15 @@
 
   function isUnsupportedXiaohongshuMainPage() {
     return window.location.hostname === "www.xiaohongshu.com" && !window.location.pathname.startsWith("/ai_chat");
+  }
+
+  function isSupportedRoute() {
+    return !isUnsupportedXiaohongshuMainPage();
+  }
+
+  function currentRouteKey() {
+    const { origin, pathname, search } = window.location;
+    return `${origin}${pathname}${search}`;
   }
 
   function isChatGPTPage() {
@@ -2003,13 +2060,17 @@
   }
 
   function render() {
+    if (!isSupportedRoute()) {
+      removeNavigationRoot();
+      return;
+    }
+
     const root = getRoot();
     applyConfig(root);
     updateHeaderOffset(root);
+    getControlCapsule(root);
     getSettings(root);
-    getExplosionToggleButton(root);
     const list = getList(root);
-    const toggle = getToggleButton(root);
     getExplosionOverlay(root);
     const containers = getAssistantContainers();
     const headings = collectHeadings();
@@ -2021,12 +2082,10 @@
     root.style.setProperty("--queue-visible-count", String(Math.min(headings.length || 1, state.config.maxVisible)));
     root.classList.toggle("is-empty", headings.length === 0);
     root.classList.toggle("is-collapsed", state.isCollapsed && headings.length > 0);
-    toggle.hidden = false;
-    toggle.querySelector(`.${TOGGLE_LABEL_CLASS}`).textContent = headings.length > 0 && state.isCollapsed ? "展开全部" : "收起全部";
-    toggle.setAttribute("aria-expanded", String(headings.length === 0 || !state.isCollapsed));
     list.style.height = state.isCollapsed && state.collapsedListHeight > 0 ? `${state.collapsedListHeight}px` : "";
     list.setAttribute("aria-hidden", String(state.isCollapsed));
     list.textContent = "";
+    syncLiquidGlassElements(root);
 
     if (state.isCollapsed) {
       updateFloatingActiveMarker(null);
@@ -2069,7 +2128,6 @@
     });
     state.lastRenderedHeadingCount = headings.length;
     updateActiveMarker();
-    syncLiquidGlassElements(root);
     if (performance.now() < state.markerListScrollUntil) {
       persistActiveMarkerListScroll();
     }
@@ -2078,6 +2136,58 @@
   function scheduleRender() {
     window.clearTimeout(state.scheduled);
     state.scheduled = window.setTimeout(render, 120);
+  }
+
+  function resetRouteState() {
+    window.clearTimeout(state.scheduled);
+    state.headings = [];
+    state.conversationMetrics = null;
+    state.activeHeading = null;
+    state.activeMarkerKey = "";
+    state.isCollapsed = false;
+    state.collapsedListHeight = 0;
+    state.activeControlTab = "navigation";
+    state.explosionSections = [];
+    state.activeExplosionSectionIndex = 0;
+    state.lastExplosionRenderSignature = "";
+    state.lastRenderedHeadingCount = 0;
+    state.markerListScrollUntil = 0;
+  }
+
+  function removeNavigationRoot() {
+    const root = document.getElementById(ROOT_ID);
+    if (root) {
+      root.remove();
+    }
+    document.documentElement.removeAttribute(DEBUG_ATTR);
+  }
+
+  function handleRouteChange() {
+    const nextRouteKey = currentRouteKey();
+    if (nextRouteKey === state.routeKey) {
+      return;
+    }
+
+    state.routeKey = nextRouteKey;
+    closeExplosionOverlay();
+    resetRouteState();
+    if (!isSupportedRoute()) {
+      removeNavigationRoot();
+      return;
+    }
+    scheduleRender();
+  }
+
+  function watchRouteChanges() {
+    window.addEventListener(ROUTE_CHANGE_EVENT, handleRouteChange);
+    if (document.querySelector("script[data-polaris-route-bridge]")) {
+      return;
+    }
+
+    const bridge = document.createElement("script");
+    bridge.src = chrome.runtime.getURL("src/route-bridge.js");
+    bridge.dataset.polarisRouteBridge = "true";
+    (document.head || document.documentElement).appendChild(bridge);
   }
 
   function shouldIgnoreMutation(mutation) {
@@ -2293,6 +2403,8 @@
     document.documentElement.setAttribute(DEBUG_ATTR, "loaded:0");
     state.config = await loadConfig();
     watchConfigChanges();
+    state.routeKey = currentRouteKey();
+    watchRouteChanges();
     render();
 
     state.observer = new MutationObserver(handleDocumentMutations);
