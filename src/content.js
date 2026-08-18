@@ -93,6 +93,8 @@
     ".gpt-paragraph-nav__settings-menu",
     ".gpt-paragraph-nav__settings-row input",
     ".gpt-paragraph-nav__settings-reset",
+    ".gpt-paragraph-nav__search-input",
+    ".gpt-paragraph-nav__fold",
     ".gpt-paragraph-nav__marker",
     ".gpt-paragraph-nav__floating-active"
   ].join(", ");
@@ -112,6 +114,7 @@
     { key: "topGap", label: t("settings.topGap"), min: 0, max: 80, step: 1, unit: "px" },
     { key: "rightOffset", label: t("settings.rightOffset"), min: 0, max: 80, step: 1, unit: "px" },
     { key: "maxVisible", label: t("settings.maxVisible"), min: 1, max: 80, step: 1, unit: "" },
+    { key: "foldThreshold", label: t("settings.foldThreshold"), min: 2, max: 80, step: 1, unit: "" },
     { key: "tooltipMaxWidth", label: t("settings.tooltipMaxWidth"), min: 160, max: 720, step: 10, unit: "px" }
   ];
   const PLATFORM_KEYS = ["chatgpt", "doubao", "kimi", "qianwen", "yuanbao", "xiaohongshu", "default"];
@@ -138,6 +141,7 @@
     topGap: 8,
     rightOffset: 14,
     maxVisible: QUEUE_MAX_VISIBLE,
+    foldThreshold: 20,
     tooltipMaxWidth: 360,
     configVersion: CONFIG_SCHEMA_VERSION,
     enabledLevelsByPlatform: DEFAULT_ENABLED_LEVELS_BY_PLATFORM,
@@ -162,6 +166,9 @@
     liquidGlassElements: new Set(),
     lastDebugSignature: "",
     lastRenderedHeadingCount: 0,
+    markerSearchQuery: "",
+    explosionSearchQuery: "",
+    expandedFoldGroups: new Set(),
     isCollapsed: false,
     collapsedListHeight: 0,
     syncEnabled: false,
@@ -209,6 +216,48 @@
       root.appendChild(list);
     }
     return list;
+  }
+
+  function getMarkerSearchInput(root = getRoot()) {
+    let input = root.querySelector(".gpt-paragraph-nav__search-input");
+    if (!(input instanceof HTMLInputElement)) {
+      if (input) {
+        input.remove();
+      }
+
+      const wrapper = document.createElement("div");
+      wrapper.className = "gpt-paragraph-nav__search";
+
+      input = document.createElement("input");
+      input.type = "search";
+      input.className = "gpt-paragraph-nav__search-input";
+      input.placeholder = t("search.markers.placeholder");
+      input.setAttribute("aria-label", t("search.markers.placeholder"));
+      input.autocomplete = "off";
+      input.value = state.markerSearchQuery;
+      input.addEventListener("input", () => {
+        state.markerSearchQuery = input.value;
+        state.expandedFoldGroups.clear();
+        if (input.value) {
+          state.isCollapsed = false;
+        }
+        scheduleRender();
+      });
+      input.addEventListener("focus", () => {
+        if (state.isCollapsed) {
+          state.isCollapsed = false;
+          scheduleRender();
+        }
+      });
+
+      wrapper.appendChild(input);
+      const list = getList(root);
+      root.insertBefore(wrapper, list);
+    } else if (document.activeElement !== input && input.value !== state.markerSearchQuery) {
+      input.value = state.markerSearchQuery;
+    }
+
+    return input;
   }
 
   function getFloatingActive(root = getRoot()) {
@@ -537,6 +586,19 @@
       const header = document.createElement("div");
       header.className = "gpt-paragraph-nav__explosion-header";
 
+      const searchInput = document.createElement("input");
+      searchInput.type = "search";
+      searchInput.className = "gpt-paragraph-nav__explosion-search-input";
+      searchInput.placeholder = t("search.chapters.placeholder");
+      searchInput.setAttribute("aria-label", t("search.chapters.placeholder"));
+      searchInput.autocomplete = "off";
+      searchInput.value = state.explosionSearchQuery;
+      searchInput.addEventListener("input", () => {
+        state.explosionSearchQuery = searchInput.value;
+        syncExplosionOverlay(overlay);
+      });
+      header.appendChild(searchInput);
+
       const actions = document.createElement("div");
       actions.className = "gpt-paragraph-nav__explosion-actions";
 
@@ -562,9 +624,10 @@
 
       const closeButton = document.createElement("button");
       closeButton.type = "button";
-      closeButton.className = "gpt-paragraph-nav__explosion-action is-secondary";
+      closeButton.className = "gpt-paragraph-nav__explosion-close";
       closeButton.dataset.explosionAction = "close";
-      closeButton.textContent = t("chapters.close");
+      closeButton.setAttribute("aria-label", t("chapters.close"));
+      closeButton.setAttribute("title", t("chapters.close"));
       closeButton.addEventListener("click", closeExplosionOverlay);
       actions.appendChild(closeButton);
 
@@ -582,6 +645,10 @@
       root.appendChild(overlay);
     }
 
+    const searchInput = overlay.querySelector(".gpt-paragraph-nav__explosion-search-input");
+    if (searchInput instanceof HTMLInputElement && document.activeElement !== searchInput && searchInput.value !== state.explosionSearchQuery) {
+      searchInput.value = state.explosionSearchQuery;
+    }
     syncExplosionOverlay(overlay);
     return overlay;
   }
@@ -1167,7 +1234,7 @@
 
     container.hidden = false;
     const activeIndex = activeExplosionSectionIndexFromState(sections);
-    sections.forEach((section, index) => {
+    filteredExplosionSections(sections).forEach(({ section, index }) => {
       const chip = document.createElement("button");
       chip.type = "button";
       chip.className = "gpt-paragraph-nav__explosion-chip";
@@ -1189,6 +1256,7 @@
     const activeIndex = activeExplosionSectionIndexFromState(sections);
     return JSON.stringify({
       activeIndex,
+      searchQuery: state.explosionSearchQuery,
       sections: sections.map((section) => ({
         id: section.id,
         title: section.title,
@@ -1259,6 +1327,7 @@
     }
 
     state.isExplosionOpen = false;
+    state.explosionSearchQuery = "";
     state.explosionSections = [];
     state.activeExplosionSectionIndex = 0;
     state.lastExplosionRenderSignature = "";
@@ -1334,12 +1403,38 @@
     return normalizeExplosionText(collectExplosionParagraphs().join("\n\n"));
   }
 
+  function showCopyToast(message) {
+    const overlay = document.querySelector(`#${ROOT_ID} .gpt-paragraph-nav__explosion-overlay`);
+    if (!(overlay instanceof HTMLElement)) {
+      return;
+    }
+
+    overlay.querySelectorAll(".gpt-paragraph-nav__copy-toast").forEach((toast) => toast.remove());
+    const toast = document.createElement("div");
+    toast.className = "gpt-paragraph-nav__copy-toast";
+    toast.textContent = message;
+    overlay.appendChild(toast);
+    requestAnimationFrame(() => toast.classList.add("is-visible"));
+    window.setTimeout(() => {
+      toast.classList.remove("is-visible");
+      window.setTimeout(() => toast.remove(), 180);
+    }, 1400);
+  }
+
   async function copyCurrentExplosionSection() {
-    await writeTextToClipboard(currentExplosionSectionText());
+    const copied = await writeTextToClipboard(currentExplosionSectionText());
+    if (copied) {
+      showCopyToast(t("chapters.copySuccess"));
+    }
+    return copied;
   }
 
   async function copyFullExplosionText() {
-    await writeTextToClipboard(fullExplosionText());
+    const copied = await writeTextToClipboard(fullExplosionText());
+    if (copied) {
+      showCopyToast(t("chapters.copySuccess"));
+    }
+    return copied;
   }
 
   function isInsideNavigationRoot(node) {
@@ -1902,6 +1997,70 @@
     };
   }
 
+  function normalizeSearchQuery(query) {
+    return Array.from(query || "")
+      .filter((char) => char.trim().length > 0)
+      .join("")
+      .toLocaleLowerCase();
+  }
+
+  function matchesSearch(query, title) {
+    const needle = Array.from(normalizeSearchQuery(query));
+    if (!needle.length) {
+      return true;
+    }
+
+    const haystack = Array.from(normalizeSearchQuery(title));
+    let needleIndex = 0;
+    for (const char of haystack) {
+      if (char === needle[needleIndex]) {
+        needleIndex += 1;
+        if (needleIndex === needle.length) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  function filteredHeadings(headings = state.headings) {
+    if (!normalizeSearchQuery(state.markerSearchQuery)) {
+      return headings;
+    }
+    return headings.filter((heading) => matchesSearch(state.markerSearchQuery, heading.title));
+  }
+
+  function filteredExplosionSections(sections = state.explosionSections) {
+    return sections
+      .map((section, index) => ({ section, index }))
+      .filter(({ section }) => matchesSearch(state.explosionSearchQuery, section.title));
+  }
+
+  function foldEnabledFor(headings = state.headings) {
+    return !state.markerSearchQuery && headings.length >= state.config.foldThreshold;
+  }
+
+  function fullFoldGroups(headings = state.headings) {
+    if (!foldEnabledFor(headings)) {
+      return [];
+    }
+
+    const size = state.config.foldThreshold;
+    const fullGroupCount = Math.floor(headings.length / size);
+    return Array.from({ length: fullGroupCount }, (_, index) => ({
+      index,
+      group: headings.slice(index * size, (index + 1) * size)
+    }));
+  }
+
+  function trailingHeadings(headings = state.headings) {
+    if (!foldEnabledFor(headings)) {
+      return headings;
+    }
+    const size = state.config.foldThreshold;
+    return headings.slice(Math.floor(headings.length / size) * size);
+  }
+
   function markerWidthFor(title) {
     const characterCount = Array.from(title).length;
     return Math.max(24, Math.ceil((characterCount / 50) * 24));
@@ -2088,6 +2247,74 @@
     });
   }
 
+  function appendFoldControl(list, group, groupIndex) {
+    const first = group[0];
+    const remainingCount = group.length - 1;
+    const isExpanded = state.expandedFoldGroups.has(groupIndex);
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "gpt-paragraph-nav__fold";
+    button.classList.toggle("is-expanded", isExpanded);
+    button.setAttribute("aria-expanded", String(isExpanded));
+    button.setAttribute("aria-label", isExpanded
+      ? t("fold.collapseAria", { title: first.title, count: remainingCount })
+      : t("fold.expandAria", { title: first.title, count: remainingCount }));
+
+    const countBadge = document.createElement("span");
+    countBadge.className = "gpt-paragraph-nav__fold-count";
+    countBadge.textContent = String(group.length);
+    button.appendChild(countBadge);
+
+    const label = document.createElement("span");
+    label.className = "gpt-paragraph-nav__fold-label";
+    label.textContent = `${markerPreviewFor(first.title)} ${t("fold.remainder", { count: remainingCount })}`;
+    button.appendChild(label);
+
+    const chevron = document.createElement("span");
+    chevron.className = "gpt-paragraph-nav__fold-chevron";
+    chevron.setAttribute("aria-hidden", "true");
+    button.appendChild(chevron);
+
+    button.addEventListener("click", () => {
+      if (state.expandedFoldGroups.has(groupIndex)) {
+        state.expandedFoldGroups.delete(groupIndex);
+      } else {
+        state.expandedFoldGroups.add(groupIndex);
+      }
+      render();
+    });
+    list.appendChild(button);
+  }
+
+  function appendMarker(list, heading) {
+    const markerKey = markerKeyFor(heading.element);
+    const marker = document.createElement("button");
+    marker.type = "button";
+    marker.className = `gpt-paragraph-nav__marker level-${heading.level}`;
+    marker.style.setProperty("--marker-width", `${markerWidthFor(heading.title)}px`);
+    marker.setAttribute("aria-label", heading.title);
+    marker.dataset.markerKey = markerKey;
+
+    const preview = document.createElement("span");
+    preview.className = "gpt-paragraph-nav__preview";
+    preview.textContent = markerPreviewFor(heading.title);
+    marker.appendChild(preview);
+
+    const label = document.createElement("span");
+    label.className = "gpt-paragraph-nav__label";
+    label.textContent = heading.title;
+    marker.appendChild(label);
+
+    marker.addEventListener("click", () => {
+      state.activeMarkerKey = markerKey;
+      syncActiveMarker(state.activeMarkerKey);
+      requestActiveMarkerListScrollPersistence();
+      jumpToHeading(heading);
+      updateFloatingActiveMarker();
+    });
+    list.appendChild(marker);
+  }
+
   function render() {
     if (!isSupportedRoute()) {
       removeNavigationRoot();
@@ -2099,16 +2326,38 @@
     updateHeaderOffset(root);
     getControlCapsule(root);
     getSettings(root);
+    const controls = getControls(root);
+    const controlWidth = controls.getBoundingClientRect().width;
+    if (controlWidth > 0) {
+      root.style.setProperty("--gpt-nav-controls-width", `${Math.round(controlWidth)}px`);
+    }
     const list = getList(root);
+    getMarkerSearchInput(root);
+    const searchInput = root.querySelector(".gpt-paragraph-nav__search-input");
+    const searchWrapper = searchInput instanceof HTMLElement
+      ? searchInput.closest(".gpt-paragraph-nav__search")
+      : null;
+    if (searchWrapper instanceof HTMLElement) {
+      searchWrapper.hidden = state.isCollapsed;
+    }
     getExplosionOverlay(root);
     const containers = getAssistantContainers();
     const headings = collectHeadings();
+    const visibleHeadings = filteredHeadings(headings);
     const metrics = getConversationMetrics(containers);
     ensureHeadingIds(headings);
     state.headings = headings;
     state.conversationMetrics = metrics;
     document.documentElement.setAttribute(DEBUG_ATTR, `loaded:${headings.length}:${Math.round(metrics.length)}`);
-    root.style.setProperty("--queue-visible-count", String(Math.min(headings.length || 1, state.config.maxVisible)));
+    const foldEnabled = foldEnabledFor(visibleHeadings);
+    const groups = foldEnabled ? fullFoldGroups(visibleHeadings) : [];
+    const trailing = foldEnabled ? trailingHeadings(visibleHeadings) : visibleHeadings;
+    const displayedCount = foldEnabled
+      ? groups.reduce((count, { index, group }) => (
+        count + 1 + (state.expandedFoldGroups.has(index) ? group.length : 0)
+      ), trailing.length)
+      : visibleHeadings.length;
+    root.style.setProperty("--queue-visible-count", String(Math.min(displayedCount || 1, state.config.maxVisible)));
     root.classList.toggle("is-empty", headings.length === 0);
     root.classList.toggle("is-collapsed", state.isCollapsed && headings.length > 0);
     list.style.height = state.isCollapsed && state.collapsedListHeight > 0 ? `${state.collapsedListHeight}px` : "";
@@ -2122,35 +2371,22 @@
       return;
     }
 
-    headings.forEach((heading) => {
-      const markerKey = markerKeyFor(heading.element);
-      const marker = document.createElement("button");
-      marker.type = "button";
-      marker.className = `gpt-paragraph-nav__marker level-${heading.level}`;
-      marker.style.setProperty("--marker-width", `${markerWidthFor(heading.title)}px`);
-      marker.setAttribute("aria-label", heading.title);
-      marker.dataset.markerKey = markerKey;
+    if (!visibleHeadings.length && state.markerSearchQuery) {
+      const empty = document.createElement("div");
+      empty.className = "gpt-paragraph-nav__search-empty";
+      empty.textContent = t("search.empty");
+      list.appendChild(empty);
+    }
 
-      const preview = document.createElement("span");
-      preview.className = "gpt-paragraph-nav__preview";
-      preview.textContent = markerPreviewFor(heading.title);
-      marker.appendChild(preview);
-
-      const label = document.createElement("span");
-      label.className = "gpt-paragraph-nav__label";
-      label.textContent = heading.title;
-      marker.appendChild(label);
-
-      marker.addEventListener("click", () => {
-        state.activeMarkerKey = markerKey;
-        syncActiveMarker(state.activeMarkerKey);
-        requestActiveMarkerListScrollPersistence();
-        jumpToHeading(heading);
-        updateFloatingActiveMarker();
+    if (foldEnabled) {
+      groups.forEach(({ group, index }) => {
+        appendFoldControl(list, group, index);
+        if (state.expandedFoldGroups.has(index)) {
+          group.forEach((heading) => appendMarker(list, heading));
+        }
       });
-
-      list.appendChild(marker);
-    });
+    }
+    trailing.forEach((heading) => appendMarker(list, heading));
 
     requestAnimationFrame(() => {
       state.collapsedListHeight = list.offsetHeight;
@@ -2181,6 +2417,9 @@
     state.lastExplosionRenderSignature = "";
     state.lastRenderedHeadingCount = 0;
     state.markerListScrollUntil = 0;
+    state.markerSearchQuery = "";
+    state.explosionSearchQuery = "";
+    state.expandedFoldGroups.clear();
   }
 
   function removeNavigationRoot() {
@@ -2279,6 +2518,22 @@
       clearActiveMarker();
       return;
     }
+
+    const visibleHeadings = filteredHeadings(state.headings);
+    if (foldEnabledFor(visibleHeadings)) {
+      const markerIndex = visibleHeadings.findIndex((heading) => markerKeyFor(heading.element) === state.activeMarkerKey);
+      const size = state.config.foldThreshold;
+      const fullGroupCount = Math.floor(visibleHeadings.length / size);
+      if (markerIndex >= 0 && markerIndex < fullGroupCount * size) {
+        const groupIndex = Math.floor(markerIndex / size);
+        if (!state.expandedFoldGroups.has(groupIndex)) {
+          state.expandedFoldGroups.add(groupIndex);
+          scheduleRender();
+          return;
+        }
+      }
+    }
+
     state.activeHeading = active ? active.element : null;
     updateFloatingActiveMarker(syncActiveMarker(markerKeyFor(active.element)));
   }
@@ -2347,7 +2602,7 @@
   function markerListWheelHitWidth(root, list) {
     const controls = root.querySelector(`.${CONTROLS_CLASS}`);
     const controlWidth = controls instanceof HTMLElement ? controls.getBoundingClientRect().width : 0;
-    const markerWidths = Array.from(list.querySelectorAll(".gpt-paragraph-nav__marker"))
+    const markerWidths = Array.from(list.querySelectorAll(".gpt-paragraph-nav__marker, .gpt-paragraph-nav__fold"))
       .filter((marker) => marker instanceof HTMLElement)
       .map((marker) => marker.getBoundingClientRect().width);
     const maxMarkerWidth = markerWidths.length ? Math.max(...markerWidths) : 0;
@@ -2422,6 +2677,40 @@
       event.preventDefault();
       state.activeControlTab = "navigation";
       render();
+      return;
+    }
+
+    if ((event.metaKey || event.ctrlKey) && !event.shiftKey && !event.altKey && event.key.toLowerCase() === "f") {
+      const activeElement = document.activeElement;
+      if (activeElement instanceof HTMLElement && activeElement.matches(".gpt-paragraph-nav__search-input, .gpt-paragraph-nav__explosion-search-input")) {
+        event.preventDefault();
+        activeElement.select();
+        return;
+      }
+      if (isShortcutTargetEditable()) {
+        return;
+      }
+
+      event.preventDefault();
+      if (state.isExplosionOpen) {
+        const overlay = document.querySelector(`#${ROOT_ID} .gpt-paragraph-nav__explosion-overlay`);
+        const input = overlay && overlay.querySelector(".gpt-paragraph-nav__explosion-search-input");
+        if (input instanceof HTMLInputElement) {
+          input.focus();
+          input.select();
+        }
+      } else {
+        if (state.activeControlTab !== "navigation") {
+          state.activeControlTab = "navigation";
+          const root = document.getElementById(ROOT_ID);
+          if (root instanceof HTMLElement) {
+            syncControlTabs(root);
+          }
+        }
+        const input = getMarkerSearchInput();
+        input.focus();
+        input.select();
+      }
       return;
     }
 

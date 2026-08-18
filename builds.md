@@ -10,6 +10,62 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 77
+
+- Date: 2026-08-18
+- Version: 0.19.0
+- Summary: Shows a copy-success toast after Chapter View copy actions.
+- Notes: Copy current chapter and copy full text display a transient toast only when clipboard write succeeds.
+
+## 76
+
+- Date: 2026-08-18
+- Version: 0.18.5
+- Summary: Replaces the Chapter View close button with a circular glass close icon.
+- Notes: Keeps the close action accessible through an aria label and hover/focus states.
+
+## 75
+
+- Date: 2026-08-18
+- Version: 0.18.4
+- Summary: Hides the navigation search box when the marker queue is collapsed.
+- Notes: The search box now follows the navigation expand/collapse state.
+
+## 74
+
+- Date: 2026-08-18
+- Version: 0.18.3
+- Summary: Aligns fold-card edge padding with regular text markers.
+- Notes: Changes fold-card horizontal padding from 10px to 8px to match marker pills.
+
+## 73
+
+- Date: 2026-08-18
+- Version: 0.18.2
+- Summary: Adds a count bubble to the left side of each marker fold card.
+- Notes: The bubble shows the number of markers stacked in that group while the card label keeps the first title and remaining count.
+
+## 72
+
+- Date: 2026-08-18
+- Version: 0.18.1
+- Summary: Changes marker folding to full groups of the configured threshold.
+- Notes: Only full groups collapse, trailing markers stay visible, cards show the first title plus remaining count, and stack layers use vertical offset with bottom spacing.
+
+## 71
+
+- Date: 2026-08-18
+- Version: 0.18.0
+- Summary: Folds the first N navigation markers into an expandable stack card.
+- Notes: Adds a configurable fold threshold (default 20), in-place expand/collapse with a count, and search bypasses folding.
+
+## 70
+
+- Date: 2026-08-18
+- Version: 0.17.0
+- Summary: Adds fuzzy title search to the navigation marker queue and Chapter View.
+- Notes: Matches titles by Unicode-aware, case-insensitive subsequence after removing whitespace; Command/Control+F focuses the current search box.
+
 ## 69
 
 - Date: 2026-08-18

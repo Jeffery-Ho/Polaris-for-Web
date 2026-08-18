@@ -70,6 +70,25 @@
 - Keep the settings menu layered above heading markers.
 - The settings menu may use a limited transparent hover guard while open; it must not intercept page clicks when the menu is closed.
 
+## Search Rule
+
+- Navigation marker search and Chapter View search match only the existing marker or chapter titles.
+- Fuzzy matching is Unicode-aware, case-insensitive subsequence matching after removing whitespace; it must not introduce pinyin or initials matching.
+- Navigation search filters the document-order marker queue in place; clicking a matching marker must jump to the matching heading.
+- Chapter View search filters the section chips in place; clicking a matching chip must switch the modal to that section without closing the overlay or jumping the underlying page.
+- Command/Control+F focuses the search input for the current context; Command/Control+Shift+F continues to open Chapter View.
+- Search queries are per-context, are cleared when closing Chapter View, and are cleared again on supported-route changes.
+- When a navigation search filters out the active marker, the floating active marker stays hidden and restores when the query is cleared.
+
+## Fold Rule
+
+- When no search is active, group the visible markers by `foldThreshold` (default 20); only full groups are collapsed, and each full group becomes one stack card in document order.
+- The trailing partial group stays as individual markers.
+- Each stack card shows the first marker's preview title followed by the remaining count, and expands or collapses independently in place.
+- Stack-card pseudo layers use only a vertical downward offset and keep enough spacing below so the next marker is not covered.
+- Search results must bypass folding and show all matching markers.
+- When the active marker is inside a collapsed full group, expand only that group automatically.
+
 ## Glass Theme Rule
 
 - Global extension surfaces should use BoomBranch-like glass styling: dark mode uses near-black translucent backgrounds, subtle `white/10` borders, and soft dark shadows.
