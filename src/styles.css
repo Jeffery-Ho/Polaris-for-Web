@@ -132,8 +132,8 @@
 }
 
 .gpt-paragraph-nav__control-tab.is-active {
-  background: var(--gpt-glass-active-bg);
-  color: #082f49;
+  background: #000000;
+  color: #ffffff;
 }
 
 .gpt-paragraph-nav__control-tab:focus-visible {
@@ -728,9 +728,6 @@
     color: #0f172a;
   }
 
-  .gpt-paragraph-nav__control-tab.is-active {
-    color: #eff6ff;
-  }
 
   .gpt-paragraph-nav__settings-menu {
     border-color: rgba(255, 255, 255, 0.54);

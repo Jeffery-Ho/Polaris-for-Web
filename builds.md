@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 62
+
+- Date: 2026-08-18
+- Version: 0.16.1
+- Summary: Changes the selected tab in the control capsule to black.
+- Notes: The black selected state applies only to the navigation, Chapter View, and settings tabs; marker highlighting is unchanged.
+
 ## 61
 
 - Date: 2026-08-18
