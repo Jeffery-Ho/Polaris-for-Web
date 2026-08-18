@@ -2389,6 +2389,13 @@
       return;
     }
 
+    if (event.key === "Escape" && state.activeControlTab === "settings") {
+      event.preventDefault();
+      state.activeControlTab = "navigation";
+      render();
+      return;
+    }
+
     if (isShortcutTargetEditable()) {
       return;
     }
@@ -2397,6 +2404,21 @@
       event.preventDefault();
       toggleExplosionOverlay();
     }
+  }
+
+  function handleDocumentClick(event) {
+    if (state.activeControlTab !== "settings" || !(event.target instanceof Node)) {
+      return;
+    }
+
+    const root = document.getElementById(ROOT_ID);
+    const controls = root && root.querySelector(`.${CONTROLS_CLASS}`);
+    if (controls instanceof HTMLElement && controls.contains(event.target)) {
+      return;
+    }
+
+    state.activeControlTab = "navigation";
+    render();
   }
 
   async function start() {
@@ -2418,6 +2440,7 @@
     window.addEventListener("wheel", handleMarkerListWheel, { passive: false, capture: true });
     window.addEventListener("resize", scheduleRender, { passive: true });
     window.addEventListener("keydown", handleKeydown, { capture: true });
+    document.addEventListener("click", handleDocumentClick);
     console.info("[Polaris for Web] loaded");
   }
 
