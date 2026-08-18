@@ -255,6 +255,9 @@
       tab.classList.toggle("is-active", isActive);
       tab.setAttribute("aria-selected", String(isActive));
       tab.tabIndex = isActive ? 0 : -1;
+      if (tab.dataset.controlTab === "navigation") {
+        tab.setAttribute("aria-expanded", String(!state.isCollapsed));
+      }
     });
 
     const settings = root.querySelector(`.${SETTINGS_CLASS}`);
@@ -268,11 +271,16 @@
     state.activeControlTab = tabKey;
     if (tabKey === "navigation" && isActive && toggleNavigationWhenActive) {
       toggleNavigation();
+      render();
+      return;
     }
     if (tabKey === "chapters") {
       openExplosionOverlay();
     }
-    render();
+    const root = document.getElementById(ROOT_ID);
+    if (root instanceof HTMLElement) {
+      syncControlTabs(root);
+    }
   }
 
   function getControlCapsule(root = getRoot()) {
@@ -296,7 +304,27 @@
         tab.id = `gpt-paragraph-nav-tab-${key}`;
         tab.setAttribute("role", "tab");
         tab.setAttribute("aria-controls", controlsId);
-        tab.textContent = label;
+        if (key === "navigation") {
+          const icon = document.createElement("img");
+          icon.className = "gpt-paragraph-nav__control-tab-icon";
+          icon.alt = "";
+          icon.width = 16;
+          icon.height = 16;
+          icon.src = chrome.runtime.getURL("icons/gpt-voyager-icon-96.png");
+          tab.appendChild(icon);
+
+          const title = document.createElement("span");
+          title.className = "gpt-paragraph-nav__control-tab-label";
+          title.textContent = label;
+          tab.appendChild(title);
+
+          const chevron = document.createElement("span");
+          chevron.className = "gpt-paragraph-nav__control-tab-chevron";
+          chevron.setAttribute("aria-hidden", "true");
+          tab.appendChild(chevron);
+        } else {
+          tab.textContent = label;
+        }
         tab.addEventListener("click", () => {
           activateControlTab(key, { toggleNavigationWhenActive: key === "navigation" });
         });

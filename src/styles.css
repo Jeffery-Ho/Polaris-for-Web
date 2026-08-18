@@ -114,6 +114,9 @@
 }
 
 .gpt-paragraph-nav__control-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   min-height: 30px;
   padding: 0 10px;
   border: 0;
@@ -122,7 +125,27 @@
   color: var(--gpt-arco-text-2);
   font: 600 12px/1 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   cursor: pointer;
-  transition: background 120ms ease, color 120ms ease, transform 120ms ease;
+  transition: background 70ms ease, color 70ms ease;
+}
+
+.gpt-paragraph-nav__control-tab-icon {
+  display: block;
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+}
+
+.gpt-paragraph-nav__control-tab-chevron {
+  width: 6px;
+  height: 6px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(-135deg);
+  transition: transform 70ms ease;
+}
+
+#gpt-paragraph-nav.is-collapsed .gpt-paragraph-nav__control-tab-chevron {
+  transform: rotate(45deg);
 }
 
 .gpt-paragraph-nav__control-tab:hover,

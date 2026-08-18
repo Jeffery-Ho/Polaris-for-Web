@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 68
+
+- Date: 2026-08-18
+- Version: 0.16.7
+- Summary: Speeds up control-tab switching and restores the navigation icon and chevron.
+- Notes: Switching settings and navigation tabs updates only tab state; clicking the active navigation tab still re-renders to collapse or expand the marker queue.
+
 ## 67
 
 - Date: 2026-08-18
