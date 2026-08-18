@@ -182,6 +182,17 @@
 }
 
 @media (prefers-color-scheme: dark) {
+  .gpt-paragraph-nav__control-tab.is-active {
+    background: #ffffff;
+    color: #000000;
+  }
+
+  .gpt-paragraph-nav__marker.is-active,
+  .gpt-paragraph-nav__floating-active {
+    background: #ffffff;
+    color: #000000;
+  }
+
   .gpt-paragraph-nav__explosion-overlay {
     --gpt-explosion-mask-bg: rgba(2, 6, 23, 0.52);
     --gpt-explosion-modal-bg: rgba(17, 24, 39, 0.98);
@@ -624,8 +635,8 @@
 }
 
 .gpt-paragraph-nav__marker.is-active {
-  background: var(--gpt-glass-active-bg);
-  color: #031014;
+  background: #000000;
+  color: #ffffff;
   opacity: 1;
   transform: scale(1.04);
 }
@@ -644,9 +655,9 @@
   padding: 3px 8px;
   border: 0;
   border-radius: 999px;
-  background: var(--gpt-glass-active-bg);
+  background: #000000;
   box-shadow: 0 0 0 1px var(--gpt-glass-border);
-  color: #031014;
+  color: #ffffff;
   cursor: pointer;
   font: 500 11px/1.2 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   letter-spacing: 0;
