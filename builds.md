@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 69
+
+- Date: 2026-08-18
+- Version: 0.16.8
+- Summary: Adds browser-language internationalization for the extension UI.
+- Notes: Uses Chinese for `zh*` browser languages and English otherwise, with English as the missing-key fallback.
+
 ## 68
 
 - Date: 2026-08-18

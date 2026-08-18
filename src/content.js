@@ -1,4 +1,5 @@
 (() => {
+  const { t } = globalThis.PolarisI18n;
   const ROOT_ID = "gpt-paragraph-nav";
   const DEBUG_ATTR = "data-gpt-paragraph-nav";
   const HEADING_SELECTOR = "h1, h2, h3, h4";
@@ -100,7 +101,7 @@
   const DEFAULT_HEADER_HEIGHT = 64;
   const CONFIG_STORAGE_KEY = "gpt-paragraph-nav-config";
   const CONFIG_SCHEMA_VERSION = 3;
-  const EXPLOSION_EMPTY_TEXT = "当前页面没有可提取的 AI 回复正文。";
+  const EXPLOSION_EMPTY_TEXT = t("chapters.empty");
   const EXPLOSION_BLOCK_SELECTOR = "p, li, h1, h2, h3, h4, pre";
   const CONVERSATION_HEADER_SELECTOR = [
     '[data-testid="conversation-header"]',
@@ -108,10 +109,10 @@
     "main header"
   ].join(", ");
   const CONFIG_FIELDS = [
-    { key: "topGap", label: "顶部间距", min: 0, max: 80, step: 1, unit: "px" },
-    { key: "rightOffset", label: "右侧间距", min: 0, max: 80, step: 1, unit: "px" },
-    { key: "maxVisible", label: "最大数量", min: 1, max: 80, step: 1, unit: "" },
-    { key: "tooltipMaxWidth", label: "提示宽度", min: 160, max: 720, step: 10, unit: "px" }
+    { key: "topGap", label: t("settings.topGap"), min: 0, max: 80, step: 1, unit: "px" },
+    { key: "rightOffset", label: t("settings.rightOffset"), min: 0, max: 80, step: 1, unit: "px" },
+    { key: "maxVisible", label: t("settings.maxVisible"), min: 1, max: 80, step: 1, unit: "" },
+    { key: "tooltipMaxWidth", label: t("settings.tooltipMaxWidth"), min: 160, max: 720, step: 10, unit: "px" }
   ];
   const PLATFORM_KEYS = ["chatgpt", "doubao", "kimi", "qianwen", "yuanbao", "xiaohongshu", "default"];
   const MARKER_LEVEL_OPTIONS = [1, 2, 3, 4];
@@ -179,7 +180,7 @@
     if (!root) {
       root = document.createElement("div");
       root.id = ROOT_ID;
-      root.setAttribute("aria-label", "Polaris for Web paragraph navigation");
+      root.setAttribute("aria-label", t("navigation.rootLabel"));
       root.setAttribute("role", "navigation");
       document.documentElement.appendChild(root);
     }
@@ -290,12 +291,12 @@
       capsule = document.createElement("div");
       capsule.className = CONTROL_CAPSULE_CLASS;
       capsule.setAttribute("role", "tablist");
-      capsule.setAttribute("aria-label", "Polaris 控制面板");
+      capsule.setAttribute("aria-label", t("controls.label"));
 
       [
-        { key: "navigation", label: "导航", controls: LIST_ID },
-        { key: "chapters", label: "章节", controls: "gpt-paragraph-nav-chapters" },
-        { key: "settings", label: "设置", controls: SETTINGS_PANEL_ID }
+        { key: "navigation", label: t("tab.navigation"), controls: LIST_ID },
+        { key: "chapters", label: t("tab.chapters"), controls: "gpt-paragraph-nav-chapters" },
+        { key: "settings", label: t("tab.settings"), controls: SETTINGS_PANEL_ID }
       ].forEach(({ key, label, controls: controlsId }) => {
         const tab = document.createElement("button");
         tab.type = "button";
@@ -375,7 +376,7 @@
       const menu = document.createElement("div");
       menu.className = "gpt-paragraph-nav__settings-menu";
       menu.setAttribute("role", "region");
-      menu.setAttribute("aria-label", "导航设置");
+      menu.setAttribute("aria-label", t("settings.label"));
 
       const meta = document.createElement("div");
       meta.className = "gpt-paragraph-nav__settings-meta";
@@ -441,11 +442,11 @@
       const levelFilter = document.createElement("div");
       levelFilter.className = "gpt-paragraph-nav__settings-level-filter";
       levelFilter.setAttribute("role", "group");
-      levelFilter.setAttribute("aria-label", "Marker 类型");
+      levelFilter.setAttribute("aria-label", t("settings.markerTypes"));
 
       const levelLegend = document.createElement("span");
       levelLegend.className = "gpt-paragraph-nav__settings-level-label";
-      levelLegend.textContent = "Marker 类型";
+      levelLegend.textContent = t("settings.markerTypes");
       levelFilter.appendChild(levelLegend);
 
       const levelOptions = document.createElement("div");
@@ -489,7 +490,7 @@
       unorderedListOption.appendChild(unorderedListCheckbox);
 
       const unorderedListLabel = document.createElement("span");
-      unorderedListLabel.textContent = "无序列表";
+      unorderedListLabel.textContent = t("settings.unorderedList");
       unorderedListOption.appendChild(unorderedListLabel);
 
       levelOptions.appendChild(unorderedListOption);
@@ -499,7 +500,7 @@
       const resetButton = document.createElement("button");
       resetButton.type = "button";
       resetButton.className = "gpt-paragraph-nav__settings-reset";
-      resetButton.textContent = "重置配置";
+      resetButton.textContent = t("settings.reset");
       resetButton.addEventListener("click", () => {
         state.config = normalizeConfig(DEFAULT_CONFIG);
         saveConfig(state.config);
@@ -526,12 +527,12 @@
       overlay.className = "gpt-paragraph-nav__explosion-overlay";
       overlay.setAttribute("role", "dialog");
       overlay.setAttribute("aria-modal", "true");
-      overlay.setAttribute("aria-label", "AI 回复章节视图");
+      overlay.setAttribute("aria-label", t("chapters.label"));
       overlay.hidden = true;
 
       const content = document.createElement("div");
       content.className = "gpt-paragraph-nav__explosion-content";
-      content.setAttribute("aria-label", "AI 回复章节视图");
+      content.setAttribute("aria-label", t("chapters.label"));
 
       const header = document.createElement("div");
       header.className = "gpt-paragraph-nav__explosion-header";
@@ -543,7 +544,7 @@
       currentSectionButton.type = "button";
       currentSectionButton.className = "gpt-paragraph-nav__explosion-action";
       currentSectionButton.dataset.explosionAction = "copy-current-section";
-      currentSectionButton.textContent = "复制当前章节";
+      currentSectionButton.textContent = t("chapters.copyCurrent");
       currentSectionButton.addEventListener("click", async () => {
         await copyCurrentExplosionSection();
       });
@@ -553,7 +554,7 @@
       fullTextButton.type = "button";
       fullTextButton.className = "gpt-paragraph-nav__explosion-action";
       fullTextButton.dataset.explosionAction = "copy-full-text";
-      fullTextButton.textContent = "复制全文";
+      fullTextButton.textContent = t("chapters.copyFull");
       fullTextButton.addEventListener("click", async () => {
         await copyFullExplosionText();
       });
@@ -563,7 +564,7 @@
       closeButton.type = "button";
       closeButton.className = "gpt-paragraph-nav__explosion-action is-secondary";
       closeButton.dataset.explosionAction = "close";
-      closeButton.textContent = "关闭";
+      closeButton.textContent = t("chapters.close");
       closeButton.addEventListener("click", closeExplosionOverlay);
       actions.appendChild(closeButton);
 
@@ -709,7 +710,7 @@
     }
 
     status.classList.toggle("is-enabled", state.syncEnabled);
-    text.textContent = state.syncEnabled ? "同步已启用" : "同步未启用";
+    text.textContent = state.syncEnabled ? t("sync.enabled") : t("sync.disabled");
   }
 
   function loadLegacyConfig() {
@@ -1059,7 +1060,7 @@
   function fallbackExplosionSection(paragraphs = collectExplosionParagraphs()) {
     return {
       id: "explosion-fallback-section",
-      title: "全文",
+      title: t("chapters.fullText"),
       markerKey: "",
       startElement: null,
       endElement: null,
@@ -1504,7 +1505,7 @@
     return {
       element,
       level: clampLevel(level),
-      title: normalizeTitle(element.textContent || `Heading ${index + 1}`),
+      title: normalizeTitle(element.textContent || t("heading.fallback", { index: index + 1 })),
       id: element.id || `gpt-paragraph-heading-${index + 1}`,
       sourceType
     };
