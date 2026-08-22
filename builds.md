@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 81
+
+- Date: 2026-08-22
+- Version: 0.22.0
+- Summary: Reworks the settings panel with fixed app and sync regions, slider controls, and unified theme highlights.
+- Notes: The visible app name is Polaris; the Manifest name is unchanged.
+
 ## 80
 
 - Date: 2026-08-22

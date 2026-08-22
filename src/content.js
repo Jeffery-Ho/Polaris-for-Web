@@ -529,8 +529,22 @@
       menu.setAttribute("role", "region");
       menu.setAttribute("aria-label", t("settings.label"));
 
-      const meta = document.createElement("div");
-      meta.className = "gpt-paragraph-nav__settings-meta";
+      const header = document.createElement("div");
+      header.className = "gpt-paragraph-nav__settings-header";
+
+      const appIdentity = document.createElement("div");
+      appIdentity.className = "gpt-paragraph-nav__settings-app";
+      const appIcon = document.createElement("img");
+      appIcon.className = "gpt-paragraph-nav__settings-app-icon";
+      appIcon.alt = "";
+      appIcon.width = 16;
+      appIcon.height = 16;
+      appIcon.src = chrome.runtime.getURL("icons/gpt-voyager-icon-96.png");
+      appIdentity.appendChild(appIcon);
+      const appName = document.createElement("span");
+      appName.textContent = t("settings.appName");
+      appIdentity.appendChild(appName);
+      header.appendChild(appIdentity);
 
       const syncStatus = document.createElement("div");
       syncStatus.className = "gpt-paragraph-nav__settings-sync";
@@ -546,14 +560,19 @@
       syncText.className = "gpt-paragraph-nav__settings-sync-text";
       syncStatus.appendChild(syncText);
 
-      meta.appendChild(syncStatus);
-
       const manifest = chrome.runtime.getManifest();
       const versionStatus = document.createElement("div");
       versionStatus.className = "gpt-paragraph-nav__settings-version";
       versionStatus.textContent = manifest.version_name || `v${manifest.version}`;
-      meta.appendChild(versionStatus);
-      menu.appendChild(meta);
+      header.appendChild(versionStatus);
+      menu.appendChild(header);
+
+      const body = document.createElement("div");
+      body.className = "gpt-paragraph-nav__settings-body";
+
+      const footer = document.createElement("div");
+      footer.className = "gpt-paragraph-nav__settings-footer";
+      footer.appendChild(syncStatus);
 
       CONFIG_FIELDS.forEach((field) => {
         const row = document.createElement("label");
@@ -564,7 +583,7 @@
         row.appendChild(label);
 
         const input = document.createElement("input");
-        input.type = "number";
+        input.type = "range";
         input.min = String(field.min);
         input.max = String(field.max);
         input.step = String(field.step);
@@ -574,20 +593,21 @@
             ...state.config,
             [field.key]: input.value
           });
-          saveConfig(state.config);
           syncSettingsInputs(settings);
           render();
         });
+        input.addEventListener("change", () => {
+          saveConfig(state.config);
+        });
         row.appendChild(input);
 
-        if (field.unit) {
-          const unit = document.createElement("span");
-          unit.className = "gpt-paragraph-nav__settings-unit";
-          unit.textContent = field.unit;
-          row.appendChild(unit);
-        }
+        const value = document.createElement("output");
+        value.className = "gpt-paragraph-nav__settings-value";
+        value.dataset.configValue = field.key;
+        value.dataset.unit = field.unit;
+        row.appendChild(value);
 
-        menu.appendChild(row);
+        body.appendChild(row);
       });
 
       const levelFilter = document.createElement("div");
@@ -646,7 +666,7 @@
 
       levelOptions.appendChild(unorderedListOption);
       levelFilter.appendChild(levelOptions);
-      menu.appendChild(levelFilter);
+      body.appendChild(levelFilter);
 
       const resetButton = document.createElement("button");
       resetButton.type = "button";
@@ -658,7 +678,10 @@
         syncSettingsInputs(settings);
         render();
       });
-      menu.appendChild(resetButton);
+      body.appendChild(resetButton);
+
+      menu.appendChild(body);
+      menu.appendChild(footer);
 
       settings.appendChild(menu);
       controls.appendChild(settings);
@@ -1003,6 +1026,20 @@
       const key = input.dataset.configKey;
       if (document.activeElement !== input && key in state.config) {
         input.value = String(state.config[key]);
+      }
+      const minimum = Number(input.min);
+      const maximum = Number(input.max);
+      const current = Number(input.value);
+      if (Number.isFinite(minimum) && Number.isFinite(maximum) && maximum > minimum && Number.isFinite(current)) {
+        input.style.setProperty("--settings-slider-progress", `${((current - minimum) / (maximum - minimum)) * 100}%`);
+      }
+      const value = settings.querySelector(`[data-config-value="${CSS.escape(key)}"]`);
+      if (value instanceof HTMLOutputElement && key in state.config) {
+        const unit = value.dataset.unit;
+        const text = `${state.config[key]}${unit ? ` ${unit}` : ""}`;
+        value.value = text;
+        value.textContent = text;
+        input.setAttribute("aria-valuetext", text);
       }
     });
     syncLevelFilterInputs(settings);
