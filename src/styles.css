@@ -35,6 +35,10 @@
   pointer-events: none;
 }
 
+#gpt-paragraph-nav.is-control-minimized:not(.has-custom-control-position) {
+  right: 0;
+}
+
 .gpt-paragraph-nav__controls {
   position: relative;
   display: inline-flex;
@@ -185,25 +189,8 @@
   gap: 0;
 }
 
-.gpt-paragraph-nav__control-compact-summary {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  min-height: 30px;
-  padding: 0 10px;
-  color: var(--gpt-arco-text-1);
-  font: 600 12px/1 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-}
-
-.gpt-paragraph-nav__control-compact-summary[hidden] {
-  display: none;
-}
-
-.gpt-paragraph-nav__control-compact-summary img {
-  display: block;
-  width: 16px;
-  height: 16px;
-  flex: 0 0 16px;
+#gpt-paragraph-nav.is-control-minimized .gpt-paragraph-nav__control-tab:not(.is-active) {
+  display: none !important;
 }
 
 .gpt-paragraph-nav__control-compact-toggle {

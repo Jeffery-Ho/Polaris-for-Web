@@ -83,7 +83,6 @@
   const CONTROLS_CLASS = "gpt-paragraph-nav__controls";
   const CONTROL_CAPSULE_CLASS = "gpt-paragraph-nav__control-capsule";
   const CONTROL_TAB_INDICATOR_CLASS = "gpt-paragraph-nav__control-tab-indicator";
-  const CONTROL_COMPACT_SUMMARY_CLASS = "gpt-paragraph-nav__control-compact-summary";
   const CONTROL_COMPACT_TOGGLE_CLASS = "gpt-paragraph-nav__control-compact-toggle";
   const SETTINGS_CLASS = "gpt-paragraph-nav__settings";
   const LIST_ID = "gpt-paragraph-nav-list";
@@ -331,6 +330,8 @@
     }
 
     root.classList.toggle("is-settings-open", state.activeControlTab === "settings");
+    root.classList.toggle("is-control-minimized", isMinimized);
+    root.classList.toggle("has-custom-control-position", Boolean(activeControlPosition()));
     capsule.classList.toggle("is-minimized", isMinimized);
     capsule.setAttribute("role", isMinimized ? "group" : "tablist");
     capsule.setAttribute("aria-label", isMinimized
@@ -340,44 +341,29 @@
       const isActive = tab.dataset.controlTab === state.activeControlTab;
       tab.classList.toggle("is-active", isActive);
       tab.setAttribute("aria-selected", String(isActive));
-      tab.hidden = isMinimized;
-      tab.setAttribute("aria-hidden", String(isMinimized));
-      tab.tabIndex = isMinimized ? -1 : (isActive ? 0 : -1);
+      tab.hidden = isMinimized && !isActive;
+      tab.setAttribute("aria-hidden", String(isMinimized && !isActive));
+      tab.tabIndex = isActive ? 0 : -1;
       if (tab.dataset.controlTab === "navigation") {
         tab.setAttribute("aria-expanded", String(!state.isCollapsed));
       }
     });
     const indicator = capsule.querySelector(`.${CONTROL_TAB_INDICATOR_CLASS}`);
     if (indicator instanceof HTMLElement) {
-      indicator.hidden = isMinimized;
-    }
-    const summary = capsule.querySelector(`.${CONTROL_COMPACT_SUMMARY_CLASS}`);
-    if (summary instanceof HTMLElement) {
-      summary.hidden = !isMinimized;
-      const label = summary.querySelector("span");
-      if (label) {
-        label.textContent = t(`tab.${state.activeControlTab}`);
-      }
+      indicator.hidden = false;
     }
     const toggle = capsule.querySelector(`.${CONTROL_COMPACT_TOGGLE_CLASS}`);
     if (toggle instanceof HTMLButtonElement) {
       toggle.setAttribute("aria-label", t(isMinimized ? "controls.maximize" : "controls.minimize"));
       toggle.replaceChildren(createControlCompactIcon(isMinimized));
     }
-    if (!isMinimized) {
-      syncControlTabIndicator(root);
-    }
+    syncControlTabIndicator(root);
 
     const settings = root.querySelector(`.${SETTINGS_CLASS}`);
     if (settings instanceof HTMLElement) {
       settings.hidden = state.activeControlTab !== "settings";
-      if (isMinimized && state.activeControlTab === "settings") {
-        settings.removeAttribute("aria-labelledby");
-        settings.setAttribute("aria-label", t("tab.settings"));
-      } else {
-        settings.setAttribute("aria-labelledby", "gpt-paragraph-nav-tab-settings");
-        settings.removeAttribute("aria-label");
-      }
+      settings.setAttribute("aria-labelledby", "gpt-paragraph-nav-tab-settings");
+      settings.removeAttribute("aria-label");
     }
   }
 
@@ -407,12 +393,12 @@
     const path = document.createElementNS(namespace, "path");
     path.setAttribute("fill", "none");
     path.setAttribute("stroke", "currentColor");
-    path.setAttribute("stroke-width", "1.8");
+    path.setAttribute("stroke-width", isMinimized ? "1.8" : "1.5");
     path.setAttribute("stroke-linecap", "round");
     path.setAttribute("stroke-linejoin", "round");
     path.setAttribute("d", isMinimized
-      ? "M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"
-      : "M9 4H4v5M15 4h5v5M20 15v5h-5M9 20H4v-5");
+      ? "M8 16L16 8M11 8h5v5M13 16H8v-5"
+      : "M5 12H19");
     icon.appendChild(path);
     return icon;
   }
@@ -420,6 +406,7 @@
   function setControlMinimized(isMinimized) {
     state.config = normalizeConfig({
       ...state.config,
+      controlPosition: isMinimized ? null : state.config.controlPosition,
       isControlMinimized: isMinimized
     });
     saveConfig(state.config);
@@ -442,19 +429,6 @@
         setControlMinimized(!state.config.isControlMinimized);
       });
       capsule.appendChild(compactToggle);
-
-      const compactSummary = document.createElement("div");
-      compactSummary.className = CONTROL_COMPACT_SUMMARY_CLASS;
-      compactSummary.hidden = true;
-      compactSummary.setAttribute("aria-hidden", "true");
-      const compactIcon = document.createElement("img");
-      compactIcon.alt = "";
-      compactIcon.width = 16;
-      compactIcon.height = 16;
-      compactIcon.src = chrome.runtime.getURL("icons/gpt-voyager-icon-96.png");
-      compactSummary.appendChild(compactIcon);
-      compactSummary.appendChild(document.createElement("span"));
-      capsule.appendChild(compactSummary);
 
       const indicator = document.createElement("span");
       indicator.className = CONTROL_TAB_INDICATOR_CLASS;
@@ -2945,6 +2919,7 @@
     if (!drag.didDrag) {
       drag.didDrag = true;
       drag.root.classList.add("is-dragging");
+      drag.root.classList.add("has-custom-control-position");
       document.documentElement.classList.add("gpt-paragraph-nav--dragging");
     }
 
@@ -2993,6 +2968,7 @@
         });
         saveConfig(state.config);
       }
+      drag.root.classList.toggle("has-custom-control-position", Boolean(state.config.controlPosition));
       applyConfig(drag.root);
     }
 
