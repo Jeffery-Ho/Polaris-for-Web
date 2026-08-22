@@ -29,9 +29,8 @@ Polaris for Web automatically detects headings and list titles in AI responses a
 - Settings synchronization through `chrome.storage.sync`.
 - Light and dark adaptive glass styling for markers, buttons, and the settings panel.
 - An expanded mouse-wheel hit area that makes the marker list easier to scroll.
-- Fuzzy title search for both the navigation marker queue and Chapter View, with `Cmd/Ctrl+F` focusing the current search box.
+- Fuzzy title search for the navigation marker queue, with `Cmd/Ctrl+F` focusing the search box.
 - Long marker queues are grouped into stacks of `N` markers (default 20); each full group collapses into a stack card with its first title and remaining count.
-- **Chapter View**, which organizes AI response content by marker section for convenient reading and copying on every supported platform.
 
 ## Settings
 
@@ -45,17 +44,6 @@ Open **Settings** from the control area on the right to adjust:
 - H1, H2, H3, H4, and unordered-list marker visibility for the current platform
 
 Preferences are saved to `chrome.storage.sync`. When synchronization is available, the settings panel displays **Sync enabled**.
-
-## Chapter View
-
-- Click **Chapter View** in the control area on the right, or press `Cmd/Ctrl+Shift+F`.
-- Available on every supported platform: ChatGPT, Doubao, Kimi, Qianwen, Yuanbao, and Xiaohongshu Diandian AI.
-- Processes only AI response content on the current page; input fields, sidebars, and the extension's own interface are excluded.
-- Displays the response in a medium-sized modal approximately `524pt` wide, with a translucent backdrop, and divides the content into sections using the platform's existing marker results.
-- Use the modal search box, or press `Cmd/Ctrl+F` while the modal is open, to filter section chips by title and click a chip to switch sections.
-- Horizontal section chips appear at the top of the modal. By default, the current section and its adjacent sections are displayed.
-- **Copy current chapter**, **Copy full text**, and **Close** controls appear in the modal's upper-right corner.
-- Press `Escape` or click **Close** to exit and restore page scrolling.
 
 ## Installation
 
