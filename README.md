@@ -71,7 +71,7 @@ Polaris for Web processes AI response content locally in your browser and does n
 
 ## Version
 
-Current version: `0.23.0(82)`
+Current version: `0.23.0(83)`
 
 ## License
 

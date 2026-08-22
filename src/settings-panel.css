@@ -5,6 +5,8 @@
 }
 
 .polaris-settings-shell {
+  --polaris-bar-padding: 8px 12px;
+  --polaris-bar-content-height: 16px;
   --polaris-surface: rgba(15, 23, 42, 0.72);
   --polaris-border: rgba(255, 255, 255, 0.14);
   --polaris-shadow: 0 18px 42px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.12);
@@ -22,8 +24,10 @@
 :host .polaris-settings-card {
   display: grid !important;
   grid-template-rows: auto auto minmax(0, 1fr) auto auto;
-  width: 300px;
+  gap: 0 !important;
+  width: 100%;
   height: min(72vh, 480px);
+  padding: 0 !important;
   overflow: hidden;
   border: 1px solid var(--polaris-border) !important;
   border-radius: 14px !important;
@@ -46,8 +50,9 @@
 
 :host .polaris-settings-header,
 :host .polaris-settings-footer {
-  min-height: 44px;
-  padding: 0 12px;
+  box-sizing: border-box;
+  min-height: calc(var(--polaris-bar-content-height) + 16px);
+  padding: var(--polaris-bar-padding) !important;
   background: transparent !important;
 }
 
@@ -68,6 +73,8 @@
   display: inline-flex;
   align-items: center;
   gap: 7px;
+  min-height: var(--polaris-bar-content-height);
+  line-height: var(--polaris-bar-content-height);
 }
 
 .polaris-settings-app img {
@@ -77,12 +84,12 @@
 
 .polaris-settings-app [data-slot="card-title"] {
   color: var(--polaris-text);
-  font: 700 13px/1 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font: 700 13px/var(--polaris-bar-content-height) ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
 .polaris-settings-version {
   color: var(--polaris-muted);
-  font: 500 12px/1 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font: 500 12px/var(--polaris-bar-content-height) ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
 .polaris-settings-body {
@@ -173,6 +180,21 @@
   gap: 7px;
 }
 
+.polaris-settings-checkbox {
+  position: relative;
+  display: inline-flex;
+}
+
+.polaris-settings-checkbox-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
 .polaris-settings-checkbox [data-slot="checkbox-content"] {
   display: inline-flex;
   align-items: center;
@@ -194,20 +216,45 @@
 }
 
 .polaris-settings-checkbox [data-slot="checkbox-control"] {
+  display: inline-grid;
+  width: 14px;
+  height: 14px;
+  box-sizing: border-box;
+  place-items: center;
+  border: 1px solid currentColor;
+  border-radius: 4px;
   border-color: currentColor;
 }
 
-.polaris-settings-checkbox [data-slot="checkbox"][data-selected] [data-slot="checkbox-content"] {
+.polaris-settings-checkbox [data-slot="checkbox-indicator"] {
+  visibility: hidden;
+  font: 700 11px/1 ui-sans-serif, system-ui, sans-serif;
+}
+
+.polaris-settings-checkbox[data-selected] [data-slot="checkbox-content"] {
   border-color: var(--polaris-highlight);
 }
 
-.polaris-settings-checkbox [data-slot="checkbox"][data-selected] [data-slot="checkbox-control"] {
+.polaris-settings-checkbox[data-selected] [data-slot="checkbox-control"] {
   background: var(--polaris-highlight);
   color: var(--polaris-highlight-text);
 }
 
-.polaris-settings-checkbox [data-slot="checkbox"][data-disabled] {
+.polaris-settings-checkbox[data-selected] [data-slot="checkbox-indicator"] {
+  visibility: visible;
+}
+
+.polaris-settings-checkbox-input:focus-visible + [data-slot="checkbox-content"] {
+  outline: 2px solid var(--polaris-highlight);
+  outline-offset: 2px;
+}
+
+.polaris-settings-checkbox[data-disabled] {
   opacity: 0.56;
+}
+
+.polaris-settings-checkbox[data-disabled] [data-slot="checkbox-content"] {
+  cursor: not-allowed;
 }
 
 .polaris-settings-reset {

@@ -31,6 +31,8 @@
       "fold.remainder": "{count} more",
       "fold.expandAria": "Expand {title}, {count} more",
       "fold.collapseAria": "Collapse {title}, {count} more",
+      "userMarker.expandAria": "Expand AI markers for {title}",
+      "userMarker.collapseAria": "Collapse AI markers for {title}",
       "heading.fallback": "Heading {index}"
     }),
     zh: Object.freeze({
@@ -64,6 +66,8 @@
       "fold.remainder": "余下 {count} 条",
       "fold.expandAria": "展开 {title}，余下 {count} 条",
       "fold.collapseAria": "收起 {title}，余下 {count} 条",
+      "userMarker.expandAria": "展开“{title}”对应的 AI marker",
+      "userMarker.collapseAria": "收起“{title}”对应的 AI marker",
       "heading.fallback": "标题 {index}"
     })
   });

@@ -9,6 +9,7 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
   const STRONG_HEADING_SELECTOR = "p, li";
   const NUMBERED_HEADING_SELECTOR = "p, div";
   const ASSISTANT_MESSAGE_SELECTOR = '[data-message-author-role="assistant"]';
+  const USER_MESSAGE_SELECTOR = '[data-message-author-role="user"]';
   const DOUBAO_ASSISTANT_MESSAGE_SELECTOR = [
     ".receive-message-box",
     ".receive-message-content-block",
@@ -16,17 +17,29 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
     '[class*="receive-message-box"]',
     '[class*="receive-message-content-block"]'
   ].join(", ");
+  const DOUBAO_USER_MESSAGE_SELECTOR = [
+    ".send-message-box",
+    ".send-message-content-block",
+    '[class*="send-message-box"]',
+    '[class*="send-message-content-block"]'
+  ].join(", ");
   const KIMI_ASSISTANT_MESSAGE_SELECTOR = [
     ".segment.segment-assistant .markdown",
     ".segment-assistant .markdown",
     ".segment-assistant .markdown-container",
     '[class*="segment-assistant"] [class*="markdown"]'
   ].join(", ");
+  const KIMI_USER_MESSAGE_SELECTOR = ".segment.segment-user";
   const QIANWEN_ASSISTANT_MESSAGE_SELECTOR = [
     '[class*="message-select-wrapper-answer"] .qk-markdown',
     ".chat-answers-card-wrap .qk-markdown",
     ".answer-common-card .qk-markdown",
     ".markdown-pc-special-class .qk-markdown"
+  ].join(", ");
+  const QIANWEN_USER_MESSAGE_SELECTOR = [
+    '[class*="message-select-wrapper-question"]',
+    ".chat-questions-card-wrap",
+    ".question-common-card"
   ].join(", ");
   const QIANWEN_VIDEO_LIST_SELECTOR = [
     ".card_card_video",
@@ -38,6 +51,11 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
     '[data-conv-speaker="ai"] .hyc-common-markdown',
     '[data-conv-speaker="ai"]',
     ".agent-chat__list__item--ai .hyc-common-markdown"
+  ].join(", ");
+  const YUANBAO_USER_MESSAGE_SELECTOR = [
+    '[data-conv-speaker="user"]',
+    '[data-conv-speaker="human"]',
+    ".agent-chat__list__item--user"
   ].join(", ");
   const XIAOHONGSHU_ASSISTANT_MESSAGE_SELECTOR = [
     ".markdown-styles-diandian-main-v3",
@@ -56,6 +74,12 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
     '[class*="xhs-ai-chat-page"] [class*="round-item"]',
     '[class*="xhs-ai-chat-page"] [class*="scroll-container"]',
     '[class*="xhs-ai-chat-page"] [class*="chat-container"]'
+  ].join(", ");
+  const XIAOHONGSHU_USER_MESSAGE_SELECTOR = [
+    ".xhs-ai-chat-page .user-message",
+    '[class*="xhs-ai-chat-page"] [class*="user-message"]',
+    '[class*="xhs-ai-chat-page"] [class*="user-content"]',
+    '[class*="xhs-ai-chat-page"] [class*="message-user"]'
   ].join(", ");
   const YUANBAO_VIDEO_CARD_SELECTOR = [
     ".ybc-chat-videoBoxV2-bigCard",
@@ -153,10 +177,16 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
   const markerKeys = new WeakMap();
   const liquidGlassSignatures = new WeakMap();
   const settingsPanelControllers = new WeakMap();
+  const extensionMetadata = {
+    iconUrl: "",
+    routeBridgeUrl: "",
+    version: ""
+  };
   let nextMarkerKey = 1;
 
   const state = {
     headings: [],
+    markerGroups: [],
     conversationMetrics: null,
     activeHeading: null,
     activeMarkerKey: "",
@@ -176,6 +206,8 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
     markerSearchQuery: "",
     explosionSearchQuery: "",
     expandedFoldGroups: new Set(),
+    expandedUserMarkerKeys: new Set(),
+    userMarkerExpansionInitialized: false,
     isCollapsed: false,
     collapsedListHeight: 0,
     syncEnabled: false,
@@ -186,8 +218,52 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
     activeExplosionSectionIndex: 0,
     lastExplosionRenderSignature: "",
     scrollLock: null,
-    routeKey: ""
+    routeKey: "",
+    isExtensionContextInvalidated: false
   };
+
+  function isExtensionContextValid() {
+    try {
+      return typeof chrome !== "undefined" && Boolean(chrome.runtime && chrome.runtime.id);
+    } catch {
+      return false;
+    }
+  }
+
+  function cacheExtensionMetadata() {
+    try {
+      const manifest = chrome.runtime.getManifest();
+      extensionMetadata.iconUrl = chrome.runtime.getURL("icons/gpt-voyager-icon-96.png");
+      extensionMetadata.routeBridgeUrl = chrome.runtime.getURL("src/route-bridge.js");
+      extensionMetadata.version = manifest.version_name || `v${manifest.version}`;
+      return true;
+    } catch {
+      disposeInvalidExtensionContext();
+      return false;
+    }
+  }
+
+  function runtimeLastError() {
+    try {
+      return chrome.runtime.lastError || null;
+    } catch {
+      disposeInvalidExtensionContext();
+      return null;
+    }
+  }
+
+  function disposeInvalidExtensionContext() {
+    if (state.isExtensionContextInvalidated) {
+      return;
+    }
+
+    state.isExtensionContextInvalidated = true;
+    window.clearTimeout(state.scheduled);
+    state.observer?.disconnect();
+    state.liquidGlassObserver?.disconnect();
+    closeExplosionOverlay();
+    removeNavigationRoot();
+  }
 
   function getRoot() {
     let root = document.getElementById(ROOT_ID);
@@ -297,7 +373,7 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
   }
 
   function toggleNavigation() {
-    if (!state.headings.length) {
+    if (!state.markerGroups.length) {
       return;
     }
     if (!state.isCollapsed) {
@@ -454,7 +530,7 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
           icon.alt = "";
           icon.width = 16;
           icon.height = 16;
-          icon.src = chrome.runtime.getURL("icons/gpt-voyager-icon-96.png");
+          icon.src = extensionMetadata.iconUrl;
           tab.appendChild(icon);
 
           const title = document.createElement("span");
@@ -743,10 +819,19 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
   }
 
   function hasSyncStorage() {
-    return typeof chrome !== "undefined" && chrome.storage && chrome.storage.sync;
+    try {
+      return isExtensionContextValid() && Boolean(chrome.storage && chrome.storage.sync);
+    } catch {
+      return false;
+    }
   }
 
   function setSyncEnabled(isEnabled) {
+    if (!isExtensionContextValid()) {
+      disposeInvalidExtensionContext();
+      return;
+    }
+
     state.syncEnabled = isEnabled;
     const settings = document.querySelector(`#${ROOT_ID} .${SETTINGS_CLASS}`);
     if (settings) {
@@ -774,10 +859,17 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
     }
 
     return new Promise((resolve) => {
-      chrome.storage.sync.get(CONFIG_STORAGE_KEY, (result) => {
-        if (chrome.runtime.lastError) {
+      try {
+        chrome.storage.sync.get(CONFIG_STORAGE_KEY, (result) => {
+          if (!isExtensionContextValid()) {
+            disposeInvalidExtensionContext();
+            resolve(null);
+            return;
+          }
+        const error = runtimeLastError();
+        if (error) {
           setSyncEnabled(false);
-          console.warn("[Polaris for Web] config sync read failed", chrome.runtime.lastError);
+          console.warn("[Polaris for Web] config sync read failed", error);
           resolve(null);
           return;
         }
@@ -789,7 +881,11 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
         }
 
         resolve(null);
-      });
+        });
+      } catch {
+        disposeInvalidExtensionContext();
+        resolve(null);
+      }
     });
   }
 
@@ -801,15 +897,26 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
 
     const nextConfig = normalizeConfig(config);
     return new Promise((resolve) => {
-      chrome.storage.sync.set({ [CONFIG_STORAGE_KEY]: nextConfig }, () => {
-        if (chrome.runtime.lastError) {
+      try {
+        chrome.storage.sync.set({ [CONFIG_STORAGE_KEY]: nextConfig }, () => {
+          if (!isExtensionContextValid()) {
+            disposeInvalidExtensionContext();
+            resolve();
+            return;
+          }
+        const error = runtimeLastError();
+        if (error) {
           setSyncEnabled(false);
-          console.warn("[Polaris for Web] config sync write failed", chrome.runtime.lastError);
+          console.warn("[Polaris for Web] config sync write failed", error);
         } else {
           setSyncEnabled(true);
         }
         resolve();
-      });
+        });
+      } catch {
+        disposeInvalidExtensionContext();
+        resolve();
+      }
     });
   }
 
@@ -877,12 +984,10 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
     const supportedLevels = new Set(supportedMarkerLevelsForPlatform(platformKey));
     const enabledLevels = enabledLevelsForPlatform(platformKey);
     const enabledSet = new Set(enabledLevels);
-    const manifest = chrome.runtime.getManifest();
-
     return {
       appName: t("settings.appName"),
       fields: CONFIG_FIELDS.map((field) => ({ ...field, value: state.config[field.key] })),
-      iconUrl: chrome.runtime.getURL("icons/gpt-voyager-icon-96.png"),
+      iconUrl: extensionMetadata.iconUrl,
       markerLevels: MARKER_LEVEL_OPTIONS
         .filter((level) => supportedLevels.has(level))
         .map((level) => ({
@@ -923,7 +1028,7 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
         isSelected: enabledUnorderedListForPlatform(platformKey),
         label: t("settings.unorderedList")
       },
-      version: manifest.version_name || `v${manifest.version}`
+      version: extensionMetadata.version
     };
   }
 
@@ -1607,8 +1712,144 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
     return [];
   }
 
+  function getUserContainerSelectors() {
+    if (isUnsupportedXiaohongshuMainPage()) {
+      return [];
+    }
+
+    if (isXiaohongshuPage()) {
+      return [XIAOHONGSHU_USER_MESSAGE_SELECTOR, USER_MESSAGE_SELECTOR];
+    }
+
+    if (isYuanbaoPage()) {
+      return [YUANBAO_USER_MESSAGE_SELECTOR, USER_MESSAGE_SELECTOR];
+    }
+
+    if (isKimiPage()) {
+      return [KIMI_USER_MESSAGE_SELECTOR, USER_MESSAGE_SELECTOR];
+    }
+
+    if (isQianwenPage()) {
+      return [QIANWEN_USER_MESSAGE_SELECTOR, USER_MESSAGE_SELECTOR];
+    }
+
+    if (isDoubaoPage()) {
+      return [DOUBAO_USER_MESSAGE_SELECTOR, USER_MESSAGE_SELECTOR];
+    }
+
+    return [USER_MESSAGE_SELECTOR];
+  }
+
+  function getUserContainers() {
+    for (const selector of getUserContainerSelectors()) {
+      const containers = Array.from(document.querySelectorAll(selector))
+        .filter((node) => node instanceof HTMLElement
+          && isVisible(node)
+          && !isInsideNavigationRoot(node)
+          && !isUserInputContext(node));
+      if (containers.length > 0) {
+        return containers;
+      }
+    }
+
+    return [];
+  }
+
   function normalizeTitle(text) {
     return text.replace(/\s+/g, " ").trim();
+  }
+
+  function firstLineMarkerTitle(text) {
+    return text.split(/\r?\n/)
+      .map((line) => normalizeTitle(line))
+      .find(Boolean) || "";
+  }
+
+  function compareDocumentOrder(left, right) {
+    if (left === right) {
+      return 0;
+    }
+    return left.compareDocumentPosition(right) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1;
+  }
+
+  function compareConversationPosition(left, right) {
+    const leftTop = left.getBoundingClientRect().top + window.scrollY;
+    const rightTop = right.getBoundingClientRect().top + window.scrollY;
+    if (Math.abs(leftTop - rightTop) > 1) {
+      return leftTop - rightTop;
+    }
+    return compareDocumentOrder(left, right);
+  }
+
+  function makeUserMarkerItem(element) {
+    const title = normalizeTitle(element.innerText || element.textContent || "");
+    return {
+      element,
+      title,
+      previewTitle: firstLineMarkerTitle(element.innerText || element.textContent || "") || title,
+      markerKey: markerKeyFor(element)
+    };
+  }
+
+  function collectMarkerGroups(userContainers, assistantContainers, headings) {
+    const headingToAssistant = new Map();
+    headings.forEach((heading) => {
+      assistantContainers.forEach((container) => {
+        if (!container.contains(heading.element)) {
+          return;
+        }
+        const currentContainer = headingToAssistant.get(heading);
+        if (!currentContainer || currentContainer.contains(container)) {
+          headingToAssistant.set(heading, container);
+        }
+      });
+    });
+    const entries = [
+      ...userContainers.map((element) => ({ type: "user", element })),
+      ...assistantContainers.map((element) => ({ type: "assistant", element }))
+    ].sort((left, right) => compareConversationPosition(left.element, right.element));
+    const groupsByKey = new Map();
+    const orphanGroup = { key: "orphan", user: null, headings: [] };
+    const assistantToUser = new Map();
+    let currentUser = null;
+
+    entries.forEach((entry) => {
+      if (entry.type === "user") {
+        const user = makeUserMarkerItem(entry.element);
+        if (!user.title) {
+          return;
+        }
+        currentUser = user;
+        groupsByKey.set(user.markerKey, { key: user.markerKey, user, headings: [] });
+        return;
+      }
+
+      assistantToUser.set(entry.element, currentUser);
+    });
+
+    headings.forEach((heading) => {
+      const user = assistantToUser.get(headingToAssistant.get(heading));
+      const group = user ? groupsByKey.get(user.markerKey) : orphanGroup;
+      group.headings.push(heading);
+    });
+
+    const headingIndexes = new Map(headings.map((heading, index) => [heading, index]));
+    return [...groupsByKey.values(), orphanGroup]
+      .filter((group) => group.headings.length)
+      .sort((left, right) => headingIndexes.get(left.headings[0]) - headingIndexes.get(right.headings[0]));
+  }
+
+  function syncUserMarkerExpansion(groups) {
+    if (state.userMarkerExpansionInitialized) {
+      return;
+    }
+
+    const userGroups = groups.filter((group) => group.user);
+    if (!userGroups.length) {
+      return;
+    }
+    state.expandedUserMarkerKeys.add(userGroups[userGroups.length - 1].key);
+    state.userMarkerExpansionInitialized = true;
   }
 
   function clampLevel(level) {
@@ -2058,6 +2299,23 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
     return headings.filter((heading) => matchesSearch(state.markerSearchQuery, heading.title));
   }
 
+  function filteredMarkerGroups(groups = state.markerGroups) {
+    const hasQuery = Boolean(normalizeSearchQuery(state.markerSearchQuery));
+    if (!hasQuery) {
+      return groups.map((group) => ({ ...group, visibleHeadings: group.headings }));
+    }
+
+    return groups
+      .map((group) => {
+        const userMatches = group.user && matchesSearch(state.markerSearchQuery, group.user.title);
+        const visibleHeadings = userMatches
+          ? group.headings
+          : group.headings.filter((heading) => matchesSearch(state.markerSearchQuery, heading.title));
+        return { ...group, visibleHeadings, userMatches };
+      })
+      .filter((group) => group.userMatches || group.visibleHeadings.length > 0);
+  }
+
   function filteredExplosionSections(sections = state.explosionSections) {
     return sections
       .map((section, index) => ({ section, index }))
@@ -2089,13 +2347,17 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
     return headings.slice(Math.floor(headings.length / size) * size);
   }
 
+  function foldKeyFor(group, index) {
+    return `${group.key}:${index}`;
+  }
+
   function markerWidthFor(title) {
     const characterCount = Array.from(title).length;
     return Math.max(24, Math.ceil((characterCount / 50) * 24));
   }
 
   function markerPreviewFor(title) {
-    return Array.from(title).slice(0, 16).join("");
+    return title;
   }
 
   function markerKeyFor(element) {
@@ -2275,10 +2537,10 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
     });
   }
 
-  function appendFoldControl(list, group, groupIndex) {
-    const first = group[0];
-    const remainingCount = group.length - 1;
-    const isExpanded = state.expandedFoldGroups.has(groupIndex);
+  function appendFoldControl(list, headings, foldKey) {
+    const first = headings[0];
+    const remainingCount = headings.length - 1;
+    const isExpanded = state.expandedFoldGroups.has(foldKey);
     const button = document.createElement("button");
     button.type = "button";
     button.className = "gpt-paragraph-nav__fold";
@@ -2290,7 +2552,7 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
 
     const countBadge = document.createElement("span");
     countBadge.className = "gpt-paragraph-nav__fold-count";
-    countBadge.textContent = String(group.length);
+    countBadge.textContent = String(headings.length);
     button.appendChild(countBadge);
 
     const label = document.createElement("span");
@@ -2304,21 +2566,28 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
     button.appendChild(chevron);
 
     button.addEventListener("click", () => {
-      if (state.expandedFoldGroups.has(groupIndex)) {
-        state.expandedFoldGroups.delete(groupIndex);
+      if (state.expandedFoldGroups.has(foldKey)) {
+        state.expandedFoldGroups.delete(foldKey);
       } else {
-        state.expandedFoldGroups.add(groupIndex);
+        state.expandedFoldGroups.add(foldKey);
       }
       render();
     });
-    list.appendChild(button);
+    appendMarkerRow(list, "ai", button);
+  }
+
+  function appendMarkerRow(list, kind, marker) {
+    const row = document.createElement("div");
+    row.className = `gpt-paragraph-nav__marker-row gpt-paragraph-nav__marker-row--${kind}`;
+    row.appendChild(marker);
+    list.appendChild(row);
   }
 
   function appendMarker(list, heading) {
     const markerKey = markerKeyFor(heading.element);
     const marker = document.createElement("button");
     marker.type = "button";
-    marker.className = `gpt-paragraph-nav__marker level-${heading.level}`;
+    marker.className = `gpt-paragraph-nav__marker gpt-paragraph-nav__marker--ai level-${heading.level}`;
     marker.style.setProperty("--marker-width", `${markerWidthFor(heading.title)}px`);
     marker.setAttribute("aria-label", heading.title);
     marker.dataset.markerKey = markerKey;
@@ -2340,18 +2609,101 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
       jumpToHeading(heading);
       updateFloatingActiveMarker();
     });
-    list.appendChild(marker);
+    appendMarkerRow(list, "ai", marker);
+  }
+
+  function appendUserMarker(list, group) {
+    const { user } = group;
+    const isExpanded = state.expandedUserMarkerKeys.has(group.key);
+    const marker = document.createElement("button");
+    marker.type = "button";
+    marker.className = "gpt-paragraph-nav__marker gpt-paragraph-nav__marker--user";
+    marker.style.setProperty("--marker-width", `${markerWidthFor(user.previewTitle)}px`);
+    marker.setAttribute("aria-expanded", String(isExpanded));
+    marker.setAttribute("aria-label", isExpanded
+      ? t("userMarker.collapseAria", { title: user.title })
+      : t("userMarker.expandAria", { title: user.title }));
+    marker.dataset.userMarkerKey = group.key;
+
+    const preview = document.createElement("span");
+    preview.className = "gpt-paragraph-nav__preview";
+    preview.textContent = markerPreviewFor(user.previewTitle);
+    marker.appendChild(preview);
+
+    const chevron = document.createElement("span");
+    chevron.className = "gpt-paragraph-nav__user-chevron";
+    chevron.setAttribute("aria-hidden", "true");
+    marker.appendChild(chevron);
+
+    const label = document.createElement("span");
+    label.className = "gpt-paragraph-nav__label";
+    label.textContent = user.title;
+    marker.appendChild(label);
+
+    marker.addEventListener("click", () => {
+      if (state.expandedUserMarkerKeys.has(group.key)) {
+        state.expandedUserMarkerKeys.delete(group.key);
+      } else {
+        state.expandedUserMarkerKeys.add(group.key);
+      }
+      render();
+    });
+    appendMarkerRow(list, "user", marker);
+  }
+
+  function displayedHeadingCount(group, headings) {
+    if (!headings.length) {
+      return 0;
+    }
+    if (!foldEnabledFor(headings)) {
+      return headings.length;
+    }
+
+    const groups = fullFoldGroups(headings);
+    const trailing = trailingHeadings(headings);
+    return groups.reduce((count, { index, group: foldedHeadings }) => (
+      count + 1 + (state.expandedFoldGroups.has(foldKeyFor(group, index)) ? foldedHeadings.length : 0)
+    ), trailing.length);
+  }
+
+  function appendMarkerGroup(list, group) {
+    const isSearchActive = Boolean(normalizeSearchQuery(state.markerSearchQuery));
+    const isExpanded = !group.user || isSearchActive || state.expandedUserMarkerKeys.has(group.key);
+
+    if (group.user) {
+      appendUserMarker(list, group);
+    }
+
+    if (isExpanded && group.visibleHeadings.length) {
+      const foldEnabled = foldEnabledFor(group.visibleHeadings);
+      const groups = foldEnabled ? fullFoldGroups(group.visibleHeadings) : [];
+      const trailing = foldEnabled ? trailingHeadings(group.visibleHeadings) : group.visibleHeadings;
+      groups.forEach(({ group: foldedHeadings, index }) => {
+        const foldKey = foldKeyFor(group, index);
+        appendFoldControl(list, foldedHeadings, foldKey);
+        if (state.expandedFoldGroups.has(foldKey)) {
+          foldedHeadings.forEach((heading) => appendMarker(list, heading));
+        }
+      });
+      trailing.forEach((heading) => appendMarker(list, heading));
+    }
   }
 
   function render() {
+    if (!isExtensionContextValid()) {
+      disposeInvalidExtensionContext();
+      return;
+    }
+
     if (!isSupportedRoute()) {
       closeExplosionOverlay();
       removeNavigationRoot();
       return;
     }
 
-    const containers = getAssistantContainers();
-    if (!containers.length) {
+    const assistantContainers = getAssistantContainers();
+    const userContainers = getUserContainers();
+    if (!assistantContainers.length && !userContainers.length) {
       closeExplosionOverlay();
       removeNavigationRoot();
       return;
@@ -2378,24 +2730,25 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
       searchWrapper.hidden = state.isCollapsed;
     }
     getExplosionOverlay(root);
-    const headings = collectHeadings(containers);
-    const visibleHeadings = filteredHeadings(headings);
-    const metrics = getConversationMetrics(containers);
+    const headings = collectHeadings(assistantContainers);
+    const markerGroups = collectMarkerGroups(userContainers, assistantContainers, headings);
+    syncUserMarkerExpansion(markerGroups);
+    const visibleGroups = filteredMarkerGroups(markerGroups);
+    const metrics = getConversationMetrics([...assistantContainers, ...userContainers]);
     ensureHeadingIds(headings);
     state.headings = headings;
+    state.markerGroups = markerGroups;
     state.conversationMetrics = metrics;
     document.documentElement.setAttribute(DEBUG_ATTR, `loaded:${headings.length}:${Math.round(metrics.length)}`);
-    const foldEnabled = foldEnabledFor(visibleHeadings);
-    const groups = foldEnabled ? fullFoldGroups(visibleHeadings) : [];
-    const trailing = foldEnabled ? trailingHeadings(visibleHeadings) : visibleHeadings;
-    const displayedCount = foldEnabled
-      ? groups.reduce((count, { index, group }) => (
-        count + 1 + (state.expandedFoldGroups.has(index) ? group.length : 0)
-      ), trailing.length)
-      : visibleHeadings.length;
+    const displayedCount = visibleGroups.reduce((count, group) => {
+      const isSearchActive = Boolean(normalizeSearchQuery(state.markerSearchQuery));
+      const isExpanded = !group.user || isSearchActive || state.expandedUserMarkerKeys.has(group.key);
+      return count + (group.user ? 1 : 0) + (isExpanded ? displayedHeadingCount(group, group.visibleHeadings) : 0);
+    }, 0);
+    const hasMarkers = markerGroups.length > 0;
     root.style.setProperty("--queue-visible-count", String(Math.min(displayedCount || 1, state.config.maxVisible)));
-    root.classList.toggle("is-empty", headings.length === 0);
-    root.classList.toggle("is-collapsed", state.isCollapsed && headings.length > 0);
+    root.classList.toggle("is-empty", !hasMarkers);
+    root.classList.toggle("is-collapsed", state.isCollapsed && hasMarkers);
     list.style.height = state.isCollapsed && state.collapsedListHeight > 0 ? `${state.collapsedListHeight}px` : "";
     list.setAttribute("aria-hidden", String(state.isCollapsed));
     list.textContent = "";
@@ -2407,22 +2760,15 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
       return;
     }
 
-    if (!visibleHeadings.length && state.markerSearchQuery) {
+    if (!visibleGroups.length && state.markerSearchQuery) {
       const empty = document.createElement("div");
       empty.className = "gpt-paragraph-nav__search-empty";
       empty.textContent = t("search.empty");
       list.appendChild(empty);
     }
 
-    if (foldEnabled) {
-      groups.forEach(({ group, index }) => {
-        appendFoldControl(list, group, index);
-        if (state.expandedFoldGroups.has(index)) {
-          group.forEach((heading) => appendMarker(list, heading));
-        }
-      });
-    }
-    trailing.forEach((heading) => appendMarker(list, heading));
+    visibleGroups.forEach((group) => appendMarkerGroup(list, group));
+    syncLiquidGlassElements(root);
 
     requestAnimationFrame(() => {
       state.collapsedListHeight = list.offsetHeight;
@@ -2450,6 +2796,7 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
     window.clearTimeout(state.suppressNextClickTimer);
     state.suppressNextClickTimer = 0;
     state.headings = [];
+    state.markerGroups = [];
     state.conversationMetrics = null;
     state.activeHeading = null;
     state.activeMarkerKey = "";
@@ -2464,6 +2811,8 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
     state.markerSearchQuery = "";
     state.explosionSearchQuery = "";
     state.expandedFoldGroups.clear();
+    state.expandedUserMarkerKeys.clear();
+    state.userMarkerExpansionInitialized = false;
   }
 
   function removeNavigationRoot() {
@@ -2497,13 +2846,18 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
   }
 
   function watchRouteChanges() {
+    if (!isExtensionContextValid()) {
+      disposeInvalidExtensionContext();
+      return;
+    }
+
     window.addEventListener(ROUTE_CHANGE_EVENT, handleRouteChange);
     if (document.querySelector("script[data-polaris-route-bridge]")) {
       return;
     }
 
     const bridge = document.createElement("script");
-    bridge.src = chrome.runtime.getURL("src/route-bridge.js");
+    bridge.src = extensionMetadata.routeBridgeUrl;
     bridge.dataset.polarisRouteBridge = "true";
     (document.head || document.documentElement).appendChild(bridge);
   }
@@ -2569,15 +2923,22 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
       return;
     }
 
-    const visibleHeadings = filteredHeadings(state.headings);
-    if (foldEnabledFor(visibleHeadings)) {
+    const group = state.markerGroups.find((candidate) => candidate.headings
+      .some((heading) => markerKeyFor(heading.element) === state.activeMarkerKey));
+    const visibleHeadings = group
+      ? (normalizeSearchQuery(state.markerSearchQuery)
+        ? group.headings.filter((heading) => matchesSearch(state.markerSearchQuery, heading.title))
+        : group.headings)
+      : filteredHeadings(state.headings);
+    if (group && foldEnabledFor(visibleHeadings)) {
       const markerIndex = visibleHeadings.findIndex((heading) => markerKeyFor(heading.element) === state.activeMarkerKey);
       const size = state.config.foldThreshold;
       const fullGroupCount = Math.floor(visibleHeadings.length / size);
       if (markerIndex >= 0 && markerIndex < fullGroupCount * size) {
         const groupIndex = Math.floor(markerIndex / size);
-        if (!state.expandedFoldGroups.has(groupIndex)) {
-          state.expandedFoldGroups.add(groupIndex);
+        const foldKey = foldKeyFor(group, groupIndex);
+        if (!state.expandedFoldGroups.has(foldKey)) {
+          state.expandedFoldGroups.add(foldKey);
           scheduleRender();
           return;
         }
@@ -2952,6 +3313,10 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
   }
 
   async function start() {
+    if (!cacheExtensionMetadata()) {
+      return;
+    }
+
     document.documentElement.setAttribute(DEBUG_ATTR, "loaded:0");
     state.config = await loadConfig();
     watchConfigChanges();

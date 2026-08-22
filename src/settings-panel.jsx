@@ -1,6 +1,5 @@
 import { Button } from "@heroui/react/button";
 import { Card } from "@heroui/react/card";
-import { Checkbox } from "@heroui/react/checkbox";
 import { Separator } from "@heroui/react/separator";
 import { Slider } from "@heroui/react/slider";
 import { createRoot } from "react-dom/client";
@@ -45,19 +44,25 @@ function SettingsSlider({ field, onChange, onCommit }) {
 
 function MarkerCheckbox({ label, isSelected, isDisabled, onChange }) {
   return (
-    <Checkbox
+    <label
       className="polaris-settings-checkbox"
-      isDisabled={isDisabled}
-      isSelected={isSelected}
-      onChange={onChange}
+      data-disabled={isDisabled || undefined}
+      data-selected={isSelected || undefined}
     >
-      <Checkbox.Content>
-        <Checkbox.Control>
-          <Checkbox.Indicator />
-        </Checkbox.Control>
+      <input
+        checked={isSelected}
+        className="polaris-settings-checkbox-input"
+        disabled={isDisabled}
+        onChange={(event) => onChange(event.currentTarget.checked)}
+        type="checkbox"
+      />
+      <span data-slot="checkbox-content">
+        <span aria-hidden="true" data-slot="checkbox-control">
+          <span data-slot="checkbox-indicator">✓</span>
+        </span>
         <span>{label}</span>
-      </Checkbox.Content>
-    </Checkbox>
+      </span>
+    </label>
   );
 }
 

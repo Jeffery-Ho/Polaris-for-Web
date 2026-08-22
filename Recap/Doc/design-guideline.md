@@ -31,14 +31,20 @@
 ## 设置面板
 
 - 设置面板使用固定 Header、可滚动内容区和固定 Footer：Header 左侧展示应用图标和 Polaris，右侧展示版本号（`版本号(build号)`）；Footer 展示同步状态与状态圆点。
+- 设置面板宽度必须与顶部 Tab 胶囊相同，并随胶囊宽度变化；视口不足时共同受可视宽度限制。
+- Header 与 Sync Footer 移除 HeroUI Card 默认外边距和行间隙；上下内边距统一为 8pt，内容行高为 16pt、模块总高为 32pt。
 - 最大数量、折叠数量和提示宽度使用 Slider，显示当前数值并沿用既有范围与步进；拖动时即时更新，释放后同步保存。轨道使用半透明玻璃描边与内高光，不使用实体底色；进度段和滑块使用主题黑白高亮。
 - Reset 按钮上下内边距为 16pt，保留全宽布局与主题高亮反馈。
 - 亮色模式下全扩展的按钮、Tab、marker、章节 chips、设置复选框、Slider 与焦点反馈使用黑底白字高亮；主 Tab 的非选中悬停态例外，使用玻璃填充色。深色模式保持白底黑字高亮。
-- 设置面板使用 HeroUI 的 Card、Slider、Checkbox、Button 与 Separator；React 和 HeroUI 预编译样式挂载到设置面板的 Shadow DOM。仅最外层 Card 使用 Polaris 原有毛玻璃背景、亮色高光描边和阴影；内部 Header、内容区与 Sync Footer 默认背景均透明，并隔离宿主页面样式。应用标识在左、版本号在右。
+- 设置面板使用 HeroUI 的 Card、Slider、Button 与 Separator；React 和 HeroUI 预编译样式挂载到设置面板的 Shadow DOM。仅最外层 Card 使用 Polaris 原有毛玻璃背景、亮色高光描边和阴影；内部 Header、内容区与 Sync Footer 默认背景均透明，并隔离宿主页面样式。应用标识在左、版本号在右。
+- Marker 类型筛选使用原生受控 checkbox，直接以 input 的 `change` 事件更新 AI maker 筛选；选中描边、勾选控件和禁用透明度由 label 根节点状态驱动，避免 Shadow DOM 内的组件按压事件失效。
 
 ## Marker Queue
 
 - marker 按文档顺序在右侧可滚动队列中显示，项目之间固定 8pt 间距。
+- AI 与用户 maker 正文不截断；文本可在顶部 Tab 胶囊宽度内换行，maker 和悬浮 active marker 的最大宽度均不得超过该宽度。
+- 用户消息作为 marker 分组根节点：保留现有 AI marker 顺序，仅按会话页面位置将 section 插入其关联首个 AI marker 前；显示首行摘要、右对齐并使用半透明淡蓝玻璃高亮，文字继承普通 marker 的主题颜色；点击仅展开或收起该消息到下一条用户消息前的连续 AI marker，最新一轮默认展开。
+- 同一用户分组内的 AI marker 和数量折叠卡片左对齐，分组宽度必须跟随顶部控制胶囊，不得使用提示宽度向左扩张；没有前置用户消息的 AI marker 保持左对齐且始终可见。搜索命中用户或 AI 内容时，必须显示其所属分组。
 - “最大数量”限制队列可见高度，超出部分通过队列内部滚动查看。
 - 队列在原有扩展命中区内同时支持滚轮/触摸板双指滚动，以及按压后上下拖动；拖动超过阈值后不得触发 marker 点击。
 - 点击 marker 后将对应标题元素滚动到会话可视区顶部。
@@ -52,6 +58,8 @@
 - 检查 tooltip 在暗色和亮色模式下均有足够对比。
 - 检查 tooltip 文本在当前提示宽度内换行展示，长英文或连续字符不再显示省略号。
 - 检查过滤后没有可见 marker 时，右侧仍保留三 Tab 控制胶囊与设置入口。
+- 检查用户 marker 在亮暗模式下均保持淡蓝色语义，且展开/收起不会影响其他用户分组或 AI marker 跳转。
+- 在扩展重新加载后保留原页面时，旧 content script 必须断开观察器并移除导航根节点，不得持续产生 `Extension context invalidated` 错误；图标、版本和路由脚本地址必须在启动时缓存，设置面板的 React 重渲染不得重新访问 Chrome 运行时 API。
 - 在小红书主站从 `/ai_chat` 切至普通路由时，检查插件根节点、章节遮罩与滚动锁立即移除；返回 `/ai_chat` 后只重建一套新导航。
 
 ## 章节视图

@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 83
+
+- Date: 2026-08-22
+- Version: 0.23.0
+- Summary: Aligns settings panel and maker widths with the Tab control capsule and shows full maker titles within that width.
+- Notes: Long titles wrap instead of being truncated; run `pnpm build` and load `dist/`.
+
 ## 82
 
 - Date: 2026-08-22
