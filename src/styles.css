@@ -260,6 +260,10 @@
   background: var(--gpt-explosion-mask-bg);
 }
 
+.gpt-paragraph-nav__explosion-overlay[hidden] {
+  display: none !important;
+}
+
 @media (prefers-color-scheme: dark) {
   .gpt-paragraph-nav__control-tab.is-active {
     background: #ffffff;
