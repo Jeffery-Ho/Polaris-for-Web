@@ -31,13 +31,13 @@
 ## 设置面板
 
 - 设置面板使用固定 Header、可滚动内容区和固定 Footer：Header 左侧展示应用图标和 Polaris，右侧展示版本号（`版本号(build号)`）；Footer 左侧展示同步状态与状态圆点，右侧展示邮件和 GitHub 图标入口。
-- Footer 联系入口仅使用图标显示，悬停提示与 ARIA 标签必须说明操作；邮件使用 `mailto:`，Issue 在新标签页打开。两个入口使用 HeroUI 风格圆形 ghost 按钮，默认半透明表面与细描边，亮暗主题下均沿用主题高亮与可见焦点。
+- Footer 联系入口仅使用图标显示，悬停提示与 ARIA 标签必须说明操作；邮件使用 `mailto:`，Issue 在新标签页打开。两个入口使用 Hero 风格圆形 ghost 按钮，默认半透明表面与细描边，亮暗主题下均沿用主题高亮与可见焦点。
 - 设置面板宽度必须与顶部 Tab 胶囊相同，并随胶囊宽度变化；视口不足时共同受可视宽度限制。
-- Header 与 Sync Footer 移除 HeroUI Card 默认外边距和行间隙；上下内边距统一为 8pt，内容行高为 16pt、模块总高为 32pt。
+- Header 与 Sync Footer 不使用额外组件默认外边距和行间隙；上下内边距统一为 8pt，内容行高为 16pt、模块总高为 32pt。
 - 最大数量、折叠数量和提示宽度使用 Slider，显示当前数值并沿用既有范围与步进；拖动时即时更新，释放后同步保存。轨道使用半透明玻璃描边与内高光，不使用实体底色；进度段和滑块使用主题黑白高亮。
 - Reset 按钮上下内边距为 16pt，保留全宽布局与主题高亮反馈。
 - 亮色模式下全扩展的按钮、Tab、marker、章节 chips、设置复选框、Slider 与焦点反馈使用黑底白字高亮；主 Tab 的非选中悬停态例外，使用玻璃填充色。深色模式保持白底黑字高亮。
-- 设置面板使用 HeroUI 的 Card、Slider、Button 与 Separator；React 和 HeroUI 预编译样式挂载到设置面板的 Shadow DOM。仅最外层 Card 使用 Polaris 原有毛玻璃背景、亮色高光描边和阴影；内部 Header、内容区与 Sync Footer 默认背景均透明，并隔离宿主页面样式。应用标识在左、版本号在右。
+- 设置面板使用原生 DOM 的 Card、Slider、Button 与 Separator 语义，并将其 CSS 挂载到设置面板的 Shadow DOM；不得引入 React、HeroUI 或其运行时依赖。仅最外层 Card 使用 Polaris 原有毛玻璃背景、亮色高光描边和阴影；内部 Header、内容区与 Sync Footer 默认背景均透明，并隔离宿主页面样式。应用标识在左、版本号在右。
 - Marker 类型筛选使用原生受控 checkbox，直接以 input 的 `change` 事件更新 AI maker 筛选；选中描边、勾选控件和禁用透明度由 label 根节点状态驱动，避免 Shadow DOM 内的组件按压事件失效。
 
 ## Marker Queue
@@ -61,7 +61,7 @@
 - 检查 tooltip 文本在当前提示宽度内换行展示，长英文或连续字符不再显示省略号。
 - 检查过滤后没有可见 marker 时，右侧仍保留三 Tab 控制胶囊与设置入口。
 - 检查用户 marker 在亮暗模式下均保持淡蓝色语义，且展开/收起不会影响其他用户分组或 AI marker 跳转。
-- 在扩展重新加载后保留原页面时，旧 content script 必须断开观察器并移除导航根节点，不得持续产生 `Extension context invalidated` 错误；图标、版本和路由脚本地址必须在启动时缓存，设置面板的 React 重渲染不得重新访问 Chrome 运行时 API。
+- 在扩展重新加载后保留原页面时，旧 content script 必须断开观察器并移除导航根节点，不得持续产生 `Extension context invalidated` 错误；图标、版本和路由脚本地址必须在启动时缓存，设置面板的原生 DOM 重渲染不得重新访问 Chrome 运行时 API。
 - 在小红书主站从 `/ai_chat` 切至普通路由时，检查插件根节点、章节遮罩与滚动锁立即移除；返回 `/ai_chat` 后只重建一套新导航。
 
 ## 章节视图

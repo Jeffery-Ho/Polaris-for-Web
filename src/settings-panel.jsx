@@ -1,153 +1,196 @@
-import { Button } from "@heroui/react/button";
-import { Card } from "@heroui/react/card";
-import { Separator } from "@heroui/react/separator";
-import { Slider } from "@heroui/react/slider";
-import { createRoot } from "react-dom/client";
 import settingsStyles from "./settings-panel.css?inline";
 
-function toNumber(value) {
-  return Array.isArray(value) ? value[0] : value;
+function createElement(tagName, className) {
+  const element = document.createElement(tagName);
+  if (className) {
+    element.className = className;
+  }
+  return element;
 }
 
-function SettingsSlider({ field, onChange, onCommit }) {
-  const value = field.value;
-  const displayValue = `${value}${field.unit ? ` ${field.unit}` : ""}`;
-
-  return (
-    <Slider
-      aria-label={field.label}
-      className="polaris-settings-slider"
-      maxValue={field.max}
-      minValue={field.min}
-      onBlur={() => onCommit(field.key, value)}
-      onChange={(nextValue) => onChange(field.key, toNumber(nextValue))}
-      onChangeEnd={(nextValue) => onCommit(field.key, toNumber(nextValue))}
-      onKeyUp={(event) => {
-        if (["ArrowDown", "ArrowLeft", "ArrowRight", "ArrowUp", "End", "Home", "PageDown", "PageUp"].includes(event.key)) {
-          onCommit(field.key, value);
-        }
-      }}
-      step={field.step}
-      value={value}
-    >
-      <div className="polaris-settings-slider-label">
-        <span>{field.label}</span>
-        <Slider.Output>{() => displayValue}</Slider.Output>
-      </div>
-      <Slider.Track>
-        <Slider.Fill />
-        <Slider.Thumb />
-      </Slider.Track>
-    </Slider>
-  );
+function createIcon(pathData) {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("aria-hidden", "true");
+  svg.setAttribute("focusable", "false");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  path.setAttribute("d", pathData);
+  path.setAttribute("fill", "currentColor");
+  svg.appendChild(path);
+  return svg;
 }
 
-function MarkerCheckbox({ label, isSelected, isDisabled, onChange }) {
-  return (
-    <label
-      className="polaris-settings-checkbox"
-      data-disabled={isDisabled || undefined}
-      data-selected={isSelected || undefined}
-    >
-      <input
-        checked={isSelected}
-        className="polaris-settings-checkbox-input"
-        disabled={isDisabled}
-        onChange={(event) => onChange(event.currentTarget.checked)}
-        type="checkbox"
-      />
-      <span data-slot="checkbox-content">
-        <span aria-hidden="true" data-slot="checkbox-control">
-          <span data-slot="checkbox-indicator">✓</span>
-        </span>
-        <span>{label}</span>
-      </span>
-    </label>
-  );
+function createMailIcon() {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("aria-hidden", "true");
+  svg.setAttribute("fill", "none");
+  svg.setAttribute("focusable", "false");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  path.setAttribute("d", "M4 6.5h16v11H4zM4.5 7l7.5 6 7.5-6");
+  path.setAttribute("stroke", "currentColor");
+  path.setAttribute("stroke-linecap", "round");
+  path.setAttribute("stroke-linejoin", "round");
+  path.setAttribute("stroke-width", "1.7");
+  svg.appendChild(path);
+  return svg;
 }
 
-function MailIcon() {
-  return (
-    <svg aria-hidden="true" fill="none" focusable="false" viewBox="0 0 24 24">
-      <path d="M4 6.5h16v11H4zM4.5 7l7.5 6 7.5-6" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.7" />
-    </svg>
-  );
+function createSlider(field, model) {
+  const wrapper = createElement("label", "polaris-settings-slider");
+  const label = createElement("span", "polaris-settings-slider-label");
+  const name = document.createElement("span");
+  name.textContent = field.label;
+  const output = createElement("output", "polaris-settings-slider-output");
+  output.textContent = `${field.value}${field.unit ? ` ${field.unit}` : ""}`;
+  label.append(name, output);
+
+  const input = document.createElement("input");
+  input.type = "range";
+  input.min = String(field.min);
+  input.max = String(field.max);
+  input.step = String(field.step);
+  input.value = String(field.value);
+  input.setAttribute("aria-label", field.label);
+  const syncProgress = () => {
+    const progress = ((Number(input.value) - field.min) / (field.max - field.min)) * 100;
+    input.style.setProperty("--polaris-slider-progress", `${progress}%`);
+  };
+  syncProgress();
+  input.addEventListener("input", () => {
+    syncProgress();
+    model.onConfigChange(field.key, Number(input.value));
+  });
+  input.addEventListener("change", () => model.onConfigCommit(field.key));
+  input.addEventListener("keyup", (event) => {
+    if (["ArrowDown", "ArrowLeft", "ArrowRight", "ArrowUp", "End", "Home", "PageDown", "PageUp"].includes(event.key)) {
+      model.onConfigCommit(field.key);
+    }
+  });
+  wrapper.append(label, input);
+  return wrapper;
 }
 
-function GitHubIcon() {
-  return (
-    <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24">
-      <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.161-1.11-1.47-1.11-1.47-.908-.62.069-.608.069-.608 1.003.071 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.03-2.688-.103-.253-.447-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.748-1.026 2.748-1.026.546 1.379.202 2.398.1 2.65.64.7 1.029 1.595 1.029 2.688 0 3.848-2.339 4.695-4.566 4.944.359.31.678.921.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.481A10.019 10.019 0 0 0 22 12.017C22 6.484 17.523 2 12 2Z" fill="currentColor" />
-    </svg>
-  );
+function createCheckbox({ label, isSelected, isDisabled, onChange }) {
+  const wrapper = createElement("label", "polaris-settings-checkbox");
+  if (isSelected) {
+    wrapper.dataset.selected = "true";
+  }
+  if (isDisabled) {
+    wrapper.dataset.disabled = "true";
+  }
+
+  const input = document.createElement("input");
+  input.checked = isSelected;
+  input.className = "polaris-settings-checkbox-input";
+  input.disabled = isDisabled;
+  input.type = "checkbox";
+  input.addEventListener("change", () => onChange(input.checked));
+
+  const content = document.createElement("span");
+  content.dataset.slot = "checkbox-content";
+  const control = document.createElement("span");
+  control.setAttribute("aria-hidden", "true");
+  control.dataset.slot = "checkbox-control";
+  const indicator = document.createElement("span");
+  indicator.dataset.slot = "checkbox-indicator";
+  indicator.textContent = "✓";
+  control.appendChild(indicator);
+  const text = document.createElement("span");
+  text.textContent = label;
+  content.append(control, text);
+  wrapper.append(input, content);
+  return wrapper;
 }
 
-function SettingsPanel({ model }) {
-  return (
-    <div className="polaris-settings-shell default">
-      <Card className="polaris-settings-card">
-        <Card.Header className="polaris-settings-header">
-          <div className="polaris-settings-app">
-            <img alt="" height="16" src={model.iconUrl} width="16" />
-            <Card.Title>{model.appName}</Card.Title>
-          </div>
-          <span className="polaris-settings-version">{model.version}</span>
-        </Card.Header>
-        <Separator />
-        <Card.Content className="polaris-settings-body">
-          <div className="polaris-settings-sliders">
-            {model.fields.map((field) => (
-              <SettingsSlider
-                field={field}
-                key={field.key}
-                onChange={model.onConfigChange}
-                onCommit={model.onConfigCommit}
-              />
-            ))}
-          </div>
-          <Separator />
-          <section aria-label={model.markerTypesLabel} className="polaris-settings-marker-types">
-            <span className="polaris-settings-section-label">{model.markerTypesLabel}</span>
-            <div className="polaris-settings-checkboxes">
-              {model.markerLevels.map((option) => (
-                <MarkerCheckbox
-                  isDisabled={option.isDisabled}
-                  isSelected={option.isSelected}
-                  key={option.key}
-                  label={option.label}
-                  onChange={(isSelected) => model.onMarkerLevelChange(option.level, isSelected)}
-                />
-              ))}
-              <MarkerCheckbox
-                isDisabled={false}
-                isSelected={model.unorderedList.isSelected}
-                label={model.unorderedList.label}
-                onChange={model.onUnorderedListChange}
-              />
-            </div>
-          </section>
-          <Button className="polaris-settings-reset" fullWidth onPress={model.onReset} variant="secondary">
-            {model.resetLabel}
-          </Button>
-        </Card.Content>
-        <Separator />
-        <Card.Footer className="polaris-settings-footer">
-          <div aria-live="polite" className="polaris-settings-sync" role="status">
-            <span aria-hidden="true" className={`polaris-settings-sync-dot${model.syncEnabled ? " is-enabled" : ""}`} />
-            <span>{model.syncEnabled ? model.syncEnabledLabel : model.syncDisabledLabel}</span>
-          </div>
-          <div aria-label={model.contactLabel} className="polaris-settings-contact-actions">
-            <a aria-label={model.emailLabel} className="polaris-settings-contact-action" href={model.emailUrl} title={model.emailLabel}>
-              <MailIcon />
-            </a>
-            <a aria-label={model.issueLabel} className="polaris-settings-contact-action" href={model.issueUrl} rel="noreferrer" target="_blank" title={model.issueLabel}>
-              <GitHubIcon />
-            </a>
-          </div>
-        </Card.Footer>
-      </Card>
-    </div>
-  );
+function createSeparator() {
+  const separator = createElement("div", "polaris-settings-separator");
+  separator.setAttribute("aria-hidden", "true");
+  return separator;
+}
+
+function createSettingsPanel(model) {
+  const shell = createElement("div", "polaris-settings-shell");
+  const card = createElement("section", "polaris-settings-card");
+  card.setAttribute("aria-label", model.appName);
+
+  const header = createElement("header", "polaris-settings-header");
+  const app = createElement("div", "polaris-settings-app");
+  const icon = document.createElement("img");
+  icon.alt = "";
+  icon.height = 16;
+  icon.src = model.iconUrl;
+  icon.width = 16;
+  const title = createElement("span", "polaris-settings-app-title");
+  title.textContent = model.appName;
+  app.append(icon, title);
+  const version = createElement("span", "polaris-settings-version");
+  version.textContent = model.version;
+  header.append(app, version);
+
+  const body = createElement("div", "polaris-settings-body");
+  const sliders = createElement("div", "polaris-settings-sliders");
+  model.fields.forEach((field) => sliders.appendChild(createSlider(field, model)));
+  body.append(sliders, createSeparator());
+
+  const markerTypes = createElement("section", "polaris-settings-marker-types");
+  markerTypes.setAttribute("aria-label", model.markerTypesLabel);
+  const markerTypesLabel = createElement("span", "polaris-settings-section-label");
+  markerTypesLabel.textContent = model.markerTypesLabel;
+  const checkboxes = createElement("div", "polaris-settings-checkboxes");
+  model.markerLevels.forEach((option) => {
+    checkboxes.appendChild(createCheckbox({
+      label: option.label,
+      isDisabled: option.isDisabled,
+      isSelected: option.isSelected,
+      onChange: (isSelected) => model.onMarkerLevelChange(option.level, isSelected)
+    }));
+  });
+  checkboxes.appendChild(createCheckbox({
+    label: model.unorderedList.label,
+    isDisabled: false,
+    isSelected: model.unorderedList.isSelected,
+    onChange: model.onUnorderedListChange
+  }));
+  markerTypes.append(markerTypesLabel, checkboxes);
+  body.appendChild(markerTypes);
+
+  const reset = createElement("button", "polaris-settings-reset");
+  reset.type = "button";
+  reset.textContent = model.resetLabel;
+  reset.addEventListener("click", model.onReset);
+  body.appendChild(reset);
+
+  const footer = createElement("footer", "polaris-settings-footer");
+  const sync = createElement("div", "polaris-settings-sync");
+  sync.setAttribute("aria-live", "polite");
+  sync.setAttribute("role", "status");
+  const syncDot = createElement("span", `polaris-settings-sync-dot${model.syncEnabled ? " is-enabled" : ""}`);
+  syncDot.setAttribute("aria-hidden", "true");
+  const syncText = document.createElement("span");
+  syncText.textContent = model.syncEnabled ? model.syncEnabledLabel : model.syncDisabledLabel;
+  sync.append(syncDot, syncText);
+
+  const actions = createElement("div", "polaris-settings-contact-actions");
+  actions.setAttribute("aria-label", model.contactLabel);
+  const email = createElement("a", "polaris-settings-contact-action");
+  email.setAttribute("aria-label", model.emailLabel);
+  email.href = model.emailUrl;
+  email.title = model.emailLabel;
+  email.appendChild(createMailIcon());
+  const issue = createElement("a", "polaris-settings-contact-action");
+  issue.setAttribute("aria-label", model.issueLabel);
+  issue.href = model.issueUrl;
+  issue.rel = "noreferrer";
+  issue.target = "_blank";
+  issue.title = model.issueLabel;
+  issue.appendChild(createIcon("M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.161-1.11-1.47-1.11-1.47-.908-.62.069-.608.069-.608 1.003.071 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.03-2.688-.103-.253-.447-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.748-1.026 2.748-1.026.546 1.379.202 2.398.1 2.65.64.7 1.029 1.595 1.029 2.688 0 3.848-2.339 4.695-4.566 4.944.359.31.678.921.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.481A10.019 10.019 0 0 0 22 12.017C22 6.484 17.523 2 12 2Z"));
+  actions.append(email, issue);
+  footer.append(sync, actions);
+
+  card.append(header, createSeparator(), body, createSeparator(), footer);
+  shell.appendChild(card);
+  return shell;
 }
 
 export function mountSettingsPanel(host) {
@@ -156,14 +199,12 @@ export function mountSettingsPanel(host) {
   style.textContent = settingsStyles;
   const mountPoint = document.createElement("div");
   shadowRoot.replaceChildren(style, mountPoint);
-  const root = createRoot(mountPoint);
 
   return {
     render(model) {
-      root.render(<SettingsPanel model={model} />);
+      mountPoint.replaceChildren(createSettingsPanel(model));
     },
     unmount() {
-      root.unmount();
       shadowRoot.replaceChildren();
     }
   };

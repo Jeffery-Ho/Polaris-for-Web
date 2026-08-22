@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 87
+
+- Date: 2026-08-22
+- Version: 0.24.3
+- Summary: Removes the HeroUI and React runtime from the settings panel.
+- Notes: Native DOM controls preserve the existing glass design, keyboard focus, syncing and feedback links. Run `pnpm build` and load `dist/`.
+
 ## 86
 
 - Date: 2026-08-22
