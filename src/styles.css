@@ -135,9 +135,6 @@
 
 .gpt-paragraph-nav__control-capsule,
 .gpt-paragraph-nav__control-compact-toggle,
-.gpt-paragraph-nav__settings-menu,
-.gpt-paragraph-nav__settings-row input,
-.gpt-paragraph-nav__settings-reset,
 .gpt-paragraph-nav__search-input,
 .gpt-paragraph-nav__fold,
 .gpt-paragraph-nav__marker,
@@ -148,9 +145,6 @@
 
 .gpt-paragraph-nav__control-capsule,
 .gpt-paragraph-nav__control-compact-toggle,
-.gpt-paragraph-nav__settings-menu,
-.gpt-paragraph-nav__settings-row input,
-.gpt-paragraph-nav__settings-reset,
 .gpt-paragraph-nav__search-input,
 .gpt-paragraph-nav__fold {
   box-shadow: var(--gpt-glass-shadow), 0 0 0 1px var(--gpt-glass-border);
@@ -159,9 +153,6 @@
 @supports ((backdrop-filter: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3C/svg%3E#displace") blur(1px)) or (-webkit-backdrop-filter: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3C/svg%3E#displace") blur(1px))) {
   .gpt-paragraph-nav__control-capsule,
   .gpt-paragraph-nav__control-compact-toggle,
-  .gpt-paragraph-nav__settings-menu,
-  .gpt-paragraph-nav__settings-row input,
-  .gpt-paragraph-nav__settings-reset,
   .gpt-paragraph-nav__search-input,
   .gpt-paragraph-nav__fold,
   .gpt-paragraph-nav__marker,
@@ -307,8 +298,8 @@ html.gpt-paragraph-nav--dragging * {
 
 .gpt-paragraph-nav__control-tab:not(.is-active):hover,
 .gpt-paragraph-nav__control-tab:not(.is-active):focus-visible {
-  background: var(--gpt-glass-hover-bg);
-  color: var(--gpt-highlight-text);
+  background: var(--gpt-arco-fill-3);
+  color: var(--gpt-arco-text-1);
 }
 
 .gpt-paragraph-nav__control-tab.is-active {
@@ -682,275 +673,6 @@ html.gpt-paragraph-nav--dragging * {
   }
 }
 
-.gpt-paragraph-nav__settings-menu {
-  --gpt-glass-blur: 24px;
-  --gpt-glass-saturate: 210%;
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
-  width: 300px;
-  height: min(72vh, 480px);
-  padding: 0;
-  border: 1px solid var(--gpt-glass-border);
-  border-radius: 14px;
-  background: var(--gpt-glass-menu-bg);
-  color: var(--gpt-arco-text-1);
-  box-shadow: var(--gpt-glass-shadow);
-  overflow: hidden;
-  pointer-events: auto;
-  z-index: 3;
-}
-
-.gpt-paragraph-nav__settings-header,
-.gpt-paragraph-nav__settings-footer {
-  display: flex;
-  align-items: center;
-  min-height: 44px;
-  padding: 0 12px;
-  background: var(--gpt-glass-menu-bg);
-  box-sizing: border-box;
-  flex: 0 0 auto;
-  z-index: 1;
-}
-
-.gpt-paragraph-nav__settings-header {
-  justify-content: space-between;
-  border-bottom: 1px solid var(--gpt-arco-border);
-}
-
-.gpt-paragraph-nav__settings-footer {
-  justify-content: flex-start;
-  border-top: 1px solid var(--gpt-arco-border);
-}
-
-.gpt-paragraph-nav__settings-app {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  min-width: 0;
-  color: var(--gpt-arco-text-1);
-  font: 700 13px/1 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-}
-
-.gpt-paragraph-nav__settings-app-icon {
-  display: block;
-  width: 16px;
-  height: 16px;
-  flex: 0 0 16px;
-}
-
-.gpt-paragraph-nav__settings-body {
-  min-height: 0;
-  padding: 12px;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scrollbar-width: thin;
-}
-
-.gpt-paragraph-nav__settings-sync {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  color: var(--gpt-arco-text-2);
-  font: 600 13px/1 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-}
-
-.gpt-paragraph-nav__settings-sync-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 999px;
-  background: rgba(148, 163, 184, 0.9);
-  box-shadow: 0 0 0 2px rgba(148, 163, 184, 0.18);
-}
-
-.gpt-paragraph-nav__settings-sync.is-enabled {
-  color: rgb(0, 180, 42);
-}
-
-.gpt-paragraph-nav__settings-sync.is-enabled .gpt-paragraph-nav__settings-sync-dot {
-  background: #22c55e;
-  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.22);
-}
-
-.gpt-paragraph-nav__settings-version {
-  color: var(--gpt-arco-text-3);
-  font: 500 12px/1 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-}
-
-.gpt-paragraph-nav__settings-row {
-  display: grid;
-  grid-template-columns: 78px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 8px;
-  margin: 0 0 10px 0;
-  color: var(--gpt-arco-text-1);
-  font: 600 13px/1.2 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-}
-
-.gpt-paragraph-nav__settings-row input[type="range"] {
-  width: 100%;
-  min-width: 0;
-  height: 20px;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  appearance: none;
-  accent-color: var(--gpt-arco-primary);
-  background: transparent;
-  box-shadow: none;
-  cursor: pointer;
-}
-
-.gpt-paragraph-nav__settings-row input[type="range"]::-webkit-slider-runnable-track {
-  height: 4px;
-  border-radius: 999px;
-  background: linear-gradient(to right, var(--gpt-arco-primary) 0 var(--settings-slider-progress, 0%), var(--gpt-arco-fill-3) var(--settings-slider-progress, 0%) 100%);
-}
-
-.gpt-paragraph-nav__settings-row input[type="range"]::-webkit-slider-thumb {
-  width: 14px;
-  height: 14px;
-  margin-top: -5px;
-  border: 0;
-  border-radius: 50%;
-  appearance: none;
-  background: var(--gpt-arco-primary);
-  box-shadow: 0 0 0 2px var(--gpt-glass-menu-bg);
-}
-
-.gpt-paragraph-nav__settings-row input[type="range"]::-moz-range-track {
-  height: 4px;
-  border-radius: 999px;
-  background: var(--gpt-arco-fill-3);
-}
-
-.gpt-paragraph-nav__settings-row input[type="range"]::-moz-range-progress,
-.gpt-paragraph-nav__settings-row input[type="range"]::-moz-range-thumb {
-  border: 0;
-  background: var(--gpt-arco-primary);
-}
-
-.gpt-paragraph-nav__settings-row input[type="range"]::-moz-range-thumb {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  box-shadow: 0 0 0 2px var(--gpt-glass-menu-bg);
-}
-
-.gpt-paragraph-nav__settings-row input[type="range"]:focus-visible {
-  outline: 2px solid var(--gpt-arco-primary);
-  outline-offset: 3px;
-}
-
-.gpt-paragraph-nav__settings-value {
-  min-width: 38px;
-  color: var(--gpt-arco-text-1);
-  font: 600 12px/1 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  font-variant-numeric: tabular-nums;
-  text-align: right;
-}
-
-.gpt-paragraph-nav__settings-level-filter {
-  display: grid;
-  grid-template-columns: 78px 1fr;
-  align-items: center;
-  gap: 8px;
-  margin: 2px 0 12px 0;
-  padding: 0;
-  border: 0;
-  color: var(--gpt-arco-text-1);
-}
-
-.gpt-paragraph-nav__settings-level-label {
-  font: 600 13px/1.2 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-}
-
-.gpt-paragraph-nav__settings-level-options {
-  display: inline-flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.gpt-paragraph-nav__settings-level-option {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 26px;
-  padding: 3px 8px;
-  border-radius: 6px;
-  background: var(--gpt-arco-fill-2);
-  color: var(--gpt-arco-text-1);
-  cursor: pointer;
-  font: 500 12px/1 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  transition: background 120ms ease;
-}
-
-.gpt-paragraph-nav__settings-level-option:hover {
-  background: var(--gpt-glass-hover-bg);
-  color: var(--gpt-highlight-text);
-}
-
-.gpt-paragraph-nav__settings-level-option[hidden] {
-  display: none;
-}
-
-.gpt-paragraph-nav__settings-level-option input {
-  position: relative;
-  width: 14px;
-  height: 14px;
-  margin: 0;
-  border: 1px solid var(--gpt-arco-border);
-  border-radius: 3px;
-  appearance: none;
-  background: rgba(255, 255, 255, 0.1);
-  cursor: inherit;
-}
-
-.gpt-paragraph-nav__settings-level-option input:checked {
-  border-color: var(--gpt-arco-primary);
-  background: var(--gpt-arco-primary);
-}
-
-.gpt-paragraph-nav__settings-level-option input:checked::after {
-  content: "";
-  position: absolute;
-  left: 4px;
-  top: 1px;
-  width: 4px;
-  height: 8px;
-  border: solid var(--gpt-highlight-text);
-  border-width: 0 2px 2px 0;
-  transform: rotate(45deg);
-}
-
-.gpt-paragraph-nav__settings-level-option input:focus-visible {
-  outline: 2px solid var(--gpt-arco-primary);
-  outline-offset: 2px;
-}
-
-.gpt-paragraph-nav__settings-level-option:has(input:disabled) {
-  cursor: default;
-  opacity: 0.62;
-}
-
-.gpt-paragraph-nav__settings-reset {
-  width: 100%;
-  min-height: 32px;
-  border: 0;
-  border-radius: 6px;
-  background: var(--gpt-glass-reset-bg);
-  box-shadow: var(--gpt-glass-shadow);
-  color: var(--gpt-arco-text-1);
-  cursor: pointer;
-  font: 600 13px/1 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  transition: background 120ms ease, color 120ms ease;
-}
-
-.gpt-paragraph-nav__settings-reset:hover,
-.gpt-paragraph-nav__settings-reset:focus-visible {
-  background: var(--gpt-glass-hover-bg);
-  color: var(--gpt-highlight-text);
-}
-
 .gpt-paragraph-nav__list::-webkit-scrollbar {
   width: 4px;
 }
@@ -1191,35 +913,6 @@ html.gpt-paragraph-nav--dragging * {
     color: #0f172a;
   }
 
-
-  .gpt-paragraph-nav__settings-menu {
-    border-color: rgba(255, 255, 255, 0.54);
-    background: var(--gpt-glass-menu-bg);
-    color: #0f172a;
-  }
-
-  .gpt-paragraph-nav__settings-sync {
-    color: var(--gpt-arco-text-2);
-  }
-
-  .gpt-paragraph-nav__settings-sync.is-enabled {
-    color: rgb(0, 180, 42);
-  }
-
-  .gpt-paragraph-nav__settings-version {
-    color: var(--gpt-arco-text-3);
-  }
-
-  .gpt-paragraph-nav__settings-reset {
-    background: var(--gpt-glass-reset-bg);
-    color: var(--gpt-arco-text-1);
-  }
-
-  .gpt-paragraph-nav__settings-reset:hover,
-  .gpt-paragraph-nav__settings-reset:focus-visible {
-    background: var(--gpt-glass-hover-bg);
-    color: var(--gpt-highlight-text);
-  }
 
   .gpt-paragraph-nav__search-input::-webkit-search-cancel-button,
   .gpt-paragraph-nav__explosion-search-input::-webkit-search-cancel-button {

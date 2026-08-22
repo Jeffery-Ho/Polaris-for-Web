@@ -110,7 +110,7 @@
 - Use one shared config for all supported sites.
 - Show sync status in the settings menu: green dot with `同步已启用` after successful sync storage access, grey dot with `同步未启用` when unavailable or failed.
 - Show the loaded extension `version_name` in the settings menu as read-only version/build information.
-- Place version/build text to the right of sync status with `12pt` spacing.
+- Place version/build text in the settings Header, opposite the Polaris app identity; keep sync status in the fixed Footer.
 - When sync config is empty, migrate valid legacy `localStorage` config without deleting the legacy value.
 - The settings reset button hover/focus state must remain visible on light menus and may reuse the marker hover pale blue.
 

@@ -10,12 +10,19 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 82
+
+- Date: 2026-08-22
+- Version: 0.23.0
+- Summary: Rebuilds the settings panel with HeroUI React components in an isolated Shadow DOM.
+- Notes: Run `pnpm build` and load `dist/`; Slider changes apply immediately and synchronize on release.
+
 ## 81
 
 - Date: 2026-08-22
 - Version: 0.22.0
 - Summary: Reworks the settings panel with fixed app and sync regions, slider controls, and unified theme highlights.
-- Notes: The visible app name is Polaris; the Manifest name is unchanged.
+- Notes: The visible app name is Polaris; the Manifest name is unchanged; the displayed version format is `0.22.0(81)`.
 
 ## 80
 

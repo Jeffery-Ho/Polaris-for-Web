@@ -69,8 +69,8 @@
         "https://www.diandianlife.top/*"
       ],
       "js": [
-        "dist/assets/i18n.js",
-        "dist/assets/content.js"
+        "src/i18n.js",
+        "src/content.js"
       ],
       "css": [
         "src/styles.css"

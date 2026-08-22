@@ -1,3 +1,5 @@
+import { mountSettingsPanel } from "./settings-panel.jsx";
+
 (() => {
   const { t } = globalThis.PolarisI18n;
   const ROOT_ID = "gpt-paragraph-nav";
@@ -93,9 +95,6 @@
   const LIQUID_GLASS_SELECTOR = [
     `.${CONTROL_CAPSULE_CLASS}`,
     `.${CONTROL_COMPACT_TOGGLE_CLASS}`,
-    ".gpt-paragraph-nav__settings-menu",
-    ".gpt-paragraph-nav__settings-row input",
-    ".gpt-paragraph-nav__settings-reset",
     ".gpt-paragraph-nav__search-input",
     ".gpt-paragraph-nav__fold",
     ".gpt-paragraph-nav__marker",
@@ -153,6 +152,7 @@
   });
   const markerKeys = new WeakMap();
   const liquidGlassSignatures = new WeakMap();
+  const settingsPanelControllers = new WeakMap();
   let nextMarkerKey = 1;
 
   const state = {
@@ -523,171 +523,9 @@
       settings.setAttribute("role", "tabpanel");
       settings.setAttribute("aria-labelledby", "gpt-paragraph-nav-tab-settings");
       settings.tabIndex = -1;
-
-      const menu = document.createElement("div");
-      menu.className = "gpt-paragraph-nav__settings-menu";
-      menu.setAttribute("role", "region");
-      menu.setAttribute("aria-label", t("settings.label"));
-
-      const header = document.createElement("div");
-      header.className = "gpt-paragraph-nav__settings-header";
-
-      const appIdentity = document.createElement("div");
-      appIdentity.className = "gpt-paragraph-nav__settings-app";
-      const appIcon = document.createElement("img");
-      appIcon.className = "gpt-paragraph-nav__settings-app-icon";
-      appIcon.alt = "";
-      appIcon.width = 16;
-      appIcon.height = 16;
-      appIcon.src = chrome.runtime.getURL("icons/gpt-voyager-icon-96.png");
-      appIdentity.appendChild(appIcon);
-      const appName = document.createElement("span");
-      appName.textContent = t("settings.appName");
-      appIdentity.appendChild(appName);
-      header.appendChild(appIdentity);
-
-      const syncStatus = document.createElement("div");
-      syncStatus.className = "gpt-paragraph-nav__settings-sync";
-      syncStatus.setAttribute("role", "status");
-      syncStatus.setAttribute("aria-live", "polite");
-
-      const syncDot = document.createElement("span");
-      syncDot.className = "gpt-paragraph-nav__settings-sync-dot";
-      syncDot.setAttribute("aria-hidden", "true");
-      syncStatus.appendChild(syncDot);
-
-      const syncText = document.createElement("span");
-      syncText.className = "gpt-paragraph-nav__settings-sync-text";
-      syncStatus.appendChild(syncText);
-
-      const manifest = chrome.runtime.getManifest();
-      const versionStatus = document.createElement("div");
-      versionStatus.className = "gpt-paragraph-nav__settings-version";
-      versionStatus.textContent = manifest.version_name || `v${manifest.version}`;
-      header.appendChild(versionStatus);
-      menu.appendChild(header);
-
-      const body = document.createElement("div");
-      body.className = "gpt-paragraph-nav__settings-body";
-
-      const footer = document.createElement("div");
-      footer.className = "gpt-paragraph-nav__settings-footer";
-      footer.appendChild(syncStatus);
-
-      CONFIG_FIELDS.forEach((field) => {
-        const row = document.createElement("label");
-        row.className = "gpt-paragraph-nav__settings-row";
-
-        const label = document.createElement("span");
-        label.textContent = field.label;
-        row.appendChild(label);
-
-        const input = document.createElement("input");
-        input.type = "range";
-        input.min = String(field.min);
-        input.max = String(field.max);
-        input.step = String(field.step);
-        input.dataset.configKey = field.key;
-        input.addEventListener("input", () => {
-          state.config = normalizeConfig({
-            ...state.config,
-            [field.key]: input.value
-          });
-          syncSettingsInputs(settings);
-          render();
-        });
-        input.addEventListener("change", () => {
-          saveConfig(state.config);
-        });
-        row.appendChild(input);
-
-        const value = document.createElement("output");
-        value.className = "gpt-paragraph-nav__settings-value";
-        value.dataset.configValue = field.key;
-        value.dataset.unit = field.unit;
-        row.appendChild(value);
-
-        body.appendChild(row);
-      });
-
-      const levelFilter = document.createElement("div");
-      levelFilter.className = "gpt-paragraph-nav__settings-level-filter";
-      levelFilter.setAttribute("role", "group");
-      levelFilter.setAttribute("aria-label", t("settings.markerTypes"));
-
-      const levelLegend = document.createElement("span");
-      levelLegend.className = "gpt-paragraph-nav__settings-level-label";
-      levelLegend.textContent = t("settings.markerTypes");
-      levelFilter.appendChild(levelLegend);
-
-      const levelOptions = document.createElement("div");
-      levelOptions.className = "gpt-paragraph-nav__settings-level-options";
-      MARKER_LEVEL_OPTIONS.forEach((level) => {
-        const option = document.createElement("label");
-        option.className = "gpt-paragraph-nav__settings-level-option";
-        option.dataset.markerLevelOption = String(level);
-
-        const checkbox = document.createElement("input");
-        checkbox.type = "checkbox";
-        checkbox.dataset.markerLevel = String(level);
-        checkbox.addEventListener("change", () => {
-          updateEnabledLevelForCurrentPlatform(level, checkbox.checked);
-          saveConfig(state.config);
-          syncSettingsInputs(settings);
-          render();
-        });
-        option.appendChild(checkbox);
-
-        const label = document.createElement("span");
-        label.textContent = `H${level}`;
-        option.appendChild(label);
-
-        levelOptions.appendChild(option);
-      });
-
-      const unorderedListOption = document.createElement("label");
-      unorderedListOption.className = "gpt-paragraph-nav__settings-level-option";
-      unorderedListOption.dataset.markerUnorderedListOption = "true";
-
-      const unorderedListCheckbox = document.createElement("input");
-      unorderedListCheckbox.type = "checkbox";
-      unorderedListCheckbox.dataset.markerUnorderedList = "true";
-      unorderedListCheckbox.addEventListener("change", () => {
-        updateEnabledUnorderedListForCurrentPlatform(unorderedListCheckbox.checked);
-        saveConfig(state.config);
-        syncSettingsInputs(settings);
-        render();
-      });
-      unorderedListOption.appendChild(unorderedListCheckbox);
-
-      const unorderedListLabel = document.createElement("span");
-      unorderedListLabel.textContent = t("settings.unorderedList");
-      unorderedListOption.appendChild(unorderedListLabel);
-
-      levelOptions.appendChild(unorderedListOption);
-      levelFilter.appendChild(levelOptions);
-      body.appendChild(levelFilter);
-
-      const resetButton = document.createElement("button");
-      resetButton.type = "button";
-      resetButton.className = "gpt-paragraph-nav__settings-reset";
-      resetButton.textContent = t("settings.reset");
-      resetButton.addEventListener("click", () => {
-        state.config = normalizeConfig(DEFAULT_CONFIG);
-        saveConfig(state.config);
-        syncSettingsInputs(settings);
-        render();
-      });
-      body.appendChild(resetButton);
-
-      menu.appendChild(body);
-      menu.appendChild(footer);
-
-      settings.appendChild(menu);
       controls.appendChild(settings);
     }
 
-    syncSettingsStatus(settings);
     syncSettingsInputs(settings);
     settings.hidden = state.activeControlTab !== "settings";
     return settings;
@@ -917,14 +755,7 @@
   }
 
   function syncSettingsStatus(settings) {
-    const status = settings.querySelector(".gpt-paragraph-nav__settings-sync");
-    const text = settings.querySelector(".gpt-paragraph-nav__settings-sync-text");
-    if (!status || !text) {
-      return;
-    }
-
-    status.classList.toggle("is-enabled", state.syncEnabled);
-    text.textContent = state.syncEnabled ? t("sync.enabled") : t("sync.disabled");
+    syncSettingsInputs(settings);
   }
 
   function loadLegacyConfig() {
@@ -1022,27 +853,12 @@
   }
 
   function syncSettingsInputs(settings) {
-    settings.querySelectorAll("input[data-config-key]").forEach((input) => {
-      const key = input.dataset.configKey;
-      if (document.activeElement !== input && key in state.config) {
-        input.value = String(state.config[key]);
-      }
-      const minimum = Number(input.min);
-      const maximum = Number(input.max);
-      const current = Number(input.value);
-      if (Number.isFinite(minimum) && Number.isFinite(maximum) && maximum > minimum && Number.isFinite(current)) {
-        input.style.setProperty("--settings-slider-progress", `${((current - minimum) / (maximum - minimum)) * 100}%`);
-      }
-      const value = settings.querySelector(`[data-config-value="${CSS.escape(key)}"]`);
-      if (value instanceof HTMLOutputElement && key in state.config) {
-        const unit = value.dataset.unit;
-        const text = `${state.config[key]}${unit ? ` ${unit}` : ""}`;
-        value.value = text;
-        value.textContent = text;
-        input.setAttribute("aria-valuetext", text);
-      }
-    });
-    syncLevelFilterInputs(settings);
+    let controller = settingsPanelControllers.get(settings);
+    if (!controller) {
+      controller = mountSettingsPanel(settings);
+      settingsPanelControllers.set(settings, controller);
+    }
+    controller.render(createSettingsPanelModel());
   }
 
   function enabledLevelsForPlatform(platformKey, config = state.config) {
@@ -1056,29 +872,59 @@
     return enabledLevelsForPlatform(currentPlatformKey(), config);
   }
 
-  function syncLevelFilterInputs(settings) {
+  function createSettingsPanelModel() {
     const platformKey = currentPlatformKey();
     const supportedLevels = new Set(supportedMarkerLevelsForPlatform(platformKey));
     const enabledLevels = enabledLevelsForPlatform(platformKey);
     const enabledSet = new Set(enabledLevels);
+    const manifest = chrome.runtime.getManifest();
 
-    settings.querySelectorAll("[data-marker-level-option]").forEach((option) => {
-      const level = Number(option.dataset.markerLevelOption);
-      const isSupported = supportedLevels.has(level);
-      option.hidden = !isSupported;
-    });
-
-    settings.querySelectorAll("input[data-marker-level]").forEach((input) => {
-      const level = Number(input.dataset.markerLevel);
-      const isSupported = supportedLevels.has(level);
-      input.checked = isSupported && enabledSet.has(level);
-      input.disabled = !isSupported || (input.checked && enabledLevels.length <= 1);
-    });
-
-    settings.querySelectorAll("input[data-marker-unordered-list]").forEach((input) => {
-      input.checked = enabledUnorderedListForPlatform(platformKey);
-      input.disabled = false;
-    });
+    return {
+      appName: t("settings.appName"),
+      fields: CONFIG_FIELDS.map((field) => ({ ...field, value: state.config[field.key] })),
+      iconUrl: chrome.runtime.getURL("icons/gpt-voyager-icon-96.png"),
+      markerLevels: MARKER_LEVEL_OPTIONS
+        .filter((level) => supportedLevels.has(level))
+        .map((level) => ({
+          isDisabled: enabledSet.has(level) && enabledLevels.length <= 1,
+          isSelected: enabledSet.has(level),
+          key: `h${level}`,
+          label: `H${level}`,
+          level
+        })),
+      markerTypesLabel: t("settings.markerTypes"),
+      onConfigChange(key, value) {
+        state.config = normalizeConfig({ ...state.config, [key]: value });
+        render();
+      },
+      onConfigCommit() {
+        saveConfig(state.config);
+      },
+      onMarkerLevelChange(level, isEnabled) {
+        updateEnabledLevelForCurrentPlatform(level, isEnabled);
+        saveConfig(state.config);
+        render();
+      },
+      onReset() {
+        state.config = normalizeConfig(DEFAULT_CONFIG);
+        saveConfig(state.config);
+        render();
+      },
+      onUnorderedListChange(isEnabled) {
+        updateEnabledUnorderedListForCurrentPlatform(isEnabled);
+        saveConfig(state.config);
+        render();
+      },
+      resetLabel: t("settings.reset"),
+      syncDisabledLabel: t("sync.disabled"),
+      syncEnabled: state.syncEnabled,
+      syncEnabledLabel: t("sync.enabled"),
+      unorderedList: {
+        isSelected: enabledUnorderedListForPlatform(platformKey),
+        label: t("settings.unorderedList")
+      },
+      version: manifest.version_name || `v${manifest.version}`
+    };
   }
 
   function updateEnabledLevelForCurrentPlatform(level, isEnabled) {
@@ -2623,6 +2469,12 @@
   function removeNavigationRoot() {
     const root = document.getElementById(ROOT_ID);
     if (root) {
+      const settings = root.querySelector(`.${SETTINGS_CLASS}`);
+      const controller = settings && settingsPanelControllers.get(settings);
+      if (controller) {
+        controller.unmount();
+        settingsPanelControllers.delete(settings);
+      }
       root.remove();
     }
     document.documentElement.removeAttribute(DEBUG_ATTR);

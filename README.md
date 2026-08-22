@@ -37,8 +37,6 @@ Polaris for Web automatically detects headings and list titles in AI responses a
 
 Open **Settings** from the control area on the right to adjust:
 
-- Top spacing
-- Right spacing
 - Maximum number of visible markers
 - Fold group size
 - Tooltip width
@@ -59,11 +57,13 @@ Preferences are saved to `chrome.storage.sync`. When synchronization is availabl
 
 ## Installation
 
-1. Open your browser's extensions management page.
-2. Enable **Developer mode**.
-3. Select **Load unpacked**.
-4. Choose this project directory.
+1. Run `pnpm install`.
+2. Run `pnpm build`.
+3. Open your browser's extensions management page and enable **Developer mode**.
+4. Select **Load unpacked** and choose the generated `dist` directory.
 5. Refresh the AI website.
+
+For local development, reloading an extension that was previously loaded from the project root also uses the generated bundle after `pnpm build`.
 
 ## Privacy
 
@@ -71,7 +71,7 @@ Polaris for Web processes AI response content locally in your browser and does n
 
 ## Version
 
-Current version: `0.19.0 build 77`
+Current version: `0.23.0(82)`
 
 ## License
 

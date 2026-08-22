@@ -30,9 +30,11 @@
 
 ## 设置面板
 
-- 设置面板使用固定 Header、可滚动内容区和固定 Footer：Header 左侧展示应用图标和 Polaris，右侧展示版本号；Footer 展示同步状态与状态圆点。
-- 最大数量、折叠数量和提示宽度使用 Slider，显示当前数值并沿用既有范围与步进；拖动时即时更新，释放后同步保存。
-- 亮色模式下全扩展的按钮、Tab、marker、章节 chips、设置复选框、Slider 与焦点反馈使用黑底白字高亮；深色模式保持白底黑字高亮。
+- 设置面板使用固定 Header、可滚动内容区和固定 Footer：Header 左侧展示应用图标和 Polaris，右侧展示版本号（`版本号(build号)`）；Footer 展示同步状态与状态圆点。
+- 最大数量、折叠数量和提示宽度使用 Slider，显示当前数值并沿用既有范围与步进；拖动时即时更新，释放后同步保存。轨道使用半透明玻璃描边与内高光，不使用实体底色；进度段和滑块使用主题黑白高亮。
+- Reset 按钮上下内边距为 16pt，保留全宽布局与主题高亮反馈。
+- 亮色模式下全扩展的按钮、Tab、marker、章节 chips、设置复选框、Slider 与焦点反馈使用黑底白字高亮；主 Tab 的非选中悬停态例外，使用玻璃填充色。深色模式保持白底黑字高亮。
+- 设置面板使用 HeroUI 的 Card、Slider、Checkbox、Button 与 Separator；React 和 HeroUI 预编译样式挂载到设置面板的 Shadow DOM。仅最外层 Card 使用 Polaris 原有毛玻璃背景、亮色高光描边和阴影；内部 Header、内容区与 Sync Footer 默认背景均透明，并隔离宿主页面样式。应用标识在左、版本号在右。
 
 ## Marker Queue
 
