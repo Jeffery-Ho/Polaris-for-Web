@@ -1,7 +1,7 @@
 #gpt-paragraph-nav {
   position: fixed;
-  top: calc(var(--gpt-conversation-header-height, 64px) + var(--gpt-nav-top-gap, 8px));
-  right: var(--gpt-nav-right-offset, 14px);
+  top: var(--gpt-nav-top, calc(var(--gpt-conversation-header-height, 64px) + var(--gpt-nav-top-gap, 8px)));
+  right: var(--gpt-nav-right, var(--gpt-nav-right-offset, 14px));
   bottom: 16px;
   z-index: 2147483647;
   --gpt-glass-blur: 18px;
@@ -157,19 +157,52 @@
 }
 
 .gpt-paragraph-nav__control-capsule {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 2px;
-  min-height: 36px;
+  min-height: 30px;
   padding: 3px;
   border: 0;
   border-radius: 999px;
   background: var(--gpt-glass-dark-button-bg);
   color: var(--gpt-arco-text-1);
+  cursor: grab;
+  touch-action: none;
   pointer-events: auto;
 }
 
+#gpt-paragraph-nav .gpt-paragraph-nav__control-tab-indicator {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 0;
+  z-index: 0;
+  border-radius: 999px;
+  background: #000000;
+  pointer-events: none;
+  transition: transform 240ms cubic-bezier(0.2, 0.8, 0.2, 1), width 240ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+#gpt-paragraph-nav .gpt-paragraph-nav__control-capsule,
+#gpt-paragraph-nav .gpt-paragraph-nav__control-capsule * {
+  cursor: grab;
+}
+
+#gpt-paragraph-nav.is-dragging,
+#gpt-paragraph-nav.is-dragging * {
+  cursor: grabbing !important;
+  user-select: none;
+}
+
+html.gpt-paragraph-nav--dragging,
+html.gpt-paragraph-nav--dragging * {
+  user-select: none !important;
+}
+
 .gpt-paragraph-nav__control-tab {
+  position: relative;
+  z-index: 1;
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -204,14 +237,14 @@
   transform: rotate(45deg);
 }
 
-.gpt-paragraph-nav__control-tab:hover,
-.gpt-paragraph-nav__control-tab:focus-visible {
+.gpt-paragraph-nav__control-tab:not(.is-active):hover,
+.gpt-paragraph-nav__control-tab:not(.is-active):focus-visible {
   background: var(--gpt-glass-hover-bg);
   color: var(--gpt-arco-text-1);
 }
 
 .gpt-paragraph-nav__control-tab.is-active {
-  background: #000000;
+  background: transparent;
   color: #ffffff;
 }
 
@@ -265,8 +298,12 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  .gpt-paragraph-nav__control-tab.is-active {
+  #gpt-paragraph-nav .gpt-paragraph-nav__control-tab-indicator {
     background: #ffffff;
+  }
+
+  .gpt-paragraph-nav__control-tab.is-active {
+    background: transparent;
     color: #000000;
   }
 

@@ -82,6 +82,7 @@
   ].join(", ");
   const CONTROLS_CLASS = "gpt-paragraph-nav__controls";
   const CONTROL_CAPSULE_CLASS = "gpt-paragraph-nav__control-capsule";
+  const CONTROL_TAB_INDICATOR_CLASS = "gpt-paragraph-nav__control-tab-indicator";
   const SETTINGS_CLASS = "gpt-paragraph-nav__settings";
   const LIST_ID = "gpt-paragraph-nav-list";
   const SETTINGS_PANEL_ID = "gpt-paragraph-nav-settings-panel";
@@ -102,7 +103,8 @@
   const MARKER_LIST_SCROLL_PERSIST_MS = 1200;
   const DEFAULT_HEADER_HEIGHT = 64;
   const CONFIG_STORAGE_KEY = "gpt-paragraph-nav-config";
-  const CONFIG_SCHEMA_VERSION = 3;
+  const CONFIG_SCHEMA_VERSION = 4;
+  const POINTER_DRAG_THRESHOLD = 4;
   const EXPLOSION_EMPTY_TEXT = t("chapters.empty");
   const EXPLOSION_BLOCK_SELECTOR = "p, li, h1, h2, h3, h4, pre";
   const CONVERSATION_HEADER_SELECTOR = [
@@ -140,6 +142,7 @@
   const DEFAULT_CONFIG = Object.freeze({
     topGap: 8,
     rightOffset: 14,
+    controlPosition: null,
     maxVisible: QUEUE_MAX_VISIBLE,
     foldThreshold: 20,
     tooltipMaxWidth: 360,
@@ -162,6 +165,9 @@
     floatingScheduled: 0,
     markerListScrollScheduled: 0,
     markerListScrollUntil: 0,
+    pointerDrag: null,
+    suppressNextClick: false,
+    suppressNextClickTimer: 0,
     liquidGlassObserver: null,
     liquidGlassElements: new Set(),
     lastDebugSignature: "",
@@ -299,6 +305,22 @@
     state.isCollapsed = !state.isCollapsed;
   }
 
+  function syncControlTabIndicator(root = getRoot()) {
+    const capsule = root.querySelector(`.${CONTROL_CAPSULE_CLASS}`);
+    if (!(capsule instanceof HTMLElement)) {
+      return;
+    }
+
+    const indicator = capsule.querySelector(`.${CONTROL_TAB_INDICATOR_CLASS}`);
+    const activeTab = capsule.querySelector(".gpt-paragraph-nav__control-tab.is-active");
+    if (!(indicator instanceof HTMLElement) || !(activeTab instanceof HTMLElement)) {
+      return;
+    }
+
+    indicator.style.width = `${activeTab.offsetWidth}px`;
+    indicator.style.transform = `translateX(${activeTab.offsetLeft}px)`;
+  }
+
   function syncControlTabs(root = getRoot()) {
     root.querySelectorAll("[data-control-tab]").forEach((tab) => {
       const isActive = tab.dataset.controlTab === state.activeControlTab;
@@ -309,6 +331,7 @@
         tab.setAttribute("aria-expanded", String(!state.isCollapsed));
       }
     });
+    syncControlTabIndicator(root);
 
     const settings = root.querySelector(`.${SETTINGS_CLASS}`);
     if (settings instanceof HTMLElement) {
@@ -341,6 +364,12 @@
       capsule.className = CONTROL_CAPSULE_CLASS;
       capsule.setAttribute("role", "tablist");
       capsule.setAttribute("aria-label", t("controls.label"));
+
+      const indicator = document.createElement("span");
+      indicator.className = CONTROL_TAB_INDICATOR_CLASS;
+      indicator.setAttribute("aria-hidden", "true");
+      indicator.style.transition = "none";
+      capsule.appendChild(indicator);
 
       [
         { key: "navigation", label: t("tab.navigation"), controls: LIST_ID },
@@ -411,6 +440,9 @@
       });
 
       controls.appendChild(capsule);
+      requestAnimationFrame(() => {
+        indicator.style.transition = "";
+      });
     }
     syncControlTabs(root);
     return capsule;
@@ -475,7 +507,10 @@
         input.addEventListener("input", () => {
           state.config = normalizeConfig({
             ...state.config,
-            [field.key]: input.value
+            [field.key]: input.value,
+            controlPosition: field.key === "topGap" || field.key === "rightOffset"
+              ? null
+              : state.config.controlPosition
           });
           saveConfig(state.config);
           syncSettingsInputs(settings);
@@ -666,6 +701,23 @@
     return Math.min(Math.max(Math.round(number), min), max);
   }
 
+  function normalizeControlPosition(position) {
+    if (!position || typeof position !== "object") {
+      return null;
+    }
+
+    const top = Number(position.top);
+    const right = Number(position.right);
+    if (!Number.isFinite(top) || !Number.isFinite(right)) {
+      return null;
+    }
+
+    return {
+      top: Math.max(0, Math.round(top)),
+      right: Math.max(0, Math.round(right))
+    };
+  }
+
   function maxHeadingLevelForPlatform(platformKey = currentPlatformKey()) {
     if (platformKey === "yuanbao" || platformKey === "kimi") {
       return 2;
@@ -725,6 +777,7 @@
     }, {});
     result.enabledLevelsByPlatform = normalizeEnabledLevelsByPlatform(config);
     result.enabledUnorderedListByPlatform = normalizeUnorderedListByPlatform(config);
+    result.controlPosition = normalizeControlPosition(config && config.controlPosition);
     if ((Number(config && config.configVersion) || 1) < 2) {
       result.enabledLevelsByPlatform.xiaohongshu = normalizeEnabledLevels(
         [...result.enabledLevelsByPlatform.xiaohongshu, 4],
@@ -759,7 +812,9 @@
   function configsEqual(first, second) {
     return CONFIG_FIELDS.every((field) => first[field.key] === second[field.key])
       && enabledLevelsByPlatformEqual(first.enabledLevelsByPlatform, second.enabledLevelsByPlatform)
-      && enabledUnorderedListByPlatformEqual(first.enabledUnorderedListByPlatform, second.enabledUnorderedListByPlatform);
+      && enabledUnorderedListByPlatformEqual(first.enabledUnorderedListByPlatform, second.enabledUnorderedListByPlatform)
+      && first.controlPosition?.top === second.controlPosition?.top
+      && first.controlPosition?.right === second.controlPosition?.right;
   }
 
   function hasSyncStorage() {
@@ -967,10 +1022,34 @@
     });
   }
 
-  function applyConfig(root) {
+  function activeControlPosition() {
+    return state.pointerDrag?.kind === "controls"
+      ? state.pointerDrag.controlPosition
+      : state.config.controlPosition;
+  }
+
+  function clampedControlPosition(position, controls) {
+    const rect = controls.getBoundingClientRect();
+    return {
+      top: Math.min(position.top, Math.max(0, window.innerHeight - rect.height - 16)),
+      right: Math.min(position.right, Math.max(0, window.innerWidth - rect.width))
+    };
+  }
+
+  function applyConfig(root, controlPosition = activeControlPosition()) {
+    const controls = root.querySelector(`.${CONTROLS_CLASS}`);
+    const position = controlPosition && controls instanceof HTMLElement
+      ? clampedControlPosition(controlPosition, controls)
+      : null;
     root.style.setProperty("--gpt-nav-top-gap", `${state.config.topGap}px`);
     root.style.setProperty("--gpt-nav-right-offset", `${state.config.rightOffset}px`);
-    root.style.setProperty("--gpt-nav-width", `calc(100vw - ${state.config.rightOffset * 2}px)`);
+    root.style.setProperty("--gpt-nav-top", position
+      ? `${position.top}px`
+      : `calc(var(--gpt-conversation-header-height, ${DEFAULT_HEADER_HEIGHT}px) + ${state.config.topGap}px)`);
+    root.style.setProperty("--gpt-nav-right", position ? `${position.right}px` : `${state.config.rightOffset}px`);
+    root.style.setProperty("--gpt-nav-width", position
+      ? `calc(100vw - ${position.right}px)`
+      : `calc(100vw - ${state.config.rightOffset * 2}px)`);
     root.style.setProperty("--gpt-nav-tooltip-max-width", `${state.config.tooltipMaxWidth}px`);
   }
 
@@ -2334,15 +2413,16 @@
     }
 
     const root = getRoot();
-    applyConfig(root);
     updateHeaderOffset(root);
     getControlCapsule(root);
     getSettings(root);
+    applyConfig(root);
     const controls = getControls(root);
     const controlWidth = controls.getBoundingClientRect().width;
     if (controlWidth > 0) {
       root.style.setProperty("--gpt-nav-controls-width", `${Math.round(controlWidth)}px`);
     }
+    applyConfig(root);
     const list = getList(root);
     getMarkerSearchInput(root);
     const searchInput = root.querySelector(".gpt-paragraph-nav__search-input");
@@ -2416,6 +2496,14 @@
 
   function resetRouteState() {
     window.clearTimeout(state.scheduled);
+    if (state.pointerDrag) {
+      state.pointerDrag.root.classList.remove("is-dragging");
+      state.pointerDrag = null;
+    }
+    document.documentElement.classList.remove("gpt-paragraph-nav--dragging");
+    state.suppressNextClick = false;
+    window.clearTimeout(state.suppressNextClickTimer);
+    state.suppressNextClickTimer = 0;
     state.headings = [];
     state.conversationMetrics = null;
     state.activeHeading = null;
@@ -2621,8 +2709,44 @@
     return Math.min(root.getBoundingClientRect().width, Math.max(configuredMaxWidth, controlWidth, maxMarkerWidth));
   }
 
+  function markerListInteractionTarget(event) {
+    const root = document.getElementById(ROOT_ID);
+    if (!(root instanceof HTMLElement) || root.classList.contains("is-empty") || root.classList.contains("is-collapsed")) {
+      return null;
+    }
+
+    const controls = root.querySelector(`.${CONTROLS_CLASS}`);
+    if (controls instanceof HTMLElement && event.target instanceof Node && controls.contains(event.target)) {
+      return null;
+    }
+
+    const list = root.querySelector(`#${LIST_ID}`);
+    if (!(list instanceof HTMLElement)) {
+      return null;
+    }
+
+    const maxScrollTop = list.scrollHeight - list.clientHeight;
+    if (maxScrollTop <= 0) {
+      return null;
+    }
+
+    const listRect = list.getBoundingClientRect();
+    if (event.clientY < listRect.top || event.clientY > listRect.bottom) {
+      return null;
+    }
+
+    const rootRect = root.getBoundingClientRect();
+    const hitRight = rootRect.right;
+    const hitLeft = Math.max(rootRect.left, hitRight - markerListWheelHitWidth(root, list));
+    if (event.clientX < hitLeft || event.clientX > hitRight) {
+      return null;
+    }
+
+    return { root, list, maxScrollTop };
+  }
+
   function handleMarkerListWheel(event) {
-    if (state.isExplosionOpen) {
+    if (state.isExplosionOpen || state.pointerDrag) {
       return;
     }
 
@@ -2631,38 +2755,12 @@
       return;
     }
 
-    const root = document.getElementById(ROOT_ID);
-    if (!(root instanceof HTMLElement) || root.classList.contains("is-empty") || root.classList.contains("is-collapsed")) {
+    const target = markerListInteractionTarget(event);
+    if (!target) {
       return;
     }
 
-    const controls = root.querySelector(`.${CONTROLS_CLASS}`);
-    if (controls instanceof HTMLElement && event.target instanceof Node && controls.contains(event.target)) {
-      return;
-    }
-
-    const list = root.querySelector(`#${LIST_ID}`);
-    if (!(list instanceof HTMLElement)) {
-      return;
-    }
-
-    const maxScrollTop = list.scrollHeight - list.clientHeight;
-    if (maxScrollTop <= 0) {
-      return;
-    }
-
-    const listRect = list.getBoundingClientRect();
-    if (event.clientY < listRect.top || event.clientY > listRect.bottom) {
-      return;
-    }
-
-    const rootRect = root.getBoundingClientRect();
-    const hitRight = rootRect.right;
-    const hitLeft = Math.max(rootRect.left, hitRight - markerListWheelHitWidth(root, list));
-    if (event.clientX < hitLeft || event.clientX > hitRight) {
-      return;
-    }
-
+    const { list, maxScrollTop } = target;
     const nextScrollTop = Math.min(maxScrollTop, Math.max(0, list.scrollTop + deltaY));
     if (nextScrollTop === list.scrollTop) {
       return;
@@ -2671,6 +2769,156 @@
     event.preventDefault();
     list.scrollTop = nextScrollTop;
     scheduleFloatingActiveUpdate();
+  }
+
+  function isPrimaryPointer(event) {
+    return event.isPrimary && (event.pointerType !== "mouse" || event.button === 0);
+  }
+
+  function suppressNextClick() {
+    state.suppressNextClick = true;
+    window.clearTimeout(state.suppressNextClickTimer);
+    state.suppressNextClickTimer = window.setTimeout(() => {
+      state.suppressNextClick = false;
+      state.suppressNextClickTimer = 0;
+    }, 0);
+  }
+
+  function handlePointerDragClick(event) {
+    if (!state.suppressNextClick) {
+      return;
+    }
+
+    state.suppressNextClick = false;
+    window.clearTimeout(state.suppressNextClickTimer);
+    state.suppressNextClickTimer = 0;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+  }
+
+  function handlePointerDown(event) {
+    if (state.pointerDrag || state.isExplosionOpen || !isPrimaryPointer(event)) {
+      return;
+    }
+
+    const root = document.getElementById(ROOT_ID);
+    if (!(root instanceof HTMLElement)) {
+      return;
+    }
+
+    const capsule = root.querySelector(`.${CONTROL_CAPSULE_CLASS}`);
+    if (capsule instanceof HTMLElement && event.target instanceof Node && capsule.contains(event.target)) {
+      const rect = capsule.getBoundingClientRect();
+      state.pointerDrag = {
+        kind: "controls",
+        pointerId: event.pointerId,
+        root,
+        startX: event.clientX,
+        startY: event.clientY,
+        controlPosition: {
+          top: rect.top,
+          right: Math.max(0, window.innerWidth - rect.right)
+        },
+        didDrag: false
+      };
+      return;
+    }
+
+    const target = markerListInteractionTarget(event);
+    if (!target) {
+      return;
+    }
+
+    state.pointerDrag = {
+      kind: "list",
+      pointerId: event.pointerId,
+      root: target.root,
+      list: target.list,
+      maxScrollTop: target.maxScrollTop,
+      startX: event.clientX,
+      startY: event.clientY,
+      startScrollTop: target.list.scrollTop,
+      didDrag: false
+    };
+  }
+
+  function handlePointerMove(event) {
+    const drag = state.pointerDrag;
+    if (!drag || drag.pointerId !== event.pointerId) {
+      return;
+    }
+
+    const deltaX = event.clientX - drag.startX;
+    const deltaY = event.clientY - drag.startY;
+    if (!drag.didDrag && Math.max(Math.abs(deltaX), Math.abs(deltaY)) < POINTER_DRAG_THRESHOLD) {
+      return;
+    }
+
+    if (!drag.didDrag) {
+      drag.didDrag = true;
+      drag.root.classList.add("is-dragging");
+      document.documentElement.classList.add("gpt-paragraph-nav--dragging");
+    }
+
+    if (drag.kind === "controls") {
+      const controls = drag.root.querySelector(`.${CONTROLS_CLASS}`);
+      if (controls instanceof HTMLElement) {
+        drag.controlPosition = clampedControlPosition({
+          top: drag.controlPosition.top + deltaY,
+          right: drag.controlPosition.right - deltaX
+        }, controls);
+        drag.startX = event.clientX;
+        drag.startY = event.clientY;
+        applyConfig(drag.root, drag.controlPosition);
+      }
+    } else {
+      drag.list.scrollTop = Math.min(
+        drag.maxScrollTop,
+        Math.max(0, drag.startScrollTop - deltaY)
+      );
+      scheduleFloatingActiveUpdate();
+    }
+
+    if (event.cancelable) {
+      event.preventDefault();
+    }
+  }
+
+  function finishPointerDrag(event, persistPosition) {
+    const drag = state.pointerDrag;
+    if (!drag || drag.pointerId !== event.pointerId) {
+      return;
+    }
+
+    state.pointerDrag = null;
+    drag.root.classList.remove("is-dragging");
+    document.documentElement.classList.remove("gpt-paragraph-nav--dragging");
+    if (!drag.didDrag) {
+      return;
+    }
+
+    if (drag.kind === "controls") {
+      if (persistPosition) {
+        state.config = normalizeConfig({
+          ...state.config,
+          controlPosition: drag.controlPosition
+        });
+        saveConfig(state.config);
+      }
+      applyConfig(drag.root);
+    }
+
+    if (persistPosition) {
+      suppressNextClick();
+    }
+  }
+
+  function handlePointerUp(event) {
+    finishPointerDrag(event, true);
+  }
+
+  function handlePointerCancel(event) {
+    finishPointerDrag(event, false);
   }
 
   function handleKeydown(event) {
@@ -2767,6 +3015,11 @@
 
     window.addEventListener("scroll", scheduleScrollWork, { passive: true });
     window.addEventListener("wheel", handleMarkerListWheel, { passive: false, capture: true });
+    window.addEventListener("pointerdown", handlePointerDown, { capture: true });
+    window.addEventListener("pointermove", handlePointerMove, { passive: false, capture: true });
+    window.addEventListener("pointerup", handlePointerUp, { capture: true });
+    window.addEventListener("pointercancel", handlePointerCancel, { capture: true });
+    window.addEventListener("click", handlePointerDragClick, { capture: true });
     window.addEventListener("resize", scheduleRender, { passive: true });
     window.addEventListener("keydown", handleKeydown, { capture: true });
     document.addEventListener("click", handleDocumentClick);
