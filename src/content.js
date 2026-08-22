@@ -316,13 +316,16 @@
     }
   }
 
-  function activateControlTab(tabKey, { toggleNavigationWhenActive = false } = {}) {
+  function activateControlTab(tabKey, { toggleNavigationWhenActive = false, openChapters = false } = {}) {
     const isActive = state.activeControlTab === tabKey;
     state.activeControlTab = tabKey;
     if (tabKey === "navigation" && isActive && toggleNavigationWhenActive) {
       toggleNavigation();
       render();
       return;
+    }
+    if (tabKey === "chapters" && openChapters) {
+      openExplosionOverlay();
     }
     const root = document.getElementById(ROOT_ID);
     if (root instanceof HTMLElement) {
@@ -341,6 +344,7 @@
 
       [
         { key: "navigation", label: t("tab.navigation"), controls: LIST_ID },
+        { key: "chapters", label: t("tab.chapters"), controls: "gpt-paragraph-nav-chapters" },
         { key: "settings", label: t("tab.settings"), controls: SETTINGS_PANEL_ID }
       ].forEach(({ key, label, controls: controlsId }) => {
         const tab = document.createElement("button");
@@ -372,7 +376,10 @@
           tab.textContent = label;
         }
         tab.addEventListener("click", () => {
-          activateControlTab(key, { toggleNavigationWhenActive: key === "navigation" });
+          activateControlTab(key, {
+            toggleNavigationWhenActive: key === "navigation",
+            openChapters: key === "chapters"
+          });
         });
         capsule.appendChild(tab);
       });
@@ -397,13 +404,14 @@
         }
         event.preventDefault();
         const nextTab = tabs[nextIndex];
-        activateControlTab(nextTab.dataset.controlTab);
+        if (nextTab.dataset.controlTab !== "chapters") {
+          activateControlTab(nextTab.dataset.controlTab);
+        }
         nextTab.focus();
       });
 
       controls.appendChild(capsule);
     }
-    capsule.querySelector('[data-control-tab="chapters"]')?.remove();
     syncControlTabs(root);
     return capsule;
   }
@@ -2326,7 +2334,6 @@
     }
 
     const root = getRoot();
-    root.querySelector(".gpt-paragraph-nav__explosion-overlay")?.remove();
     applyConfig(root);
     updateHeaderOffset(root);
     getControlCapsule(root);
@@ -2345,6 +2352,7 @@
     if (searchWrapper instanceof HTMLElement) {
       searchWrapper.hidden = state.isCollapsed;
     }
+    getExplosionOverlay(root);
     const headings = collectHeadings(containers);
     const visibleHeadings = filteredHeadings(headings);
     const metrics = getConversationMetrics(containers);
@@ -2670,6 +2678,12 @@
       return;
     }
 
+    if (event.key === "Escape" && state.isExplosionOpen) {
+      event.preventDefault();
+      closeExplosionOverlay();
+      return;
+    }
+
     if (event.key === "Escape" && state.activeControlTab === "settings") {
       event.preventDefault();
       state.activeControlTab = "navigation";
@@ -2679,7 +2693,7 @@
 
     if ((event.metaKey || event.ctrlKey) && !event.shiftKey && !event.altKey && event.key.toLowerCase() === "f") {
       const activeElement = document.activeElement;
-      if (activeElement instanceof HTMLElement && activeElement.matches(".gpt-paragraph-nav__search-input")) {
+      if (activeElement instanceof HTMLElement && activeElement.matches(".gpt-paragraph-nav__search-input, .gpt-paragraph-nav__explosion-search-input")) {
         event.preventDefault();
         activeElement.select();
         return;
@@ -2689,17 +2703,35 @@
       }
 
       event.preventDefault();
-      if (state.activeControlTab !== "navigation") {
-        state.activeControlTab = "navigation";
-        const root = document.getElementById(ROOT_ID);
-        if (root instanceof HTMLElement) {
-          syncControlTabs(root);
+      if (state.isExplosionOpen) {
+        const overlay = document.querySelector(`#${ROOT_ID} .gpt-paragraph-nav__explosion-overlay`);
+        const input = overlay && overlay.querySelector(".gpt-paragraph-nav__explosion-search-input");
+        if (input instanceof HTMLInputElement) {
+          input.focus();
+          input.select();
         }
+      } else {
+        if (state.activeControlTab !== "navigation") {
+          state.activeControlTab = "navigation";
+          const root = document.getElementById(ROOT_ID);
+          if (root instanceof HTMLElement) {
+            syncControlTabs(root);
+          }
+        }
+        const input = getMarkerSearchInput();
+        input.focus();
+        input.select();
       }
-      const input = getMarkerSearchInput();
-      input.focus();
-      input.select();
       return;
+    }
+
+    if (isShortcutTargetEditable()) {
+      return;
+    }
+
+    if ((event.metaKey || event.ctrlKey) && event.shiftKey && !event.altKey && event.key.toLowerCase() === "f") {
+      event.preventDefault();
+      toggleExplosionOverlay();
     }
   }
 
