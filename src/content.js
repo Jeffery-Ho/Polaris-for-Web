@@ -316,7 +316,7 @@
     }
   }
 
-  function activateControlTab(tabKey, { toggleNavigationWhenActive = false } = {}) {
+  function activateControlTab(tabKey, { toggleNavigationWhenActive = false, openChapters = false } = {}) {
     const isActive = state.activeControlTab === tabKey;
     state.activeControlTab = tabKey;
     if (tabKey === "navigation" && isActive && toggleNavigationWhenActive) {
@@ -324,7 +324,7 @@
       render();
       return;
     }
-    if (tabKey === "chapters") {
+    if (tabKey === "chapters" && openChapters) {
       openExplosionOverlay();
     }
     const root = document.getElementById(ROOT_ID);
@@ -376,7 +376,10 @@
           tab.textContent = label;
         }
         tab.addEventListener("click", () => {
-          activateControlTab(key, { toggleNavigationWhenActive: key === "navigation" });
+          activateControlTab(key, {
+            toggleNavigationWhenActive: key === "navigation",
+            openChapters: key === "chapters"
+          });
         });
         capsule.appendChild(tab);
       });
@@ -401,7 +404,9 @@
         }
         event.preventDefault();
         const nextTab = tabs[nextIndex];
-        activateControlTab(nextTab.dataset.controlTab);
+        if (nextTab.dataset.controlTab !== "chapters") {
+          activateControlTab(nextTab.dataset.controlTab);
+        }
         nextTab.focus();
       });
 
@@ -1836,8 +1841,7 @@
     });
   }
 
-  function collectHeadings() {
-    const containers = getAssistantContainers();
+  function collectHeadings(containers = getAssistantContainers()) {
     const seen = new Set();
     const headings = [];
 
@@ -2317,6 +2321,14 @@
 
   function render() {
     if (!isSupportedRoute()) {
+      closeExplosionOverlay();
+      removeNavigationRoot();
+      return;
+    }
+
+    const containers = getAssistantContainers();
+    if (!containers.length) {
+      closeExplosionOverlay();
       removeNavigationRoot();
       return;
     }
@@ -2341,8 +2353,7 @@
       searchWrapper.hidden = state.isCollapsed;
     }
     getExplosionOverlay(root);
-    const containers = getAssistantContainers();
-    const headings = collectHeadings();
+    const headings = collectHeadings(containers);
     const visibleHeadings = filteredHeadings(headings);
     const metrics = getConversationMetrics(containers);
     ensureHeadingIds(headings);
