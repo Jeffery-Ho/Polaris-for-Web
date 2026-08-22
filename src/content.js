@@ -100,10 +100,12 @@
     ".gpt-paragraph-nav__floating-active"
   ].join(", ");
   const QUEUE_MAX_VISIBLE = 30;
+  const DEFAULT_TOP_GAP = 8;
+  const DEFAULT_RIGHT_OFFSET = 14;
   const MARKER_LIST_SCROLL_PERSIST_MS = 1200;
   const DEFAULT_HEADER_HEIGHT = 64;
   const CONFIG_STORAGE_KEY = "gpt-paragraph-nav-config";
-  const CONFIG_SCHEMA_VERSION = 4;
+  const CONFIG_SCHEMA_VERSION = 5;
   const POINTER_DRAG_THRESHOLD = 4;
   const EXPLOSION_EMPTY_TEXT = t("chapters.empty");
   const EXPLOSION_BLOCK_SELECTOR = "p, li, h1, h2, h3, h4, pre";
@@ -113,8 +115,6 @@
     "main header"
   ].join(", ");
   const CONFIG_FIELDS = [
-    { key: "topGap", label: t("settings.topGap"), min: 0, max: 80, step: 1, unit: "px" },
-    { key: "rightOffset", label: t("settings.rightOffset"), min: 0, max: 80, step: 1, unit: "px" },
     { key: "maxVisible", label: t("settings.maxVisible"), min: 1, max: 80, step: 1, unit: "" },
     { key: "foldThreshold", label: t("settings.foldThreshold"), min: 2, max: 80, step: 1, unit: "" },
     { key: "tooltipMaxWidth", label: t("settings.tooltipMaxWidth"), min: 160, max: 720, step: 10, unit: "px" }
@@ -140,8 +140,6 @@
     default: true
   });
   const DEFAULT_CONFIG = Object.freeze({
-    topGap: 8,
-    rightOffset: 14,
     controlPosition: null,
     maxVisible: QUEUE_MAX_VISIBLE,
     foldThreshold: 20,
@@ -507,10 +505,7 @@
         input.addEventListener("input", () => {
           state.config = normalizeConfig({
             ...state.config,
-            [field.key]: input.value,
-            controlPosition: field.key === "topGap" || field.key === "rightOffset"
-              ? null
-              : state.config.controlPosition
+            [field.key]: input.value
           });
           saveConfig(state.config);
           syncSettingsInputs(settings);
@@ -1041,15 +1036,13 @@
     const position = controlPosition && controls instanceof HTMLElement
       ? clampedControlPosition(controlPosition, controls)
       : null;
-    root.style.setProperty("--gpt-nav-top-gap", `${state.config.topGap}px`);
-    root.style.setProperty("--gpt-nav-right-offset", `${state.config.rightOffset}px`);
     root.style.setProperty("--gpt-nav-top", position
       ? `${position.top}px`
-      : `calc(var(--gpt-conversation-header-height, ${DEFAULT_HEADER_HEIGHT}px) + ${state.config.topGap}px)`);
-    root.style.setProperty("--gpt-nav-right", position ? `${position.right}px` : `${state.config.rightOffset}px`);
+      : `calc(var(--gpt-conversation-header-height, ${DEFAULT_HEADER_HEIGHT}px) + ${DEFAULT_TOP_GAP}px)`);
+    root.style.setProperty("--gpt-nav-right", position ? `${position.right}px` : `${DEFAULT_RIGHT_OFFSET}px`);
     root.style.setProperty("--gpt-nav-width", position
       ? `calc(100vw - ${position.right}px)`
-      : `calc(100vw - ${state.config.rightOffset * 2}px)`);
+      : `calc(100vw - ${DEFAULT_RIGHT_OFFSET * 2}px)`);
     root.style.setProperty("--gpt-nav-tooltip-max-width", `${state.config.tooltipMaxWidth}px`);
   }
 

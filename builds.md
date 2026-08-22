@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 79
+
+- Date: 2026-08-22
+- Version: 0.20.1
+- Summary: Removes obsolete manual navigation offsets.
+- Notes: Top gap and Right offset are removed from settings because the control capsule can be positioned directly. Maximum markers remains configurable.
+
 ## 78
 
 - Date: 2026-08-22

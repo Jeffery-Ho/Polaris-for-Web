@@ -1,7 +1,7 @@
 #gpt-paragraph-nav {
   position: fixed;
-  top: var(--gpt-nav-top, calc(var(--gpt-conversation-header-height, 64px) + var(--gpt-nav-top-gap, 8px)));
-  right: var(--gpt-nav-right, var(--gpt-nav-right-offset, 14px));
+  top: var(--gpt-nav-top, calc(var(--gpt-conversation-header-height, 64px) + 8px));
+  right: var(--gpt-nav-right, 14px);
   bottom: 16px;
   z-index: 2147483647;
   --gpt-glass-blur: 18px;
