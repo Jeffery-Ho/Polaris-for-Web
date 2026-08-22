@@ -3,6 +3,8 @@
     en: Object.freeze({
       "navigation.rootLabel": "Polaris for Web navigation",
       "controls.label": "Polaris controls",
+      "controls.minimize": "Minimize controls",
+      "controls.maximize": "Expand controls",
       "tab.navigation": "Navigation",
       "tab.chapters": "Chapters",
       "tab.settings": "Settings",
@@ -33,6 +35,8 @@
     zh: Object.freeze({
       "navigation.rootLabel": "Polaris for Web 段落导航",
       "controls.label": "Polaris 控制面板",
+      "controls.minimize": "最小化控制面板",
+      "controls.maximize": "展开控制面板",
       "tab.navigation": "导航",
       "tab.chapters": "章节",
       "tab.settings": "设置",

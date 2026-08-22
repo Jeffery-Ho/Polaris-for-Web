@@ -64,6 +64,12 @@
   overflow: hidden;
 }
 
+#gpt-paragraph-nav.is-settings-open .gpt-paragraph-nav__list,
+#gpt-paragraph-nav.is-settings-open .gpt-paragraph-nav__search {
+  visibility: hidden;
+  pointer-events: none;
+}
+
 .gpt-paragraph-nav__search {
   display: flex;
   align-items: center;
@@ -122,6 +128,7 @@
 }
 
 .gpt-paragraph-nav__control-capsule,
+.gpt-paragraph-nav__control-compact-toggle,
 .gpt-paragraph-nav__settings-menu,
 .gpt-paragraph-nav__settings-row input,
 .gpt-paragraph-nav__settings-reset,
@@ -134,6 +141,7 @@
 }
 
 .gpt-paragraph-nav__control-capsule,
+.gpt-paragraph-nav__control-compact-toggle,
 .gpt-paragraph-nav__settings-menu,
 .gpt-paragraph-nav__settings-row input,
 .gpt-paragraph-nav__settings-reset,
@@ -144,6 +152,7 @@
 
 @supports ((backdrop-filter: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3C/svg%3E#displace") blur(1px)) or (-webkit-backdrop-filter: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3C/svg%3E#displace") blur(1px))) {
   .gpt-paragraph-nav__control-capsule,
+  .gpt-paragraph-nav__control-compact-toggle,
   .gpt-paragraph-nav__settings-menu,
   .gpt-paragraph-nav__settings-row input,
   .gpt-paragraph-nav__settings-reset,
@@ -172,6 +181,71 @@
   pointer-events: auto;
 }
 
+.gpt-paragraph-nav__control-capsule.is-minimized {
+  gap: 0;
+}
+
+.gpt-paragraph-nav__control-compact-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 30px;
+  padding: 0 10px;
+  color: var(--gpt-arco-text-1);
+  font: 600 12px/1 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.gpt-paragraph-nav__control-compact-summary[hidden] {
+  display: none;
+}
+
+.gpt-paragraph-nav__control-compact-summary img {
+  display: block;
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+}
+
+.gpt-paragraph-nav__control-compact-toggle {
+  position: absolute;
+  top: -8px;
+  left: -8px;
+  z-index: 2;
+  display: inline-grid;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: var(--gpt-glass-dark-button-bg);
+  color: var(--gpt-arco-text-1);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease, background 120ms ease;
+}
+
+.gpt-paragraph-nav__control-compact-toggle svg {
+  width: 13px;
+  height: 13px;
+}
+
+.gpt-paragraph-nav__control-capsule:hover .gpt-paragraph-nav__control-compact-toggle,
+.gpt-paragraph-nav__control-capsule:focus-within .gpt-paragraph-nav__control-compact-toggle {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.gpt-paragraph-nav__control-compact-toggle:hover,
+.gpt-paragraph-nav__control-compact-toggle:focus-visible {
+  background: var(--gpt-glass-hover-bg);
+}
+
+.gpt-paragraph-nav__control-compact-toggle:focus-visible {
+  outline: 2px solid var(--gpt-arco-primary);
+  outline-offset: 1px;
+}
+
 #gpt-paragraph-nav .gpt-paragraph-nav__control-tab-indicator {
   position: absolute;
   top: 3px;
@@ -187,6 +261,10 @@
 #gpt-paragraph-nav .gpt-paragraph-nav__control-capsule,
 #gpt-paragraph-nav .gpt-paragraph-nav__control-capsule * {
   cursor: grab;
+}
+
+#gpt-paragraph-nav .gpt-paragraph-nav__control-compact-toggle {
+  cursor: pointer;
 }
 
 #gpt-paragraph-nav.is-dragging,

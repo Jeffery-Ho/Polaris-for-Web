@@ -83,6 +83,8 @@
   const CONTROLS_CLASS = "gpt-paragraph-nav__controls";
   const CONTROL_CAPSULE_CLASS = "gpt-paragraph-nav__control-capsule";
   const CONTROL_TAB_INDICATOR_CLASS = "gpt-paragraph-nav__control-tab-indicator";
+  const CONTROL_COMPACT_SUMMARY_CLASS = "gpt-paragraph-nav__control-compact-summary";
+  const CONTROL_COMPACT_TOGGLE_CLASS = "gpt-paragraph-nav__control-compact-toggle";
   const SETTINGS_CLASS = "gpt-paragraph-nav__settings";
   const LIST_ID = "gpt-paragraph-nav-list";
   const SETTINGS_PANEL_ID = "gpt-paragraph-nav-settings-panel";
@@ -91,6 +93,7 @@
   const EXPLOSION_CONTEXT_OFFSETS = [-1, 0, 1];
   const LIQUID_GLASS_SELECTOR = [
     `.${CONTROL_CAPSULE_CLASS}`,
+    `.${CONTROL_COMPACT_TOGGLE_CLASS}`,
     ".gpt-paragraph-nav__settings-menu",
     ".gpt-paragraph-nav__settings-row input",
     ".gpt-paragraph-nav__settings-reset",
@@ -105,7 +108,7 @@
   const MARKER_LIST_SCROLL_PERSIST_MS = 1200;
   const DEFAULT_HEADER_HEIGHT = 64;
   const CONFIG_STORAGE_KEY = "gpt-paragraph-nav-config";
-  const CONFIG_SCHEMA_VERSION = 5;
+  const CONFIG_SCHEMA_VERSION = 6;
   const POINTER_DRAG_THRESHOLD = 4;
   const EXPLOSION_EMPTY_TEXT = t("chapters.empty");
   const EXPLOSION_BLOCK_SELECTOR = "p, li, h1, h2, h3, h4, pre";
@@ -141,6 +144,7 @@
   });
   const DEFAULT_CONFIG = Object.freeze({
     controlPosition: null,
+    isControlMinimized: false,
     maxVisible: QUEUE_MAX_VISIBLE,
     foldThreshold: 20,
     tooltipMaxWidth: 360,
@@ -320,20 +324,60 @@
   }
 
   function syncControlTabs(root = getRoot()) {
+    const capsule = root.querySelector(`.${CONTROL_CAPSULE_CLASS}`);
+    const isMinimized = state.config.isControlMinimized;
+    if (!(capsule instanceof HTMLElement)) {
+      return;
+    }
+
+    root.classList.toggle("is-settings-open", state.activeControlTab === "settings");
+    capsule.classList.toggle("is-minimized", isMinimized);
+    capsule.setAttribute("role", isMinimized ? "group" : "tablist");
+    capsule.setAttribute("aria-label", isMinimized
+      ? `${t("controls.label")}: ${t(`tab.${state.activeControlTab}`)}`
+      : t("controls.label"));
     root.querySelectorAll("[data-control-tab]").forEach((tab) => {
       const isActive = tab.dataset.controlTab === state.activeControlTab;
       tab.classList.toggle("is-active", isActive);
       tab.setAttribute("aria-selected", String(isActive));
-      tab.tabIndex = isActive ? 0 : -1;
+      tab.hidden = isMinimized;
+      tab.setAttribute("aria-hidden", String(isMinimized));
+      tab.tabIndex = isMinimized ? -1 : (isActive ? 0 : -1);
       if (tab.dataset.controlTab === "navigation") {
         tab.setAttribute("aria-expanded", String(!state.isCollapsed));
       }
     });
-    syncControlTabIndicator(root);
+    const indicator = capsule.querySelector(`.${CONTROL_TAB_INDICATOR_CLASS}`);
+    if (indicator instanceof HTMLElement) {
+      indicator.hidden = isMinimized;
+    }
+    const summary = capsule.querySelector(`.${CONTROL_COMPACT_SUMMARY_CLASS}`);
+    if (summary instanceof HTMLElement) {
+      summary.hidden = !isMinimized;
+      const label = summary.querySelector("span");
+      if (label) {
+        label.textContent = t(`tab.${state.activeControlTab}`);
+      }
+    }
+    const toggle = capsule.querySelector(`.${CONTROL_COMPACT_TOGGLE_CLASS}`);
+    if (toggle instanceof HTMLButtonElement) {
+      toggle.setAttribute("aria-label", t(isMinimized ? "controls.maximize" : "controls.minimize"));
+      toggle.replaceChildren(createControlCompactIcon(isMinimized));
+    }
+    if (!isMinimized) {
+      syncControlTabIndicator(root);
+    }
 
     const settings = root.querySelector(`.${SETTINGS_CLASS}`);
     if (settings instanceof HTMLElement) {
       settings.hidden = state.activeControlTab !== "settings";
+      if (isMinimized && state.activeControlTab === "settings") {
+        settings.removeAttribute("aria-labelledby");
+        settings.setAttribute("aria-label", t("tab.settings"));
+      } else {
+        settings.setAttribute("aria-labelledby", "gpt-paragraph-nav-tab-settings");
+        settings.removeAttribute("aria-label");
+      }
     }
   }
 
@@ -354,6 +398,34 @@
     }
   }
 
+  function createControlCompactIcon(isMinimized) {
+    const namespace = "http://www.w3.org/2000/svg";
+    const icon = document.createElementNS(namespace, "svg");
+    icon.setAttribute("viewBox", "0 0 24 24");
+    icon.setAttribute("aria-hidden", "true");
+    icon.setAttribute("focusable", "false");
+    const path = document.createElementNS(namespace, "path");
+    path.setAttribute("fill", "none");
+    path.setAttribute("stroke", "currentColor");
+    path.setAttribute("stroke-width", "1.8");
+    path.setAttribute("stroke-linecap", "round");
+    path.setAttribute("stroke-linejoin", "round");
+    path.setAttribute("d", isMinimized
+      ? "M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"
+      : "M9 4H4v5M15 4h5v5M20 15v5h-5M9 20H4v-5");
+    icon.appendChild(path);
+    return icon;
+  }
+
+  function setControlMinimized(isMinimized) {
+    state.config = normalizeConfig({
+      ...state.config,
+      isControlMinimized: isMinimized
+    });
+    saveConfig(state.config);
+    render();
+  }
+
   function getControlCapsule(root = getRoot()) {
     const controls = getControls(root);
     let capsule = controls.querySelector(`.${CONTROL_CAPSULE_CLASS}`);
@@ -362,6 +434,27 @@
       capsule.className = CONTROL_CAPSULE_CLASS;
       capsule.setAttribute("role", "tablist");
       capsule.setAttribute("aria-label", t("controls.label"));
+
+      const compactToggle = document.createElement("button");
+      compactToggle.type = "button";
+      compactToggle.className = CONTROL_COMPACT_TOGGLE_CLASS;
+      compactToggle.addEventListener("click", () => {
+        setControlMinimized(!state.config.isControlMinimized);
+      });
+      capsule.appendChild(compactToggle);
+
+      const compactSummary = document.createElement("div");
+      compactSummary.className = CONTROL_COMPACT_SUMMARY_CLASS;
+      compactSummary.hidden = true;
+      compactSummary.setAttribute("aria-hidden", "true");
+      const compactIcon = document.createElement("img");
+      compactIcon.alt = "";
+      compactIcon.width = 16;
+      compactIcon.height = 16;
+      compactIcon.src = chrome.runtime.getURL("icons/gpt-voyager-icon-96.png");
+      compactSummary.appendChild(compactIcon);
+      compactSummary.appendChild(document.createElement("span"));
+      capsule.appendChild(compactSummary);
 
       const indicator = document.createElement("span");
       indicator.className = CONTROL_TAB_INDICATOR_CLASS;
@@ -773,6 +866,7 @@
     result.enabledLevelsByPlatform = normalizeEnabledLevelsByPlatform(config);
     result.enabledUnorderedListByPlatform = normalizeUnorderedListByPlatform(config);
     result.controlPosition = normalizeControlPosition(config && config.controlPosition);
+    result.isControlMinimized = Boolean(config && config.isControlMinimized);
     if ((Number(config && config.configVersion) || 1) < 2) {
       result.enabledLevelsByPlatform.xiaohongshu = normalizeEnabledLevels(
         [...result.enabledLevelsByPlatform.xiaohongshu, 4],
@@ -809,7 +903,8 @@
       && enabledLevelsByPlatformEqual(first.enabledLevelsByPlatform, second.enabledLevelsByPlatform)
       && enabledUnorderedListByPlatformEqual(first.enabledUnorderedListByPlatform, second.enabledUnorderedListByPlatform)
       && first.controlPosition?.top === second.controlPosition?.top
-      && first.controlPosition?.right === second.controlPosition?.right;
+      && first.controlPosition?.right === second.controlPosition?.right
+      && first.isControlMinimized === second.isControlMinimized;
   }
 
   function hasSyncStorage() {
@@ -2638,7 +2733,7 @@
   function updateFloatingActiveMarker(activeMarker = syncActiveMarker(state.activeMarkerKey)) {
     const root = getRoot();
     const floating = getFloatingActive(root);
-    if (!(activeMarker instanceof HTMLElement) || state.isCollapsed) {
+    if (!(activeMarker instanceof HTMLElement) || state.isCollapsed || state.activeControlTab === "settings") {
       floating.hidden = true;
       floating.textContent = "";
       return;

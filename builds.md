@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 80
+
+- Date: 2026-08-22
+- Version: 0.21.0
+- Summary: Adds a compact control-capsule mode.
+- Notes: Hovering or focusing the capsule reveals a round minimize or maximize button. Compact mode keeps the Voyager icon and current tab title, preserves open settings, and syncs across supported sites.
+
 ## 79
 
 - Date: 2026-08-22
