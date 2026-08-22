@@ -66,6 +66,22 @@ function MarkerCheckbox({ label, isSelected, isDisabled, onChange }) {
   );
 }
 
+function MailIcon() {
+  return (
+    <svg aria-hidden="true" fill="none" focusable="false" viewBox="0 0 24 24">
+      <path d="M4 6.5h16v11H4zM4.5 7l7.5 6 7.5-6" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.7" />
+    </svg>
+  );
+}
+
+function IssueIcon() {
+  return (
+    <svg aria-hidden="true" fill="none" focusable="false" viewBox="0 0 24 24">
+      <path d="M7 4.5h10v15H7zM9.5 8h5M9.5 11.5h5M9.5 15h3" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.7" />
+    </svg>
+  );
+}
+
 function SettingsPanel({ model }) {
   return (
     <div className="polaris-settings-shell default">
@@ -119,6 +135,14 @@ function SettingsPanel({ model }) {
           <div aria-live="polite" className="polaris-settings-sync" role="status">
             <span aria-hidden="true" className={`polaris-settings-sync-dot${model.syncEnabled ? " is-enabled" : ""}`} />
             <span>{model.syncEnabled ? model.syncEnabledLabel : model.syncDisabledLabel}</span>
+          </div>
+          <div aria-label={model.contactLabel} className="polaris-settings-contact-actions">
+            <a aria-label={model.emailLabel} className="polaris-settings-contact-action" href={model.emailUrl} title={model.emailLabel}>
+              <MailIcon />
+            </a>
+            <a aria-label={model.issueLabel} className="polaris-settings-contact-action" href={model.issueUrl} rel="noreferrer" target="_blank" title={model.issueLabel}>
+              <IssueIcon />
+            </a>
           </div>
         </Card.Footer>
       </Card>

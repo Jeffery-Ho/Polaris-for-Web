@@ -57,23 +57,33 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
     '[data-conv-speaker="human"]',
     ".agent-chat__list__item--user"
   ].join(", ");
-  const XIAOHONGSHU_ASSISTANT_MESSAGE_SELECTOR = [
+  const XIAOHONGSHU_ASSISTANT_MARKDOWN_SELECTOR = [
     ".markdown-styles-diandian-main-v3",
     ".markdown-styles-diandian-main-v2",
     ".markdown-styles-diandian-main",
     ".markdown-styles-deep-research",
     ".markdown-styles-pc-main",
     ".markdown-styles-xhs-main",
-    ".xhs-ai-chat-page .round-item",
-    ".xhs-ai-chat-page .scroll-container",
-    ".xhs-ai-chat-page .chat-container",
     '[class*="markdown-styles-diandian-main"]',
     '[class*="markdown-styles-deep-research"]',
     '[class*="markdown-styles-pc-main"]',
-    '[class*="markdown-styles-xhs-main"]',
+    '[class*="markdown-styles-xhs-main"]'
+  ].join(", ");
+  const XIAOHONGSHU_ASSISTANT_FALLBACK_SELECTOR = [
+    ".xhs-ai-chat-page .round-item",
+    ".xhs-ai-chat-page .scroll-container",
+    ".xhs-ai-chat-page .chat-container",
     '[class*="xhs-ai-chat-page"] [class*="round-item"]',
     '[class*="xhs-ai-chat-page"] [class*="scroll-container"]',
     '[class*="xhs-ai-chat-page"] [class*="chat-container"]'
+  ].join(", ");
+  const XIAOHONGSHU_MESSAGE_ITEM_SELECTOR = [
+    ".xhs-ai-chat-page .round-item",
+    '[class*="xhs-ai-chat-page"] [class*="round-item"]'
+  ].join(", ");
+  const XIAOHONGSHU_USER_MESSAGE_ROOT_SELECTOR = [
+    ".user-message-wrapper",
+    '[class*="user-message-wrapper"]'
   ].join(", ");
   const XIAOHONGSHU_USER_MESSAGE_SELECTOR = [
     ".xhs-ai-chat-page .user-message",
@@ -986,8 +996,13 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
     const enabledSet = new Set(enabledLevels);
     return {
       appName: t("settings.appName"),
+      contactLabel: t("contact.label"),
+      emailLabel: t("contact.email"),
+      emailUrl: "mailto:jefferyho.build@gmail.com",
       fields: CONFIG_FIELDS.map((field) => ({ ...field, value: state.config[field.key] })),
       iconUrl: extensionMetadata.iconUrl,
+      issueLabel: t("contact.issue"),
+      issueUrl: "https://github.com/Jeffery-Ho/Polaris-for-Web/issues",
       markerLevels: MARKER_LEVEL_OPTIONS
         .filter((level) => supportedLevels.has(level))
         .map((level) => ({
@@ -1627,6 +1642,10 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
       || window.location.hostname.endsWith(".diandianlife.top");
   }
 
+  function isXiaohongshuMainChatPage() {
+    return window.location.hostname === "www.xiaohongshu.com" && window.location.pathname.startsWith("/ai_chat");
+  }
+
   function isUnsupportedXiaohongshuMainPage() {
     return window.location.hostname === "www.xiaohongshu.com" && !window.location.pathname.startsWith("/ai_chat");
   }
@@ -1675,7 +1694,12 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
     }
 
     if (isXiaohongshuPage()) {
-      return [XIAOHONGSHU_ASSISTANT_MESSAGE_SELECTOR, ASSISTANT_MESSAGE_SELECTOR, MARKDOWN_FALLBACK_SELECTOR];
+      return [
+        XIAOHONGSHU_ASSISTANT_MARKDOWN_SELECTOR,
+        XIAOHONGSHU_ASSISTANT_FALLBACK_SELECTOR,
+        ASSISTANT_MESSAGE_SELECTOR,
+        MARKDOWN_FALLBACK_SELECTOR
+      ];
     }
 
     if (isYuanbaoPage()) {
@@ -1718,7 +1742,11 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
     }
 
     if (isXiaohongshuPage()) {
-      return [XIAOHONGSHU_USER_MESSAGE_SELECTOR, USER_MESSAGE_SELECTOR];
+      return [
+        XIAOHONGSHU_USER_MESSAGE_ROOT_SELECTOR,
+        XIAOHONGSHU_USER_MESSAGE_SELECTOR,
+        USER_MESSAGE_SELECTOR
+      ];
     }
 
     if (isYuanbaoPage()) {
@@ -1752,7 +1780,23 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
       }
     }
 
+    if (isXiaohongshuMainChatPage()) {
+      return getXiaohongshuUserFallbackContainers();
+    }
+
     return [];
+  }
+
+  function getXiaohongshuUserFallbackContainers() {
+    const candidates = Array.from(document.querySelectorAll(XIAOHONGSHU_MESSAGE_ITEM_SELECTOR))
+      .filter((node) => node instanceof HTMLElement
+        && isVisible(node)
+        && !isInsideNavigationRoot(node)
+        && !isUserInputContext(node)
+        && !node.matches(XIAOHONGSHU_ASSISTANT_MARKDOWN_SELECTOR)
+        && !node.querySelector(XIAOHONGSHU_ASSISTANT_MARKDOWN_SELECTOR)
+        && Boolean(normalizeTitle(node.innerText || node.textContent || "")));
+    return candidates.filter((candidate) => !candidates.some((other) => other !== candidate && other.contains(candidate)));
   }
 
   function normalizeTitle(text) {
@@ -1792,6 +1836,11 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
   }
 
   function collectMarkerGroups(userContainers, assistantContainers, headings) {
+    const userItems = userContainers
+      .map((element) => makeUserMarkerItem(element))
+      .filter((user) => Boolean(user.title))
+      .sort((left, right) => compareConversationPosition(left.element, right.element));
+    const userItemByElement = new Map(userItems.map((user) => [user.element, user]));
     const headingToAssistant = new Map();
     headings.forEach((heading) => {
       assistantContainers.forEach((container) => {
@@ -1815,8 +1864,8 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
 
     entries.forEach((entry) => {
       if (entry.type === "user") {
-        const user = makeUserMarkerItem(entry.element);
-        if (!user.title) {
+        const user = userItemByElement.get(entry.element);
+        if (!user) {
           return;
         }
         currentUser = user;
@@ -1828,7 +1877,12 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
     });
 
     headings.forEach((heading) => {
-      const user = assistantToUser.get(headingToAssistant.get(heading));
+      let user = assistantToUser.get(headingToAssistant.get(heading));
+      if (!user && isXiaohongshuMainChatPage()) {
+        user = userItems
+          .filter((item) => compareConversationPosition(item.element, heading.element) <= 0)
+          .pop() || null;
+      }
       const group = user ? groupsByKey.get(user.markerKey) : orphanGroup;
       group.headings.push(heading);
     });
@@ -2549,6 +2603,7 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
     button.setAttribute("aria-label", isExpanded
       ? t("fold.collapseAria", { title: first.title, count: remainingCount })
       : t("fold.expandAria", { title: first.title, count: remainingCount }));
+    button.title = first.title;
 
     const countBadge = document.createElement("span");
     countBadge.className = "gpt-paragraph-nav__fold-count";
@@ -2557,8 +2612,13 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
 
     const label = document.createElement("span");
     label.className = "gpt-paragraph-nav__fold-label";
-    label.textContent = `${markerPreviewFor(first.title)} ${t("fold.remainder", { count: remainingCount })}`;
+    label.textContent = markerPreviewFor(first.title);
     button.appendChild(label);
+
+    const remainder = document.createElement("span");
+    remainder.className = "gpt-paragraph-nav__fold-remainder";
+    remainder.textContent = t("fold.remainder", { count: remainingCount });
+    button.appendChild(remainder);
 
     const chevron = document.createElement("span");
     chevron.className = "gpt-paragraph-nav__fold-chevron";

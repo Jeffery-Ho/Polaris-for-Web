@@ -2,8 +2,15 @@
 
 ## 2026-08-22
 
+- 修复：小红书点点 AI 优先使用 Markdown 正文识别 assistant 消息，并使用 `.user-message-wrapper` 识别用户消息；主站 `/ai_chat` 未命中时才从不含 Markdown 的 `round-item` 兜底，恢复 user maker 映射。
+- 修复：点点标题未能通过正文容器关联时，按会话页面位置归属到最近的前置用户消息，避免 user maker 缺失与 AI maker 落入无归属队列。
+- 修复：AI maker 数量折叠卡片改为计数、标题、剩余数量与箭头的固定单行布局；长标题省略显示，不再换行挤压或重叠。
+- 调整：章节弹窗背景、搜索框、章节 chips、复制按钮和关闭按钮统一为与设置面板一致的 HeroUI 毛玻璃风格；亮暗主题同步使用 14pt 弹窗圆角、8pt 控件圆角和黑白高亮焦点。
+- 调整：章节弹窗保留原生 DOM、搜索、复制与关闭逻辑，仅更新视觉令牌和交互表面。
+- 调整：右侧控制胶囊的“设置 / Settings”入口改为“关于 / About”，保留所有既有导航配置能力。
+- 功能：配置面板 Footer 新增邮件与 GitHub Issue 图标入口；邮件使用 `mailto:jefferyho.build@gmail.com`，Issue 在新标签页打开项目反馈页，并提供中英文无障碍标签和悬停提示。
 - 调整：设置面板宽度与顶部 Tab 胶囊对齐；AI/user maker 和悬浮 active marker 取消固定字符截断，长标题在 Tab 宽度内换行展示。
-- 版本：修订更新到 `0.23.0(83)`。
+- 版本：功能更新到 `0.24.0(84)`。
 - 修复：maker 类型筛选改用 Shadow DOM 兼容的原生受控 checkbox，H1-H4 与“无序列表”开关可稳定更新 AI maker 筛选；user section 不参与该筛选。
 - 修复：Kimi 用户消息选择器收紧为 `.segment.segment-user`，不再用模糊 `segment-user` 类名匹配嵌套容器，避免 user section 重复或摘要混入非正文。
 - 修复：设置面板的 marker 类型复选框统一解析为布尔选择状态，恢复 H1-H4 与“无序列表”筛选的即时生效和持久化。

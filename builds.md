@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 84
+
+- Date: 2026-08-22
+- Version: 0.24.0
+- Summary: Adds About feedback actions and stabilizes Xiaohongshu Diandian user-to-AI maker mapping.
+- Notes: The first AI maker remains visible while later markers can fold; run `pnpm build` and load `dist/`.
+
 ## 83
 
 - Date: 2026-08-22

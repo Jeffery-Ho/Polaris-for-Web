@@ -275,6 +275,7 @@
 .polaris-settings-footer {
   display: flex;
   align-items: center;
+  justify-content: space-between;
 }
 
 .polaris-settings-sync {
@@ -295,6 +296,41 @@
   box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.22);
 }
 
+.polaris-settings-contact-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.polaris-settings-contact-action {
+  display: inline-grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 1px solid var(--polaris-border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--polaris-muted);
+  text-decoration: none;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.polaris-settings-contact-action svg {
+  width: 16px;
+  height: 16px;
+}
+
+.polaris-settings-contact-action:hover,
+.polaris-settings-contact-action:focus-visible {
+  background: var(--polaris-highlight);
+  color: var(--polaris-highlight-text);
+}
+
+.polaris-settings-contact-action:focus-visible {
+  outline: 2px solid var(--polaris-highlight);
+  outline-offset: 2px;
+}
+
 @media (prefers-color-scheme: light) {
   :host {
     color-scheme: light;
@@ -311,7 +347,8 @@
   }
 
   .polaris-settings-checkbox [data-slot="checkbox-content"],
-  .polaris-settings-reset {
+  .polaris-settings-reset,
+  .polaris-settings-contact-action {
     background: rgba(15, 23, 42, 0.05) !important;
   }
 
