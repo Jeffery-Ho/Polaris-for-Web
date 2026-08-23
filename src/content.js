@@ -125,7 +125,6 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
   const SETTINGS_PANEL_ID = "gpt-paragraph-nav-settings-panel";
   const ROUTE_CHANGE_EVENT = "polaris-for-web-route-change";
   const FLOATING_ACTIVE_CLASS = "gpt-paragraph-nav__floating-active";
-  const EXPLOSION_CONTEXT_OFFSETS = [-1, 0, 1];
   const LIQUID_GLASS_SELECTOR = [
     `.${CONTROL_CAPSULE_CLASS}`,
     `.${CONTROL_COMPACT_TOGGLE_CLASS}`,
@@ -140,10 +139,12 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
   const MARKER_LIST_SCROLL_PERSIST_MS = 1200;
   const DEFAULT_HEADER_HEIGHT = 64;
   const CONFIG_STORAGE_KEY = "gpt-paragraph-nav-config";
+  const RATING_DISMISSAL_STORAGE_KEY = "polaris-rating-dismissed-until";
+  const RATING_DISMISSAL_DURATION_MS = 24 * 60 * 60 * 1000;
   const CONFIG_SCHEMA_VERSION = 6;
   const POINTER_DRAG_THRESHOLD = 4;
   const EXPLOSION_EMPTY_TEXT = t("chapters.empty");
-  const EXPLOSION_BLOCK_SELECTOR = "p, li, h1, h2, h3, h4, pre";
+  const EXPLOSION_BLOCK_SELECTOR = "p, li, h1, h2, h3, h4, pre, blockquote, table, ul, ol";
   const CONVERSATION_HEADER_SELECTOR = [
     '[data-testid="conversation-header"]',
     '[data-testid="chat-header"]',
@@ -220,7 +221,7 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
     userMarkerExpansionInitialized: false,
     isCollapsed: false,
     collapsedListHeight: 0,
-    syncEnabled: false,
+    ratingDismissedUntil: 0,
     config: { ...DEFAULT_CONFIG },
     activeControlTab: "navigation",
     isExplosionOpen: false,
@@ -651,25 +652,40 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
       const actions = document.createElement("div");
       actions.className = "gpt-paragraph-nav__explosion-actions";
 
+      const copyMenu = document.createElement("details");
+      copyMenu.className = "gpt-paragraph-nav__explosion-copy-menu";
+
+      const copyMenuTrigger = document.createElement("summary");
+      copyMenuTrigger.className = "gpt-paragraph-nav__explosion-action gpt-paragraph-nav__explosion-copy-menu-trigger";
+      copyMenuTrigger.textContent = t("chapters.copy");
+      copyMenu.appendChild(copyMenuTrigger);
+
+      const copyMenuItems = document.createElement("div");
+      copyMenuItems.className = "gpt-paragraph-nav__explosion-copy-menu-items";
+
       const currentSectionButton = document.createElement("button");
       currentSectionButton.type = "button";
-      currentSectionButton.className = "gpt-paragraph-nav__explosion-action";
+      currentSectionButton.className = "gpt-paragraph-nav__explosion-copy-menu-item";
       currentSectionButton.dataset.explosionAction = "copy-current-section";
       currentSectionButton.textContent = t("chapters.copyCurrent");
       currentSectionButton.addEventListener("click", async () => {
         await copyCurrentExplosionSection();
+        copyMenu.open = false;
       });
-      actions.appendChild(currentSectionButton);
+      copyMenuItems.appendChild(currentSectionButton);
 
       const fullTextButton = document.createElement("button");
       fullTextButton.type = "button";
-      fullTextButton.className = "gpt-paragraph-nav__explosion-action";
+      fullTextButton.className = "gpt-paragraph-nav__explosion-copy-menu-item";
       fullTextButton.dataset.explosionAction = "copy-full-text";
       fullTextButton.textContent = t("chapters.copyFull");
       fullTextButton.addEventListener("click", async () => {
         await copyFullExplosionText();
+        copyMenu.open = false;
       });
-      actions.appendChild(fullTextButton);
+      copyMenuItems.appendChild(fullTextButton);
+      copyMenu.appendChild(copyMenuItems);
+      actions.appendChild(copyMenu);
 
       const closeButton = document.createElement("button");
       closeButton.type = "button";
@@ -689,6 +705,11 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
       const body = document.createElement("div");
       body.className = "gpt-paragraph-nav__explosion-body";
       content.appendChild(body);
+
+      const shortcutHint = document.createElement("div");
+      shortcutHint.className = "gpt-paragraph-nav__explosion-shortcut-hint";
+      shortcutHint.textContent = t("chapters.shortcutHint");
+      content.appendChild(shortcutHint);
       overlay.appendChild(content);
 
       root.appendChild(overlay);
@@ -836,21 +857,66 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
     }
   }
 
-  function setSyncEnabled(isEnabled) {
-    if (!isExtensionContextValid()) {
-      disposeInvalidExtensionContext();
-      return;
-    }
-
-    state.syncEnabled = isEnabled;
-    const settings = document.querySelector(`#${ROOT_ID} .${SETTINGS_CLASS}`);
-    if (settings) {
-      syncSettingsStatus(settings);
+  function hasLocalStorage() {
+    try {
+      return isExtensionContextValid() && Boolean(chrome.storage && chrome.storage.local);
+    } catch {
+      return false;
     }
   }
 
-  function syncSettingsStatus(settings) {
-    syncSettingsInputs(settings);
+  function readRatingDismissedUntil() {
+    if (!hasLocalStorage()) {
+      return Promise.resolve(0);
+    }
+
+    return new Promise((resolve) => {
+      try {
+        chrome.storage.local.get(RATING_DISMISSAL_STORAGE_KEY, (result) => {
+          if (!isExtensionContextValid()) {
+            disposeInvalidExtensionContext();
+            resolve(0);
+            return;
+          }
+          const error = runtimeLastError();
+          if (error) {
+            console.warn("[Polaris for Web] rating dismissal read failed", error);
+            resolve(0);
+            return;
+          }
+          const dismissedUntil = Number(result[RATING_DISMISSAL_STORAGE_KEY]);
+          resolve(Number.isFinite(dismissedUntil) && dismissedUntil > Date.now() ? dismissedUntil : 0);
+        });
+      } catch {
+        disposeInvalidExtensionContext();
+        resolve(0);
+      }
+    });
+  }
+
+  function dismissRating() {
+    const dismissedUntil = Date.now() + RATING_DISMISSAL_DURATION_MS;
+    state.ratingDismissedUntil = dismissedUntil;
+    render();
+
+    if (!hasLocalStorage()) {
+      return;
+    }
+
+    try {
+      chrome.storage.local.set({ [RATING_DISMISSAL_STORAGE_KEY]: dismissedUntil }, () => {
+        if (!isExtensionContextValid()) {
+          disposeInvalidExtensionContext();
+          return;
+        }
+        const error = runtimeLastError();
+        if (error) {
+          console.warn("[Polaris for Web] rating dismissal write failed", error);
+        }
+      });
+    } catch {
+      disposeInvalidExtensionContext();
+    }
   }
 
   function loadLegacyConfig() {
@@ -864,7 +930,6 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
 
   function readSyncConfig() {
     if (!hasSyncStorage()) {
-      setSyncEnabled(false);
       return Promise.resolve(null);
     }
 
@@ -878,13 +943,11 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
           }
         const error = runtimeLastError();
         if (error) {
-          setSyncEnabled(false);
           console.warn("[Polaris for Web] config sync read failed", error);
           resolve(null);
           return;
         }
 
-        setSyncEnabled(true);
         if (Object.prototype.hasOwnProperty.call(result, CONFIG_STORAGE_KEY)) {
           resolve(normalizeConfig(result[CONFIG_STORAGE_KEY]));
           return;
@@ -901,7 +964,6 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
 
   function writeSyncConfig(config) {
     if (!hasSyncStorage()) {
-      setSyncEnabled(false);
       return Promise.resolve();
     }
 
@@ -916,10 +978,7 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
           }
         const error = runtimeLastError();
         if (error) {
-          setSyncEnabled(false);
           console.warn("[Polaris for Web] config sync write failed", error);
-        } else {
-          setSyncEnabled(true);
         }
         resolve();
         });
@@ -1015,10 +1074,13 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
       markerTypesLabel: t("settings.markerTypes"),
       onConfigChange(key, value) {
         state.config = normalizeConfig({ ...state.config, [key]: value });
-        render();
       },
       onConfigCommit() {
         saveConfig(state.config);
+        render();
+      },
+      onDismissRating() {
+        dismissRating();
       },
       onMarkerLevelChange(level, isEnabled) {
         updateEnabledLevelForCurrentPlatform(level, isEnabled);
@@ -1036,9 +1098,14 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
         render();
       },
       resetLabel: t("settings.reset"),
-      syncDisabledLabel: t("sync.disabled"),
-      syncEnabled: state.syncEnabled,
-      syncEnabledLabel: t("sync.enabled"),
+      ratingAction: t("settings.ratingAction"),
+      ratingAriaLabel: t("settings.ratingAria"),
+      ratingDismissLabel: t("settings.ratingDismiss"),
+      ratingPrompt: t("settings.ratingPrompt"),
+      ratingUrl: "https://chromewebstore.google.com/detail/polaris-ai-chat-navigator/lkdbbnpcfkjdfnopecpbdaeegncdmajb",
+      settingsTitle: t("settings.title"),
+      showRating: state.ratingDismissedUntil <= Date.now(),
+      supportedPlatformsLabel: t("settings.supportedPlatforms"),
       unorderedList: {
         isSelected: enabledUnorderedListForPlatform(platformKey),
         label: t("settings.unorderedList")
@@ -1179,29 +1246,67 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
     return !(nestedBlock instanceof HTMLElement && container.contains(nestedBlock));
   }
 
-  function collectExplosionParagraphsFromContainer(container) {
-    const paragraphs = [];
+  function tableTextFromElement(table) {
+    const rows = Array.from(table.querySelectorAll("tr"))
+      .map((row) => Array.from(row.children)
+        .filter((cell) => cell instanceof HTMLTableCellElement)
+        .map((cell) => normalizeExplosionText(cell.innerText || cell.textContent || "").replace(/\|/g, "\\|"))
+        .filter(Boolean));
+
+    if (!rows.length) {
+      return normalizeExplosionText(table.innerText || table.textContent || "");
+    }
+
+    const columnCount = Math.max(...rows.map((row) => row.length));
+    return [
+      `| ${rows[0].join(" | ")} |`,
+      `| ${Array.from({ length: columnCount }, () => "---").join(" | ")} |`,
+      ...rows.slice(1).map((row) => `| ${row.join(" | ")} |`)
+    ].join("\n");
+  }
+
+  function explosionBlockFromElement(element) {
+    const tagName = element.tagName.toLowerCase();
+    const text = tagName === "table"
+      ? tableTextFromElement(element)
+      : normalizeExplosionText(element.innerText || element.textContent || "");
+    return { element, tagName, text };
+  }
+
+  function collectExplosionBlocksFromContainer(container) {
+    const blocks = [];
     container.querySelectorAll(EXPLOSION_BLOCK_SELECTOR).forEach((block) => {
       if (!(block instanceof HTMLElement) || !isExplosionBlockElement(block, container)) {
         return;
       }
 
-      const text = normalizeExplosionText(block.innerText || block.textContent || "");
-      if (!text || isDecorativeExplosionText(text)) {
+      const explosionBlock = explosionBlockFromElement(block);
+      if (!explosionBlock.text || isDecorativeExplosionText(explosionBlock.text)) {
         return;
       }
 
-      paragraphs.push(text);
+      blocks.push(explosionBlock);
     });
 
-    if (paragraphs.length) {
-      return paragraphs;
+    if (blocks.length) {
+      return blocks;
     }
 
     return normalizeExplosionText(container.innerText || container.textContent || "")
       .split(/\n{2,}/)
       .map((segment) => normalizeExplosionText(segment))
-      .filter((segment) => segment && !isDecorativeExplosionText(segment));
+      .filter((segment) => segment && !isDecorativeExplosionText(segment))
+      .map((text) => ({ element: null, tagName: "p", text }));
+  }
+
+  function collectExplosionBlocks(containers = getAssistantContainers()) {
+    return containers
+      .filter((container) => container instanceof HTMLElement && !isInsideNavigationRoot(container))
+      .flatMap((container) => collectExplosionBlocksFromContainer(container));
+  }
+
+  function collectExplosionParagraphsFromContainer(container) {
+    return collectExplosionBlocksFromContainer(container).map((block) => block.text);
   }
 
   function collectExplosionParagraphs(containers = getAssistantContainers()) {
@@ -1257,30 +1362,25 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
     });
   }
 
-  function sectionParagraphsFromHeading(container, heading, nextHeading) {
+  function sectionBlocksFromHeading(container, heading, nextHeading) {
     const blocks = nodesBetweenHeadingBounds(container, heading, nextHeading);
-    const paragraphs = [];
-
-    blocks.forEach((block) => {
-      const text = normalizeExplosionText(block.innerText || block.textContent || "");
-      if (!text || isDecorativeExplosionText(text)) {
-        return;
-      }
-      paragraphs.push(text);
-    });
+    const sectionBlocks = blocks
+      .map((block) => explosionBlockFromElement(block))
+      .filter((block) => block.text && !isDecorativeExplosionText(block.text));
 
     const headingText = normalizeExplosionText(heading.innerText || heading.textContent || "");
-    return paragraphs.filter((paragraph, index) => !(index === 0 && paragraph === headingText));
+    return sectionBlocks.filter((block, index) => !(index === 0 && block.text === headingText));
   }
 
-  function fallbackExplosionSection(paragraphs = collectExplosionParagraphs()) {
+  function fallbackExplosionSection(blocks = collectExplosionBlocks()) {
     return {
       id: "explosion-fallback-section",
       title: t("chapters.fullText"),
       markerKey: "",
       startElement: null,
       endElement: null,
-      paragraphs
+      blocks,
+      paragraphs: blocks.map((block) => block.text)
     };
   }
 
@@ -1294,14 +1394,15 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
     return headings.map((heading) => {
       const container = headingToContainer.get(heading.element);
       const nextHeading = nextHeadingItemInContainer(headings, heading, headingToContainer);
-      const paragraphs = container ? sectionParagraphsFromHeading(container, heading.element, nextHeading?.element || null) : [];
+      const blocks = container ? sectionBlocksFromHeading(container, heading.element, nextHeading?.element || null) : [];
       return {
         id: heading.id,
         title: heading.title,
         markerKey: markerKeyFor(heading.element),
         startElement: heading.element,
         endElement: nextHeading?.element || null,
-        paragraphs
+        blocks,
+        paragraphs: blocks.map((block) => block.text)
       };
     });
   }
@@ -1321,8 +1422,78 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
     return Math.min(Math.max(state.activeExplosionSectionIndex, 0), sections.length - 1);
   }
 
-  function renderExplosionSectionParagraphs(container, paragraphs, sectionRole) {
-    if (!paragraphs.length) {
+  function appendExplosionInlineContent(target, source) {
+    source.childNodes.forEach((node) => {
+      if (node.nodeType === Node.TEXT_NODE) {
+        target.appendChild(document.createTextNode(node.textContent || ""));
+        return;
+      }
+
+      if (!(node instanceof HTMLElement)) {
+        return;
+      }
+
+      if (node.tagName === "BR") {
+        target.appendChild(document.createElement("br"));
+        return;
+      }
+
+      const tagName = node.tagName.toLowerCase();
+      const inlineTag = tagName === "b" || tagName === "strong" ? "strong" : tagName === "i" || tagName === "em" ? "em" : tagName === "code" ? "code" : null;
+      if (inlineTag) {
+        const inline = document.createElement(inlineTag);
+        appendExplosionInlineContent(inline, node);
+        target.appendChild(inline);
+        return;
+      }
+
+      if (tagName === "a") {
+        try {
+          const url = new URL(node.getAttribute("href") || "", location.href);
+          if (["http:", "https:", "mailto:"].includes(url.protocol)) {
+            const link = document.createElement("a");
+            link.href = url.href;
+            link.target = "_blank";
+            link.rel = "noopener noreferrer";
+            appendExplosionInlineContent(link, node);
+            target.appendChild(link);
+            return;
+          }
+        } catch {}
+      }
+
+      appendExplosionInlineContent(target, node);
+    });
+  }
+
+  function renderExplosionTable(container, source) {
+    const rows = Array.from(source.querySelectorAll("tr"))
+      .map((row) => Array.from(row.children).filter((cell) => cell instanceof HTMLTableCellElement))
+      .filter((row) => row.length);
+    if (!rows.length) {
+      return false;
+    }
+
+    const wrapper = document.createElement("div");
+    wrapper.className = "gpt-paragraph-nav__explosion-table-wrap";
+    const table = document.createElement("table");
+    table.className = "gpt-paragraph-nav__explosion-table";
+    rows.forEach((cells, rowIndex) => {
+      const row = document.createElement("tr");
+      cells.forEach((cell) => {
+        const cellElement = document.createElement(rowIndex === 0 ? "th" : "td");
+        appendExplosionInlineContent(cellElement, cell);
+        row.appendChild(cellElement);
+      });
+      table.appendChild(row);
+    });
+    wrapper.appendChild(table);
+    container.appendChild(wrapper);
+    return true;
+  }
+
+  function renderExplosionSectionBlocks(container, blocks, sectionRole) {
+    if (!blocks.length) {
       const empty = document.createElement("p");
       empty.className = "gpt-paragraph-nav__explosion-empty";
       empty.textContent = EXPLOSION_EMPTY_TEXT;
@@ -1330,13 +1501,45 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
       return;
     }
 
-    paragraphs.forEach((paragraph, index) => {
-      const group = document.createElement("p");
-      group.className = "gpt-paragraph-nav__explosion-paragraph";
-      group.dataset.explosionParagraphIndex = String(index);
-      group.dataset.explosionSectionRole = sectionRole;
-      group.textContent = paragraph;
-      container.appendChild(group);
+    blocks.forEach((block, index) => {
+      if (block.tagName === "table" && block.element instanceof HTMLTableElement && renderExplosionTable(container, block.element)) {
+        return;
+      }
+
+      if (block.tagName === "pre") {
+        const pre = document.createElement("pre");
+        pre.className = "gpt-paragraph-nav__explosion-code";
+        const code = document.createElement("code");
+        code.textContent = block.text;
+        pre.appendChild(code);
+        container.appendChild(pre);
+        return;
+      }
+
+      if (block.tagName === "ul" || block.tagName === "ol") {
+        const list = document.createElement(block.tagName);
+        list.className = "gpt-paragraph-nav__explosion-list";
+        Array.from(block.element?.children || []).filter((item) => item.matches("li")).forEach((item) => {
+          const listItem = document.createElement("li");
+          appendExplosionInlineContent(listItem, item);
+          list.appendChild(listItem);
+        });
+        if (list.childElementCount) {
+          container.appendChild(list);
+          return;
+        }
+      }
+
+      const element = document.createElement(block.tagName === "blockquote" ? "blockquote" : "p");
+      element.className = `gpt-paragraph-nav__explosion-${block.tagName === "blockquote" ? "quote" : "paragraph"}`;
+      element.dataset.explosionParagraphIndex = String(index);
+      element.dataset.explosionSectionRole = sectionRole;
+      if (block.element) {
+        appendExplosionInlineContent(element, block.element);
+      } else {
+        element.textContent = block.text;
+      }
+      container.appendChild(element);
     });
   }
 
@@ -1352,26 +1555,18 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
     }
 
     const activeIndex = activeExplosionSectionIndexFromState(sections);
-    EXPLOSION_CONTEXT_OFFSETS.forEach((offset) => {
-      const index = activeIndex + offset;
-      if (index < 0 || index >= sections.length) {
-        return;
-      }
+    const section = sections[activeIndex];
+    const sectionNode = document.createElement("section");
+    sectionNode.className = "gpt-paragraph-nav__explosion-section is-current";
+    sectionNode.dataset.explosionSectionIndex = String(activeIndex);
 
-      const section = sections[index];
-      const role = offset === 0 ? "current" : "adjacent";
-      const sectionNode = document.createElement("section");
-      sectionNode.className = `gpt-paragraph-nav__explosion-section is-${role}`;
-      sectionNode.dataset.explosionSectionIndex = String(index);
+    const title = document.createElement("div");
+    title.className = "gpt-paragraph-nav__explosion-section-title";
+    title.textContent = section.title;
+    sectionNode.appendChild(title);
 
-      const title = document.createElement("div");
-      title.className = "gpt-paragraph-nav__explosion-section-title";
-      title.textContent = section.title;
-      sectionNode.appendChild(title);
-
-      renderExplosionSectionParagraphs(sectionNode, section.paragraphs, role);
-      body.appendChild(sectionNode);
-    });
+    renderExplosionSectionBlocks(sectionNode, section.blocks || [], "current");
+    body.appendChild(sectionNode);
   }
 
   function renderExplosionChips(container, sections = state.explosionSections) {
@@ -1390,14 +1585,37 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
       chip.textContent = section.title;
       chip.classList.toggle("is-active", index === activeIndex);
       chip.addEventListener("click", () => {
-        state.activeExplosionSectionIndex = index;
-        const selection = window.getSelection();
-        if (selection) {
-          selection.removeAllRanges();
-        }
-        syncExplosionOverlay(getExplosionOverlay());
+        activateExplosionSection(index);
       });
       container.appendChild(chip);
+    });
+  }
+
+  function activateExplosionSection(index) {
+    const sections = state.explosionSections;
+    if (!sections.length) {
+      return;
+    }
+
+    state.activeExplosionSectionIndex = ((index % sections.length) + sections.length) % sections.length;
+    const selection = window.getSelection();
+    if (selection) {
+      selection.removeAllRanges();
+    }
+
+    const overlay = document.querySelector(`#${ROOT_ID} .gpt-paragraph-nav__explosion-overlay`);
+    if (!(overlay instanceof HTMLElement)) {
+      return;
+    }
+
+    syncExplosionOverlay(overlay);
+    const body = overlay.querySelector(".gpt-paragraph-nav__explosion-body");
+    if (body instanceof HTMLElement) {
+      body.scrollTop = 0;
+    }
+    requestAnimationFrame(() => {
+      const activeChip = overlay.querySelector(".gpt-paragraph-nav__explosion-chip.is-active");
+      activeChip?.scrollIntoView({ block: "nearest", inline: "nearest" });
     });
   }
 
@@ -3301,8 +3519,23 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
     }
 
     if (event.key === "Escape" && state.isExplosionOpen) {
+      const copyMenu = document.querySelector(`#${ROOT_ID} .gpt-paragraph-nav__explosion-copy-menu`);
+      if (copyMenu instanceof HTMLDetailsElement && copyMenu.open) {
+        event.preventDefault();
+        copyMenu.open = false;
+        return;
+      }
       event.preventDefault();
       closeExplosionOverlay();
+      return;
+    }
+
+    if (state.isExplosionOpen && event.shiftKey && !event.metaKey && !event.ctrlKey && !event.altKey && (event.key === "ArrowLeft" || event.key === "ArrowRight")) {
+      if (isShortcutTargetEditable()) {
+        return;
+      }
+      event.preventDefault();
+      activateExplosionSection(state.activeExplosionSectionIndex + (event.key === "ArrowLeft" ? -1 : 1));
       return;
     }
 
@@ -3379,6 +3612,7 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
 
     document.documentElement.setAttribute(DEBUG_ATTR, "loaded:0");
     state.config = await loadConfig();
+    state.ratingDismissedUntil = await readRatingDismissedUntil();
     watchConfigChanges();
     state.routeKey = currentRouteKey();
     watchRouteChanges();

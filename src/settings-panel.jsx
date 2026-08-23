@@ -36,6 +36,10 @@ function createMailIcon() {
   return svg;
 }
 
+function createStarIcon() {
+  return createIcon("M12 2.75l2.8 5.68 6.27.91-4.54 4.42 1.07 6.24L12 17.08l-5.6 2.94 1.07-6.24-4.54-4.42 6.27-.91L12 2.75Z");
+}
+
 function createSlider(field, model) {
   const wrapper = createElement("label", "polaris-settings-slider");
   const label = createElement("span", "polaris-settings-slider-label");
@@ -55,6 +59,7 @@ function createSlider(field, model) {
   const syncProgress = () => {
     const progress = ((Number(input.value) - field.min) / (field.max - field.min)) * 100;
     input.style.setProperty("--polaris-slider-progress", `${progress}%`);
+    output.textContent = `${input.value}${field.unit ? ` ${field.unit}` : ""}`;
   };
   syncProgress();
   input.addEventListener("input", () => {
@@ -124,11 +129,50 @@ function createSettingsPanel(model) {
   const title = createElement("span", "polaris-settings-app-title");
   title.textContent = model.appName;
   app.append(icon, title);
-  const version = createElement("span", "polaris-settings-version");
-  version.textContent = model.version;
-  header.append(app, version);
+  header.appendChild(app);
 
   const body = createElement("div", "polaris-settings-body");
+  const supportedPlatforms = createElement("p", "polaris-settings-supported-platforms");
+  supportedPlatforms.textContent = model.supportedPlatformsLabel;
+  body.appendChild(supportedPlatforms);
+
+  if (model.showRating) {
+    const rating = createElement("section", "polaris-settings-rating");
+    const ratingLink = createElement("a", "polaris-settings-rating-link");
+    ratingLink.href = model.ratingUrl;
+    ratingLink.target = "_blank";
+    ratingLink.rel = "noreferrer";
+    ratingLink.setAttribute("aria-label", model.ratingAriaLabel);
+    const ratingIcon = createElement("span", "polaris-settings-rating-icon");
+    ratingIcon.appendChild(createStarIcon());
+    const ratingPrompt = createElement("span", "polaris-settings-rating-prompt");
+    ratingPrompt.textContent = model.ratingPrompt;
+    const ratingAction = createElement("span", "polaris-settings-rating-action");
+    ratingAction.textContent = model.ratingAction;
+    ratingLink.append(ratingIcon, ratingPrompt, ratingAction);
+
+    const dismissRating = createElement("button", "polaris-settings-rating-dismiss");
+    dismissRating.type = "button";
+    dismissRating.setAttribute("aria-label", model.ratingDismissLabel);
+    dismissRating.title = model.ratingDismissLabel;
+    dismissRating.textContent = "×";
+    dismissRating.addEventListener("click", model.onDismissRating);
+
+    rating.append(ratingLink, dismissRating);
+    body.appendChild(rating);
+  }
+
+  const settingsHeader = createElement("div", "polaris-settings-section-header");
+  const settingsTitle = document.createElement("h2");
+  settingsTitle.className = "polaris-settings-section-title";
+  settingsTitle.textContent = model.settingsTitle;
+  const reset = createElement("button", "polaris-settings-reset");
+  reset.type = "button";
+  reset.textContent = model.resetLabel;
+  reset.addEventListener("click", model.onReset);
+  settingsHeader.append(settingsTitle, reset);
+  body.appendChild(settingsHeader);
+
   const sliders = createElement("div", "polaris-settings-sliders");
   model.fields.forEach((field) => sliders.appendChild(createSlider(field, model)));
   body.append(sliders, createSeparator());
@@ -155,22 +199,9 @@ function createSettingsPanel(model) {
   markerTypes.append(markerTypesLabel, checkboxes);
   body.appendChild(markerTypes);
 
-  const reset = createElement("button", "polaris-settings-reset");
-  reset.type = "button";
-  reset.textContent = model.resetLabel;
-  reset.addEventListener("click", model.onReset);
-  body.appendChild(reset);
-
   const footer = createElement("footer", "polaris-settings-footer");
-  const sync = createElement("div", "polaris-settings-sync");
-  sync.setAttribute("aria-live", "polite");
-  sync.setAttribute("role", "status");
-  const syncDot = createElement("span", `polaris-settings-sync-dot${model.syncEnabled ? " is-enabled" : ""}`);
-  syncDot.setAttribute("aria-hidden", "true");
-  const syncText = document.createElement("span");
-  syncText.textContent = model.syncEnabled ? model.syncEnabledLabel : model.syncDisabledLabel;
-  sync.append(syncDot, syncText);
-
+  const version = createElement("span", "polaris-settings-version");
+  version.textContent = model.version;
   const actions = createElement("div", "polaris-settings-contact-actions");
   actions.setAttribute("aria-label", model.contactLabel);
   const email = createElement("a", "polaris-settings-contact-action");
@@ -186,7 +217,7 @@ function createSettingsPanel(model) {
   issue.title = model.issueLabel;
   issue.appendChild(createIcon("M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.161-1.11-1.47-1.11-1.47-.908-.62.069-.608.069-.608 1.003.071 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.03-2.688-.103-.253-.447-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.748-1.026 2.748-1.026.546 1.379.202 2.398.1 2.65.64.7 1.029 1.595 1.029 2.688 0 3.848-2.339 4.695-4.566 4.944.359.31.678.921.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.481A10.019 10.019 0 0 0 22 12.017C22 6.484 17.523 2 12 2Z"));
   actions.append(email, issue);
-  footer.append(sync, actions);
+  footer.append(version, actions);
 
   card.append(header, createSeparator(), body, createSeparator(), footer);
   shell.appendChild(card);

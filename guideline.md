@@ -43,9 +43,9 @@
 - Marker and navigation button glass styling must use pure CSS only: translucent backgrounds, `backdrop-filter`, `-webkit-backdrop-filter`, border highlights, and shadows. Do not add external libraries, JS filters, or SVG filters for this effect unless explicitly requested.
 - Settings menu panels and settings inputs should use the same liquid glass material family as markers and navigation buttons.
 - Settings trigger must not show the glass-mode 1px outline stroke.
-- Settings inputs and the settings reset button should inherit the theme-aware glass input/reset background variables.
+- Settings inputs and the compact settings reset button should inherit the theme-aware glass input/reset background variables.
 - Settings inputs must not show a separate focus outline.
-- The settings reset button must not show the glass-mode 1px outline stroke.
+- The compact settings reset button must not show the glass-mode 1px outline stroke.
 - Settings menu panels should use a stronger liquid glass treatment than compact buttons through higher blur/saturation and menu-specific glass shadow.
 - Settings menu form controls should follow an Arco Design inspired style: compact 32px inputs/buttons, 6px radius, light border tokens, blue checkbox selected state, and subtle grey hover fills.
 - Liquid glass enhancement must use only a local JS-generated SVG data-URL filter with pure CSS glass fallback; do not add external libraries, remote scripts, WebGL, canvas, or html2canvas unless explicitly requested.
@@ -93,8 +93,8 @@
 
 - Global extension surfaces should use BoomBranch-like glass styling: dark mode uses near-black translucent backgrounds, subtle `white/10` borders, and soft dark shadows.
 - Light mode should mirror the same hierarchy with bright translucent backgrounds, low-contrast slate borders, and soft shadows.
-- Light mode should keep the earlier Polaris light glass backgrounds for marker, toggle, settings menu, inputs, and reset controls.
-- Marker pills, floating active marker, settings trigger, collapse toggle, settings menu, inputs, options, and reset button should inherit from shared glass variables instead of one-off hardcoded backgrounds.
+- Light mode should keep the earlier Polaris light glass backgrounds for marker, toggle, settings menu, inputs, and compact reset controls.
+- Marker pills, floating active marker, settings trigger, collapse toggle, settings menu, inputs, options, and compact reset button should inherit from shared glass variables instead of one-off hardcoded backgrounds.
 - Active markers may use a cyan/blue accent, but inactive and hover states should stay quiet and glass-like.
 
 ## Toggle Button Rule
@@ -108,11 +108,11 @@
 
 - Persist front-end settings in `chrome.storage.sync` with `gpt-paragraph-nav-config`.
 - Use one shared config for all supported sites.
-- Show sync status in the settings menu: green dot with `同步已启用` after successful sync storage access, grey dot with `同步未启用` when unavailable or failed.
+- Do not show sync status in the settings menu; keep synchronization internal to configuration persistence.
 - Show the loaded extension `version_name` in the settings menu as read-only version/build information.
-- Place version/build text in the settings Header, opposite the Polaris app identity; keep sync status in the fixed Footer.
+- Keep the Polaris icon and name in the settings Header; place version/build text on the left of the fixed Footer and feedback actions on the right.
 - When sync config is empty, migrate valid legacy `localStorage` config without deleting the legacy value.
-- The settings reset button hover/focus state must remain visible on light menus and may reuse the marker hover pale blue.
+- The compact settings reset button hover/focus state must remain visible on light menus and may reuse the marker hover pale blue; place the full-width rating card directly below the supported-platform description, before the settings items. Stack its prompt above a prominent full-width black Rate Now action. Do not use a default black outline on card hover, and align the action width with the upper card content including its dismiss button. The card uses a separate pale-yellow surface, opens the Chrome Web Store in a new tab, and has a dismiss button that hides it locally for 24 hours.
 
 ## Version And Build Rule
 

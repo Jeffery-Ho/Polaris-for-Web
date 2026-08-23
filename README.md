@@ -42,7 +42,7 @@ Open **Settings** from the control area on the right to adjust:
 - Tooltip width
 - H1, H2, H3, H4, and unordered-list marker visibility for the current platform
 
-Preferences are saved to `chrome.storage.sync`. When synchronization is available, the settings panel displays **Sync enabled**.
+Preferences are saved to `chrome.storage.sync`.
 
 ## Chapter View
 

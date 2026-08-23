@@ -10,6 +10,160 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 109
+
+- Date: 2026-08-23
+- Version: 0.26.6
+- Summary: Refines the rating card action and hover treatment.
+- Notes: The action is black and spans the full card content width; hovering the card does not apply a dark border. Run `pnpm build` and load `dist/`.
+
+## 108
+
+- Date: 2026-08-23
+- Version: 0.26.5
+- Summary: Stacks the rating card and emphasizes its action.
+- Notes: The prompt appears above a prominent full-width green Rate Now action; run `pnpm build` and load `dist/`.
+
+## 107
+
+- Date: 2026-08-23
+- Version: 0.26.4
+- Summary: Adds a local 24-hour dismissal to the rating card.
+- Notes: Dismissal clears on extension reinstall and does not sync across devices; run `pnpm build` and load `dist/`.
+
+## 106
+
+- Date: 2026-08-23
+- Version: 0.26.3
+- Summary: Moves the rating card below the supported-platform description.
+- Notes: The rating card now appears before the settings heading and configuration items; run `pnpm build` and load `dist/`.
+
+## 105
+
+- Date: 2026-08-23
+- Version: 0.26.2
+- Summary: Replaces the full-width reset control with a localized Chrome Web Store rating card.
+- Notes: Reset moves into the settings title row as a compact control; run `pnpm build` and load `dist/`.
+
+## 104
+
+- Date: 2026-08-23
+- Version: 0.26.1
+- Summary: Reorganizes settings information and adds a supported-platform overview.
+- Notes: The Header retains the Polaris identity, the Footer shows version and feedback actions, and the platform overview is localized. Run `pnpm build` and load `dist/`.
+
+## 103
+
+- Date: 2026-08-23
+- Version: 0.26.0
+- Summary: Adds keyboard chapter paging and a persistent shortcut hint.
+- Notes: Shift+Left/Right cycles chapters outside editable fields; run `pnpm build` and load `dist/`.
+
+## 102
+
+- Date: 2026-08-23
+- Version: 0.25.1
+- Summary: Removes the visible settings synchronization status.
+- Notes: Preferences continue to use Chrome Storage Sync internally; the footer now contains only feedback actions. Run `pnpm build` and load `dist/`.
+
+## 101
+
+- Date: 2026-08-23
+- Version: 0.25.0
+- Summary: Adds semantic Markdown and table rendering to chapter content.
+- Notes: Preserves safe emphasis, code, links, quotes, lists and tables from AI responses; run `pnpm build` and load `dist/`.
+
+## 100
+
+- Date: 2026-08-23
+- Version: 0.24.16
+- Summary: Limits chapter dialog content to the selected chapter.
+- Notes: Switching a chapter chip replaces the body instead of showing adjacent chapter content; run `pnpm build` and load `dist/`.
+
+## 99
+
+- Date: 2026-08-23
+- Version: 0.24.15
+- Summary: Combines chapter copy actions into a dropdown menu.
+- Notes: The menu offers current-chapter and full-text copying, then closes after selection; Escape closes it before closing the dialog. Run `pnpm build` and load `dist/`.
+
+## 98
+
+- Date: 2026-08-23
+- Version: 0.24.14
+- Summary: Gives the chapter modal solid black-and-white theme backgrounds.
+- Notes: Light mode uses white and dark mode uses near-black, while the overlay and controls retain their hierarchy; run `pnpm build` and load `dist/`.
+
+## 97
+
+- Date: 2026-08-23
+- Version: 0.24.13
+- Summary: Reduces chapter modal mask opacity in both themes.
+- Notes: The background remains distinguishable without excessively darkening the page; run `pnpm build` and load `dist/`.
+
+## 96
+
+- Date: 2026-08-23
+- Version: 0.24.12
+- Summary: Makes the chapter modal use the same glass tokens as settings.
+- Notes: The modal now shares the glass background, border, shadow and blur in both themes; run `pnpm build` and load `dist/`.
+
+## 95
+
+- Date: 2026-08-23
+- Version: 0.24.11
+- Summary: Aligns selected checkbox control borders with the selected state.
+- Notes: The chip and check control use the same theme-highlight border; run `pnpm build` and load `dist/`.
+
+## 94
+
+- Date: 2026-08-23
+- Version: 0.24.10
+- Summary: Unifies settings control default borders with a theme-aware gray.
+- Notes: Hover, selected and keyboard-focus highlights remain unchanged; run `pnpm build` and load `dist/`.
+
+## 93
+
+- Date: 2026-08-23
+- Version: 0.24.9
+- Summary: Removes default borders from slider tracks and unchecked checkboxes.
+- Notes: Selected and keyboard-focus states remain visible; run `pnpm build` and load `dist/`.
+
+## 92
+
+- Date: 2026-08-23
+- Version: 0.24.8
+- Summary: Standardizes rectangular extension controls on 24pt corners.
+- Notes: Pills, markers and icon buttons remain fully rounded; run `pnpm build` and load `dist/`.
+
+## 91
+
+- Date: 2026-08-23
+- Version: 0.24.7
+- Summary: Unifies rectangular controls with large corner radii.
+- Notes: Pills and icon buttons remain fully rounded; run `pnpm build` and load `dist/`.
+
+## 90
+
+- Date: 2026-08-23
+- Version: 0.24.6
+- Summary: Makes the settings panel use the same glass tokens as the Tab capsule.
+- Notes: The panel keeps its 14pt radius and layout, while the background, border, shadow and blur match the top controls. Run `pnpm build` and load `dist/`.
+
+## 89
+
+- Date: 2026-08-23
+- Version: 0.24.5
+- Summary: Restores the full-width native Hero-style reset button and smooth slider dragging.
+- Notes: Slider progress updates locally while dragging, then applies and syncs on release. Run `pnpm build` and load `dist/`.
+
+## 88
+
+- Date: 2026-08-23
+- Version: 0.24.4
+- Summary: Restores the native settings panel glass surface and Hero-style control states.
+- Notes: Keeps the native implementation and the smaller content bundle. Run `pnpm build` and load `dist/`.
+
 ## 87
 
 - Date: 2026-08-22
