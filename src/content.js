@@ -1198,11 +1198,6 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
     return node && node.parentElement instanceof HTMLElement ? node.parentElement : null;
   }
 
-  function getExplosionBody() {
-    const body = document.querySelector(`#${ROOT_ID} .gpt-paragraph-nav__explosion-body`);
-    return body instanceof HTMLElement ? body : null;
-  }
-
   function isExplosionOpen() {
     return state.isExplosionOpen;
   }
@@ -1609,10 +1604,7 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
     }
 
     syncExplosionOverlay(overlay);
-    const body = overlay.querySelector(".gpt-paragraph-nav__explosion-body");
-    if (body instanceof HTMLElement) {
-      body.scrollTop = 0;
-    }
+    overlay.scrollTop = 0;
     requestAnimationFrame(() => {
       const activeChip = overlay.querySelector(".gpt-paragraph-nav__explosion-chip.is-active");
       activeChip?.scrollIntoView({ block: "nearest", inline: "nearest" });
@@ -1680,12 +1672,9 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
     lockPageScroll();
     const overlay = getExplosionOverlay();
     syncExplosionOverlay(overlay);
-    const body = getExplosionBody();
-    if (body) {
-      requestAnimationFrame(() => {
-        body.scrollTop = 0;
-      });
-    }
+    requestAnimationFrame(() => {
+      overlay.scrollTop = 0;
+    });
   }
 
   function closeExplosionOverlay() {
@@ -3535,6 +3524,7 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
         return;
       }
       event.preventDefault();
+      event.stopPropagation();
       activateExplosionSection(state.activeExplosionSectionIndex + (event.key === "ArrowLeft" ? -1 : 1));
       return;
     }

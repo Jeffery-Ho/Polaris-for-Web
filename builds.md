@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 110
+
+- Date: 2026-08-24
+- Version: 0.26.7
+- Summary: Fixes chapter dialog overflow and keyboard event propagation.
+- Notes: The dialog uses natural content height and the overlay scrolls on short viewports; Shift+Left/Right switches only chapters. Run `pnpm build` and load `dist/`.
+
 ## 109
 
 - Date: 2026-08-23
