@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 111
+
+- Date: 2026-08-24
+- Version: 0.26.8
+- Summary: Lets the chapter dialog header size itself to its contents.
+- Notes: The header no longer has a minimum height; its search field and actions determine the rendered height. Run `pnpm build` and load `dist/`.
+
 ## 110
 
 - Date: 2026-08-24
