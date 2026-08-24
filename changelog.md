@@ -2,6 +2,8 @@
 
 ## 2026-08-24
 
+- Update: The packaged extension name is now `Polaris: AI Chat Navigator — Smart Headings & Quick Jump`.
+- Version: Updated to `0.26.12(115)`.
 - 修复：构建清单版本不再停留在 `0.26.6(109)`；源清单与构建产物统一为 `0.26.11(114)`。
 - 版本：修订更新到 `0.26.11(114)`。
 - 修复：章节搜索框聚焦时改回浅灰色底，并限制最大宽度为 360px，避免挤压复制与关闭按钮的间距。

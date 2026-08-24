@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 115
+
+- Date: 2026-08-24
+- Version: 0.26.12
+- Summary: Synchronizes the packaged extension name with the product name.
+- Notes: The generated manifest now uses Polaris: AI Chat Navigator — Smart Headings & Quick Jump. Run `pnpm build` and load `dist/`.
+
 ## 114
 
 - Date: 2026-08-24
