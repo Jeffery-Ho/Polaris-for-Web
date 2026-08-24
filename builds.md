@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 112
+
+- Date: 2026-08-24
+- Version: 0.26.9
+- Summary: Keeps chapter tabs visible when the dialog shrinks to the viewport.
+- Notes: The dialog now uses the available viewport height; only the chapter body scrolls while the header, tabs and shortcut hint remain visible. Run `pnpm build` and load `dist/`.
+
 ## 111
 
 - Date: 2026-08-24

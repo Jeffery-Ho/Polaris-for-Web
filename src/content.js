@@ -1604,7 +1604,7 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
     }
 
     syncExplosionOverlay(overlay);
-    overlay.scrollTop = 0;
+    resetExplosionBodyScroll(overlay);
     requestAnimationFrame(() => {
       const activeChip = overlay.querySelector(".gpt-paragraph-nav__explosion-chip.is-active");
       activeChip?.scrollIntoView({ block: "nearest", inline: "nearest" });
@@ -1623,6 +1623,13 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
         paragraphs: section.paragraphs
       }))
     });
+  }
+
+  function resetExplosionBodyScroll(overlay) {
+    const body = overlay.querySelector(".gpt-paragraph-nav__explosion-body");
+    if (body instanceof HTMLElement) {
+      body.scrollTop = 0;
+    }
   }
 
   function syncExplosionOverlay(overlay) {
@@ -1673,7 +1680,7 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
     const overlay = getExplosionOverlay();
     syncExplosionOverlay(overlay);
     requestAnimationFrame(() => {
-      overlay.scrollTop = 0;
+      resetExplosionBodyScroll(overlay);
     });
   }
 

@@ -339,7 +339,7 @@ html.gpt-paragraph-nav--dragging * {
   padding: 24px;
   background: rgba(15, 23, 42, 0.22);
   pointer-events: auto;
-  overflow-y: auto;
+  overflow: hidden;
   --gpt-explosion-mask-bg: rgba(15, 23, 42, 0.16);
   --gpt-explosion-modal-bg: #ffffff;
   --gpt-explosion-modal-highlight: none;
@@ -595,6 +595,8 @@ html.gpt-paragraph-nav--dragging * {
   display: flex;
   flex-direction: column;
   width: min(524pt, calc(100vw - 48px));
+  max-height: calc(100vh - 48px);
+  max-height: calc(100dvh - 48px);
   margin: auto 0;
   padding: 24px 22px 28px;
   border: 1px solid var(--gpt-explosion-modal-border);
@@ -611,6 +613,7 @@ html.gpt-paragraph-nav--dragging * {
 }
 
 .gpt-paragraph-nav__explosion-header {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -647,6 +650,7 @@ html.gpt-paragraph-nav--dragging * {
 }
 
 .gpt-paragraph-nav__explosion-chips {
+  flex: 0 0 auto;
   display: flex;
   gap: 8px;
   margin: 0 0 18px 0;
@@ -841,6 +845,8 @@ html.gpt-paragraph-nav--dragging * {
 
   .gpt-paragraph-nav__explosion-content {
     width: min(524pt, calc(100vw - 32px));
+    max-height: calc(100vh - 32px);
+    max-height: calc(100dvh - 32px);
     padding: 20px 18px 24px;
     font-size: 16px;
     line-height: 1.82;
