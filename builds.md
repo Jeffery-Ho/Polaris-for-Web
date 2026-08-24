@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 113
+
+- Date: 2026-08-24
+- Version: 0.26.10
+- Summary: Softens the chapter search focus treatment and caps its width.
+- Notes: The focused search field uses a theme-appropriate light gray surface and does not grow beyond 360px, preserving space around the action buttons. Run `pnpm build` and load `dist/`.
+
 ## 112
 
 - Date: 2026-08-24

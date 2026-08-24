@@ -361,6 +361,8 @@ html.gpt-paragraph-nav--dragging * {
   --gpt-explosion-action-text: var(--gpt-explosion-text);
   --gpt-explosion-action-hover-bg: var(--gpt-highlight-bg);
   --gpt-explosion-action-hover-text: var(--gpt-highlight-text);
+  --gpt-explosion-search-focus-bg: rgba(15, 23, 42, 0.08);
+  --gpt-explosion-search-focus-outline: rgba(15, 23, 42, 0.2);
   --gpt-explosion-close-bg: rgba(15, 23, 42, 0.05);
   --gpt-explosion-close-border: var(--gpt-explosion-modal-border);
   --gpt-explosion-close-text: var(--gpt-explosion-text);
@@ -406,6 +408,8 @@ html.gpt-paragraph-nav--dragging * {
     --gpt-explosion-action-text: var(--gpt-explosion-text);
     --gpt-explosion-action-hover-bg: var(--gpt-highlight-bg);
     --gpt-explosion-action-hover-text: var(--gpt-highlight-text);
+    --gpt-explosion-search-focus-bg: rgba(255, 255, 255, 0.14);
+    --gpt-explosion-search-focus-outline: rgba(255, 255, 255, 0.3);
     --gpt-explosion-close-bg: rgba(255, 255, 255, 0.08);
     --gpt-explosion-close-border: var(--gpt-explosion-modal-border);
     --gpt-explosion-close-text: var(--gpt-explosion-text);
@@ -626,6 +630,7 @@ html.gpt-paragraph-nav--dragging * {
   box-sizing: border-box;
   flex: 1 1 220px;
   min-width: 0;
+  max-width: 360px;
   margin-right: auto;
   min-height: 32px;
   padding: 0 12px;
@@ -639,9 +644,9 @@ html.gpt-paragraph-nav--dragging * {
 }
 
 .gpt-paragraph-nav__explosion-search-input:focus-visible {
-  background: var(--gpt-explosion-action-hover-bg);
-  color: var(--gpt-explosion-action-hover-text);
-  outline: 2px solid var(--gpt-arco-primary);
+  background: var(--gpt-explosion-search-focus-bg);
+  color: var(--gpt-explosion-action-text);
+  outline: 2px solid var(--gpt-explosion-search-focus-outline);
   outline-offset: 2px;
 }
 
