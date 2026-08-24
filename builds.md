@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 114
+
+- Date: 2026-08-24
+- Version: 0.26.11
+- Summary: Synchronizes the build manifest version with the release record.
+- Notes: Both source manifests and the generated extension manifest use 0.26.11(114); run `pnpm build` and load `dist/`.
+
 ## 113
 
 - Date: 2026-08-24
