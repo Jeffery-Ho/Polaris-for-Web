@@ -42,6 +42,17 @@ const RELEASE_NOTES = Object.freeze([
       title: "更新弹窗更亲切",
       changes: ["标题新增 Polaris 应用小图标和 Emoji 提示，关闭按钮的 xmark 已居中对齐。"]
     }
+  },
+  {
+    version: "0.29.2",
+    en: {
+      title: "Newest updates first",
+      changes: ["Release notes now appear in descending version order."]
+    },
+    zh: {
+      title: "更新说明最新优先",
+      changes: ["更新说明现在按版本倒序展示。"]
+    }
   }
 ]);
 
@@ -89,5 +100,5 @@ export function releaseNotesForUpdate(lastSeenVersion, currentVersion, maximumNo
     notes.push(fallbackReleaseNote(currentVersion));
   }
 
-  return notes.slice(-maximumNotes);
+  return notes.slice(-maximumNotes).reverse();
 }

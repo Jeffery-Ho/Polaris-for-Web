@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 128
+
+- Date: 2026-08-25
+- Version: 0.29.2
+- Summary: Shows release notes from the newest version to the oldest.
+- Notes: The three-note limit remains unchanged; only the displayed order is reversed. Run `pnpm test`, then `pnpm build` and load `dist/`.
+
 ## 127
 
 - Date: 2026-08-25
