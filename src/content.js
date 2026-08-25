@@ -1,4 +1,6 @@
 import { mountSettingsPanel } from "./settings-panel.jsx";
+import { chatGPTConversationIdFromPath, parseChatGPTConversation } from "./chatgpt-conversation.js";
+import { pageThemeFromColors } from "./page-theme.js";
 
 (() => {
   const { t } = globalThis.PolarisI18n;
@@ -123,6 +125,10 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
   const SETTINGS_CLASS = "gpt-paragraph-nav__settings";
   const LIST_ID = "gpt-paragraph-nav-list";
   const SETTINGS_PANEL_ID = "gpt-paragraph-nav-settings-panel";
+  const CHATGPT_CONVERSATION_CHANNEL = "polaris-for-web-chatgpt-conversation";
+  const CHATGPT_CONVERSATION_REQUEST = "request";
+  const CHATGPT_CONVERSATION_RESPONSE = "response";
+  const CHATGPT_CONVERSATION_REFRESH_DELAY_MS = 300;
   const ROUTE_CHANGE_EVENT = "polaris-for-web-route-change";
   const FLOATING_ACTIVE_CLASS = "gpt-paragraph-nav__floating-active";
   const LIQUID_GLASS_SELECTOR = [
@@ -141,7 +147,7 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
   const CONFIG_STORAGE_KEY = "gpt-paragraph-nav-config";
   const RATING_DISMISSAL_STORAGE_KEY = "polaris-rating-dismissed-until";
   const RATING_DISMISSAL_DURATION_MS = 24 * 60 * 60 * 1000;
-  const CONFIG_SCHEMA_VERSION = 6;
+  const CONFIG_SCHEMA_VERSION = 7;
   const POINTER_DRAG_THRESHOLD = 4;
   const EXPLOSION_EMPTY_TEXT = t("chapters.empty");
   const EXPLOSION_BLOCK_SELECTOR = "p, li, h1, h2, h3, h4, pre, blockquote, table, ul, ol";
@@ -152,6 +158,7 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
   ].join(", ");
   const CONFIG_FIELDS = [
     { key: "maxVisible", label: t("settings.maxVisible"), min: 1, max: 80, step: 1, unit: "" },
+    { key: "maxVisibleUserGroups", label: t("settings.maxVisibleUserGroups"), min: 1, max: 80, step: 1, unit: "" },
     { key: "foldThreshold", label: t("settings.foldThreshold"), min: 2, max: 80, step: 1, unit: "" },
     { key: "tooltipMaxWidth", label: t("settings.tooltipMaxWidth"), min: 160, max: 720, step: 10, unit: "px" }
   ];
@@ -179,6 +186,7 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
     controlPosition: null,
     isControlMinimized: false,
     maxVisible: QUEUE_MAX_VISIBLE,
+    maxVisibleUserGroups: 20,
     foldThreshold: 20,
     tooltipMaxWidth: 360,
     configVersion: CONFIG_SCHEMA_VERSION,
@@ -207,6 +215,8 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
     floatingScheduled: 0,
     markerListScrollScheduled: 0,
     markerListScrollUntil: 0,
+    markerListScrollAnimation: 0,
+    markerListScrollTarget: 0,
     pointerDrag: null,
     suppressNextClick: false,
     suppressNextClickTimer: 0,
@@ -215,9 +225,13 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
     lastDebugSignature: "",
     lastRenderedHeadingCount: 0,
     markerSearchQuery: "",
+    chatGPTConversation: null,
+    chatGPTConversationRefreshTimer: 0,
+    chatGPTConversationRequestId: 0,
     explosionSearchQuery: "",
     expandedFoldGroups: new Set(),
     expandedUserMarkerKeys: new Set(),
+    areEarlierUserGroupsExpanded: false,
     userMarkerExpansionInitialized: false,
     isCollapsed: false,
     collapsedListHeight: 0,
@@ -270,6 +284,8 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
 
     state.isExtensionContextInvalidated = true;
     window.clearTimeout(state.scheduled);
+    window.cancelAnimationFrame(state.markerListScrollAnimation);
+    state.markerListScrollAnimation = 0;
     state.observer?.disconnect();
     state.liquidGlassObserver?.disconnect();
     closeExplosionOverlay();
@@ -286,6 +302,24 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
       document.documentElement.appendChild(root);
     }
     return root;
+  }
+
+  function updatePageTheme(root) {
+    const fallbackTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    const pageSurfaces = [
+      document.querySelector("main"),
+      document.querySelector('[role="main"]'),
+      document.body,
+      document.documentElement
+    ].filter((element) => element instanceof HTMLElement);
+    const theme = pageThemeFromColors(
+      pageSurfaces.map((element) => window.getComputedStyle(element).backgroundColor),
+      fallbackTheme
+    );
+
+    if (root.dataset.pageTheme !== theme) {
+      root.dataset.pageTheme = theme;
+    }
   }
 
   function getControls(root = getRoot()) {
@@ -306,7 +340,12 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
       list.className = "gpt-paragraph-nav__list";
       list.setAttribute("role", "tabpanel");
       list.setAttribute("aria-labelledby", "gpt-paragraph-nav-tab-navigation");
-      list.addEventListener("scroll", scheduleFloatingActiveUpdate, { passive: true });
+      list.addEventListener("scroll", () => {
+        if (!state.markerListScrollAnimation) {
+          state.markerListScrollTarget = list.scrollTop;
+        }
+        scheduleFloatingActiveUpdate();
+      }, { passive: true });
       root.appendChild(list);
     }
     return list;
@@ -1023,7 +1062,11 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
         return;
       }
 
+      const userGroupLimitChanged = state.config.maxVisibleUserGroups !== nextConfig.maxVisibleUserGroups;
       state.config = nextConfig;
+      if (userGroupLimitChanged) {
+        state.areEarlierUserGroupsExpanded = false;
+      }
       render();
     });
   }
@@ -1074,6 +1117,9 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
       markerTypesLabel: t("settings.markerTypes"),
       onConfigChange(key, value) {
         state.config = normalizeConfig({ ...state.config, [key]: value });
+        if (key === "maxVisibleUserGroups") {
+          state.areEarlierUserGroupsExpanded = false;
+        }
       },
       onConfigCommit() {
         saveConfig(state.config);
@@ -1089,6 +1135,7 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
       },
       onReset() {
         state.config = normalizeConfig(DEFAULT_CONFIG);
+        state.areEarlierUserGroupsExpanded = false;
         saveConfig(state.config);
         render();
       },
@@ -2049,7 +2096,61 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
     };
   }
 
+  function chatGPTMessageIdForContainer(container) {
+    if (!(container instanceof HTMLElement)) {
+      return "";
+    }
+    const messageElement = container.closest("[data-message-id], [data-messageid]")
+      || container.querySelector("[data-message-id], [data-messageid]");
+    return messageElement instanceof HTMLElement
+      ? messageElement.getAttribute("data-message-id") || messageElement.getAttribute("data-messageid") || ""
+      : "";
+  }
+
+  function assistantContainerForHeading(heading, assistantContainers) {
+    let matchedContainer = null;
+    assistantContainers.forEach((container) => {
+      if (!container.contains(heading.element)) {
+        return;
+      }
+      if (!matchedContainer || matchedContainer.contains(container)) {
+        matchedContainer = container;
+      }
+    });
+    return matchedContainer;
+  }
+
+  function collectChatGPTMarkerGroups(conversation, assistantContainers, headings) {
+    const groupsByMessageId = new Map(conversation.userMessages.map((message) => {
+      const title = normalizeTitle(message.text);
+      const user = {
+        element: null,
+        markerKey: `chatgpt-user-${message.id}`,
+        previewTitle: firstLineMarkerTitle(message.text) || title,
+        title,
+        order: message.order
+      };
+      return [message.id, { key: user.markerKey, user, headings: [] }];
+    }));
+    const orphanGroup = { key: "orphan", user: null, headings: [] };
+
+    headings.forEach((heading) => {
+      const assistantContainer = assistantContainerForHeading(heading, assistantContainers);
+      const assistantMessageId = chatGPTMessageIdForContainer(assistantContainer);
+      const userMessageId = conversation.assistantToUserMessageId[assistantMessageId];
+      const group = groupsByMessageId.get(userMessageId) || orphanGroup;
+      group.headings.push(heading);
+    });
+
+    return [...groupsByMessageId.values(), orphanGroup]
+      .filter((group) => group.user || group.headings.length)
+      .sort((left, right) => (left.user ? left.user.order : Number.MAX_SAFE_INTEGER) - (right.user ? right.user.order : Number.MAX_SAFE_INTEGER));
+  }
+
   function collectMarkerGroups(userContainers, assistantContainers, headings) {
+    if (isChatGPTPage() && state.chatGPTConversation) {
+      return collectChatGPTMarkerGroups(state.chatGPTConversation, assistantContainers, headings);
+    }
     const userItems = userContainers
       .map((element) => makeUserMarkerItem(element))
       .filter((user) => Boolean(user.title))
@@ -2101,10 +2202,13 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
       group.headings.push(heading);
     });
 
-    const headingIndexes = new Map(headings.map((heading, index) => [heading, index]));
     return [...groupsByKey.values(), orphanGroup]
-      .filter((group) => group.headings.length)
-      .sort((left, right) => headingIndexes.get(left.headings[0]) - headingIndexes.get(right.headings[0]));
+      .filter((group) => group.user || group.headings.length)
+      .sort((left, right) => {
+        const leftElement = left.user ? left.user.element : left.headings[0].element;
+        const rightElement = right.user ? right.user.element : right.headings[0].element;
+        return compareConversationPosition(leftElement, rightElement);
+      });
   }
 
   function syncUserMarkerExpansion(groups) {
@@ -2584,6 +2688,24 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
       .filter((group) => group.userMatches || group.visibleHeadings.length > 0);
   }
 
+  function limitedMarkerGroups(groups = state.markerGroups) {
+    if (normalizeSearchQuery(state.markerSearchQuery)) {
+      return { groups, earlierUserGroupCount: 0 };
+    }
+
+    const userGroups = groups.filter((group) => group.user);
+    const earlierUserGroupCount = Math.max(0, userGroups.length - state.config.maxVisibleUserGroups);
+    if (!earlierUserGroupCount || state.areEarlierUserGroupsExpanded) {
+      return { groups, earlierUserGroupCount };
+    }
+
+    const hiddenGroupKeys = new Set(userGroups.slice(0, earlierUserGroupCount).map((group) => group.key));
+    return {
+      groups: groups.filter((group) => !hiddenGroupKeys.has(group.key)),
+      earlierUserGroupCount
+    };
+  }
+
   function filteredExplosionSections(sections = state.explosionSections) {
     return sections
       .map((section, index) => ({ section, index }))
@@ -2655,6 +2777,7 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
     } else if (bottomOverflow > 0) {
       list.scrollTop += bottomOverflow + 8;
     }
+    state.markerListScrollTarget = list.scrollTop;
   }
 
   function getLiquidGlassDisplacementMap({ height, width, radius, depth }) {
@@ -2925,6 +3048,35 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
     appendMarkerRow(list, "user", marker);
   }
 
+  function appendEarlierUserGroupsControl(list, count) {
+    const isExpanded = state.areEarlierUserGroupsExpanded;
+    const label = t("userMarker.earlierGroups", { count });
+    const marker = document.createElement("button");
+    marker.type = "button";
+    marker.className = "gpt-paragraph-nav__marker gpt-paragraph-nav__marker--user";
+    marker.style.setProperty("--marker-width", `${markerWidthFor(label)}px`);
+    marker.setAttribute("aria-expanded", String(isExpanded));
+    marker.setAttribute("aria-label", isExpanded
+      ? t("userMarker.collapseEarlierAria", { count })
+      : t("userMarker.expandEarlierAria", { count }));
+
+    const preview = document.createElement("span");
+    preview.className = "gpt-paragraph-nav__preview";
+    preview.textContent = label;
+    marker.appendChild(preview);
+
+    const chevron = document.createElement("span");
+    chevron.className = "gpt-paragraph-nav__user-chevron";
+    chevron.setAttribute("aria-hidden", "true");
+    marker.appendChild(chevron);
+
+    marker.addEventListener("click", () => {
+      state.areEarlierUserGroupsExpanded = !state.areEarlierUserGroupsExpanded;
+      render();
+    });
+    appendMarkerRow(list, "user", marker);
+  }
+
   function displayedHeadingCount(group, headings) {
     if (!headings.length) {
       return 0;
@@ -2977,13 +3129,15 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
 
     const assistantContainers = getAssistantContainers();
     const userContainers = getUserContainers();
-    if (!assistantContainers.length && !userContainers.length) {
+    const hasChatGPTConversation = isChatGPTPage() && Boolean(state.chatGPTConversation?.userMessages.length);
+    if (!assistantContainers.length && !userContainers.length && !hasChatGPTConversation) {
       closeExplosionOverlay();
       removeNavigationRoot();
       return;
     }
 
     const root = getRoot();
+    updatePageTheme(root);
     updateHeaderOffset(root);
     getControlCapsule(root);
     getSettings(root);
@@ -2995,6 +3149,7 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
     }
     applyConfig(root);
     const list = getList(root);
+    stopMarkerListScrollAnimation(list);
     getMarkerSearchInput(root);
     const searchInput = root.querySelector(".gpt-paragraph-nav__search-input");
     const searchWrapper = searchInput instanceof HTMLElement
@@ -3007,7 +3162,8 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
     const headings = collectHeadings(assistantContainers);
     const markerGroups = collectMarkerGroups(userContainers, assistantContainers, headings);
     syncUserMarkerExpansion(markerGroups);
-    const visibleGroups = filteredMarkerGroups(markerGroups);
+    const filteredGroups = filteredMarkerGroups(markerGroups);
+    const { groups: visibleGroups, earlierUserGroupCount } = limitedMarkerGroups(filteredGroups);
     const metrics = getConversationMetrics([...assistantContainers, ...userContainers]);
     ensureHeadingIds(headings);
     state.headings = headings;
@@ -3018,7 +3174,7 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
       const isSearchActive = Boolean(normalizeSearchQuery(state.markerSearchQuery));
       const isExpanded = !group.user || isSearchActive || state.expandedUserMarkerKeys.has(group.key);
       return count + (group.user ? 1 : 0) + (isExpanded ? displayedHeadingCount(group, group.visibleHeadings) : 0);
-    }, 0);
+    }, earlierUserGroupCount ? 1 : 0);
     const hasMarkers = markerGroups.length > 0;
     root.style.setProperty("--queue-visible-count", String(Math.min(displayedCount || 1, state.config.maxVisible)));
     root.classList.toggle("is-empty", !hasMarkers);
@@ -3041,7 +3197,18 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
       list.appendChild(empty);
     }
 
-    visibleGroups.forEach((group) => appendMarkerGroup(list, group));
+    let isEarlierUserGroupsControlAppended = false;
+    visibleGroups.forEach((group) => {
+      if (earlierUserGroupCount && !isEarlierUserGroupsControlAppended && group.user) {
+        appendEarlierUserGroupsControl(list, earlierUserGroupCount);
+        isEarlierUserGroupsControlAppended = true;
+      }
+      appendMarkerGroup(list, group);
+    });
+    if (earlierUserGroupCount && !isEarlierUserGroupsControlAppended) {
+      appendEarlierUserGroupsControl(list, earlierUserGroupCount);
+    }
+    syncMarkerListScrollTarget(list);
     syncLiquidGlassElements(root);
 
     requestAnimationFrame(() => {
@@ -3061,6 +3228,9 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
 
   function resetRouteState() {
     window.clearTimeout(state.scheduled);
+    window.cancelAnimationFrame(state.markerListScrollAnimation);
+    state.markerListScrollAnimation = 0;
+    state.markerListScrollTarget = 0;
     if (state.pointerDrag) {
       state.pointerDrag.root.classList.remove("is-dragging");
       state.pointerDrag = null;
@@ -3083,9 +3253,13 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
     state.lastRenderedHeadingCount = 0;
     state.markerListScrollUntil = 0;
     state.markerSearchQuery = "";
+    state.chatGPTConversation = null;
+    window.clearTimeout(state.chatGPTConversationRefreshTimer);
+    state.chatGPTConversationRefreshTimer = 0;
     state.explosionSearchQuery = "";
     state.expandedFoldGroups.clear();
     state.expandedUserMarkerKeys.clear();
+    state.areEarlierUserGroupsExpanded = false;
     state.userMarkerExpansionInitialized = false;
   }
 
@@ -3116,6 +3290,55 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
       removeNavigationRoot();
       return;
     }
+    scheduleChatGPTConversationRefresh();
+    scheduleRender();
+  }
+
+  function scheduleChatGPTConversationRefresh() {
+    if (!isChatGPTPage()) {
+      return;
+    }
+    window.clearTimeout(state.chatGPTConversationRefreshTimer);
+    state.chatGPTConversationRefreshTimer = window.setTimeout(() => {
+      state.chatGPTConversationRefreshTimer = 0;
+      const conversationId = chatGPTConversationIdFromPath(window.location.pathname);
+      if (!conversationId) {
+        return;
+      }
+      state.chatGPTConversationRequestId += 1;
+      window.postMessage({
+        channel: CHATGPT_CONVERSATION_CHANNEL,
+        conversationId,
+        requestId: state.chatGPTConversationRequestId,
+        routeKey: currentRouteKey(),
+        type: CHATGPT_CONVERSATION_REQUEST
+      }, window.location.origin);
+    }, CHATGPT_CONVERSATION_REFRESH_DELAY_MS);
+  }
+
+  function handleChatGPTConversationMessage(event) {
+    if (event.source !== window || event.origin !== window.location.origin) {
+      return;
+    }
+    const data = event.data;
+    if (!data || data.channel !== CHATGPT_CONVERSATION_CHANNEL || data.type !== CHATGPT_CONVERSATION_RESPONSE) {
+      return;
+    }
+    const conversationId = chatGPTConversationIdFromPath(window.location.pathname);
+    if (data.requestId !== state.chatGPTConversationRequestId
+      || !conversationId
+      || data.conversationId !== conversationId
+      || data.routeKey !== currentRouteKey()) {
+      return;
+    }
+    if (!data.conversation || data.error) {
+      return;
+    }
+    const conversation = parseChatGPTConversation(data.conversation);
+    if (!conversation.userMessages.length) {
+      return;
+    }
+    state.chatGPTConversation = conversation;
     scheduleRender();
   }
 
@@ -3127,12 +3350,14 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
 
     window.addEventListener(ROUTE_CHANGE_EVENT, handleRouteChange);
     if (document.querySelector("script[data-polaris-route-bridge]")) {
+      scheduleChatGPTConversationRefresh();
       return;
     }
 
     const bridge = document.createElement("script");
     bridge.src = extensionMetadata.routeBridgeUrl;
     bridge.dataset.polarisRouteBridge = "true";
+    bridge.addEventListener("load", scheduleChatGPTConversationRefresh, { once: true });
     (document.head || document.documentElement).appendChild(bridge);
   }
 
@@ -3144,6 +3369,7 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
     if (mutations.every(shouldIgnoreMutation)) {
       return;
     }
+    scheduleChatGPTConversationRefresh();
     scheduleRender();
   }
 
@@ -3284,6 +3510,52 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
     return event.deltaY;
   }
 
+  function markerListMaxScrollTop(list) {
+    return Math.max(0, list.scrollHeight - list.clientHeight);
+  }
+
+  function clampMarkerListScrollTop(scrollTop, maxScrollTop) {
+    return Math.min(maxScrollTop, Math.max(0, scrollTop));
+  }
+
+  function syncMarkerListScrollTarget(list) {
+    const maxScrollTop = markerListMaxScrollTop(list);
+    if (state.markerListScrollAnimation) {
+      state.markerListScrollTarget = clampMarkerListScrollTop(state.markerListScrollTarget, maxScrollTop);
+      return;
+    }
+    state.markerListScrollTarget = clampMarkerListScrollTop(list.scrollTop, maxScrollTop);
+  }
+
+  function stopMarkerListScrollAnimation(list) {
+    window.cancelAnimationFrame(state.markerListScrollAnimation);
+    state.markerListScrollAnimation = 0;
+    state.markerListScrollTarget = list.scrollTop;
+  }
+
+  function animateMarkerListScroll(list) {
+    if (state.markerListScrollAnimation) {
+      return;
+    }
+
+    const step = () => {
+      const maxScrollTop = markerListMaxScrollTop(list);
+      const targetScrollTop = clampMarkerListScrollTop(state.markerListScrollTarget, maxScrollTop);
+      const distance = targetScrollTop - list.scrollTop;
+      if (Math.abs(distance) < 0.5) {
+        list.scrollTop = targetScrollTop;
+        state.markerListScrollAnimation = 0;
+        state.markerListScrollTarget = targetScrollTop;
+        return;
+      }
+
+      list.scrollTop += distance * 0.35;
+      state.markerListScrollAnimation = window.requestAnimationFrame(step);
+    };
+
+    state.markerListScrollAnimation = window.requestAnimationFrame(step);
+  }
+
   function markerListWheelHitWidth(root, list) {
     const controls = root.querySelector(`.${CONTROLS_CLASS}`);
     const controlWidth = controls instanceof HTMLElement ? controls.getBoundingClientRect().width : 0;
@@ -3311,7 +3583,7 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
       return null;
     }
 
-    const maxScrollTop = list.scrollHeight - list.clientHeight;
+    const maxScrollTop = markerListMaxScrollTop(list);
     if (maxScrollTop <= 0) {
       return null;
     }
@@ -3347,14 +3619,19 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
     }
 
     const { list, maxScrollTop } = target;
-    const nextScrollTop = Math.min(maxScrollTop, Math.max(0, list.scrollTop + deltaY));
-    if (nextScrollTop === list.scrollTop) {
+    if (event.target instanceof Node && list.contains(event.target)) {
+      return;
+    }
+
+    const currentTarget = state.markerListScrollAnimation ? state.markerListScrollTarget : list.scrollTop;
+    const nextScrollTop = clampMarkerListScrollTop(currentTarget + deltaY, maxScrollTop);
+    if (nextScrollTop === currentTarget) {
       return;
     }
 
     event.preventDefault();
-    list.scrollTop = nextScrollTop;
-    scheduleFloatingActiveUpdate();
+    state.markerListScrollTarget = nextScrollTop;
+    animateMarkerListScroll(list);
   }
 
   function isPrimaryPointer(event) {
@@ -3463,6 +3740,7 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
         drag.maxScrollTop,
         Math.max(0, drag.startScrollTop - deltaY)
       );
+      state.markerListScrollTarget = drag.list.scrollTop;
       scheduleFloatingActiveUpdate();
     }
 
@@ -3613,6 +3891,7 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
     watchConfigChanges();
     state.routeKey = currentRouteKey();
     watchRouteChanges();
+    window.addEventListener("message", handleChatGPTConversationMessage);
     render();
 
     state.observer = new MutationObserver(handleDocumentMutations);

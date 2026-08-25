@@ -5,7 +5,8 @@
   "scripts": {
     "build": "vite build",
     "dev": "vite build --watch",
-    "check": "node --check src/i18n.js && node --check src/content.js"
+    "check": "node --check src/chatgpt-conversation.js && node --check src/page-theme.js && node --check src/i18n.js && node --check src/route-bridge.js && node --check src/content.js",
+    "test": "node --test"
   },
   "devDependencies": {
     "@crxjs/vite-plugin": "2.7.1",

@@ -14,6 +14,7 @@
       "settings.label": "Navigation settings",
       "settings.appName": "Polaris",
       "settings.maxVisible": "Maximum markers",
+      "settings.maxVisibleUserGroups": "User group limit",
       "settings.foldThreshold": "Fold threshold",
       "settings.tooltipMaxWidth": "Tooltip width",
       "settings.markerTypes": "Marker types",
@@ -42,6 +43,9 @@
       "fold.collapseAria": "Collapse {title}, {count} more",
       "userMarker.expandAria": "Expand AI markers for {title}",
       "userMarker.collapseAria": "Collapse AI markers for {title}",
+      "userMarker.earlierGroups": "+{count} earlier user groups",
+      "userMarker.expandEarlierAria": "Show {count} earlier user groups",
+      "userMarker.collapseEarlierAria": "Hide {count} earlier user groups",
       "heading.fallback": "Heading {index}"
     }),
     zh: Object.freeze({
@@ -58,6 +62,7 @@
       "settings.label": "导航设置",
       "settings.appName": "Polaris",
       "settings.maxVisible": "最大数量",
+      "settings.maxVisibleUserGroups": "用户分组上限",
       "settings.foldThreshold": "折叠数量",
       "settings.tooltipMaxWidth": "提示宽度",
       "settings.markerTypes": "Marker 类型",
@@ -86,6 +91,9 @@
       "fold.collapseAria": "收起 {title}，余下 {count} 条",
       "userMarker.expandAria": "展开“{title}”对应的 AI marker",
       "userMarker.collapseAria": "收起“{title}”对应的 AI marker",
+      "userMarker.earlierGroups": "+{count} 个更早分组",
+      "userMarker.expandEarlierAria": "显示 {count} 个更早用户分组",
+      "userMarker.collapseEarlierAria": "收起 {count} 个更早用户分组",
       "heading.fallback": "标题 {index}"
     })
   });

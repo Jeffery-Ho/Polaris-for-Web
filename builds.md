@@ -10,6 +10,34 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 119
+
+- Date: 2026-08-25
+- Version: 0.28.0
+- Summary: Makes maker-list scrolling continuous and follows the ChatGPT page visual theme.
+- Notes: Native scrolling retains trackpad momentum inside the list; the outer hit area uses requestAnimationFrame animation. Run `pnpm test`, then `pnpm build` and load `dist/`.
+
+## 118
+
+- Date: 2026-08-25
+- Version: 0.27.1
+- Summary: Reads the active ChatGPT conversation branch for long-conversation user groups.
+- Notes: Historical user groups no longer depend on mounted DOM rows; only mounted assistant headings remain jumpable. Run `pnpm test`, then `pnpm build` and load `dist/`.
+
+## 117
+
+- Date: 2026-08-25
+- Version: 0.27.0
+- Summary: Adds a configurable first-screen limit for user maker groups.
+- Notes: The latest 20 user groups remain visible by default; earlier groups expand from a single control, while search always includes every matching group. Run `pnpm build` and load `dist/`.
+
+## 116
+
+- Date: 2026-08-25
+- Version: 0.26.13
+- Summary: Keeps every user-message group visible in the AI maker navigation list.
+- Notes: User groups without recognized AI heading makers remain as empty, collapsible rows; run `pnpm build` and load `dist/`.
+
 ## 115
 
 - Date: 2026-08-24
