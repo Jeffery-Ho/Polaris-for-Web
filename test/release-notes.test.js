@@ -62,11 +62,18 @@ test("原始 Markdown 表格功能提供内置更新说明", () => {
   assert.match(note.zh.changes[0], /表格/);
 });
 
+test("混排 Markdown 与特殊字符功能提供内置更新说明", () => {
+  const note = releaseNotesForUpdate("0.33.1", "0.34.0")[0];
+  assert.equal(note.version, "0.34");
+  assert.equal(note.isFallback, undefined);
+  assert.match(note.zh.changes[0], /特殊字符/);
+});
+
 test("缺失当前功能版本说明时按 0.xx 粒度安全降级", () => {
-  const note = releaseNotesForUpdate("0.33.0", "0.34.2")
+  const note = releaseNotesForUpdate("0.34.0", "0.35.2")
     .find((candidate) => candidate.isFallback);
   assert.ok(note);
-  assert.equal(note.version, "0.34");
+  assert.equal(note.version, "0.35");
   assert.equal(note.isFallback, true);
   assert.match(note.zh.title, /更新说明/);
 });

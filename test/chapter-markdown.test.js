@@ -5,6 +5,7 @@ import {
   appendSanitizedChapterNode,
   chapterContentTagName,
   isChapterBlockTag,
+  parseChapterMarkdown,
   parseMarkdownTable,
   safeChapterImageSrc,
   safeChapterLinkHref,
@@ -147,6 +148,68 @@ test("保留转义竖线并拒绝不完整的原始 Markdown 表格", () => {
   );
   assert.equal(parseMarkdownTable("| 名称 | 备注 |\n| --- | --- |\n| 只有一列 |"), null);
   assert.equal(parseMarkdownTable("普通文本\n| --- | --- |"), null);
+});
+
+test("解析原始 Markdown 的混排行内格式并保留 Emoji 与 Unicode", () => {
+  const blocks = parseChapterMarkdown("# 训练计划 🎯\n\n🎯 **P0**：~~旧项~~、`70%`，详见 [说明](https://example.com/plan)。");
+
+  assert.deepEqual(blocks, [
+    {
+      type: "heading",
+      level: 1,
+      children: [{ type: "text", value: "训练计划 🎯" }]
+    },
+    {
+      type: "paragraph",
+      children: [
+        { type: "text", value: "🎯 " },
+        { type: "strong", children: [{ type: "text", value: "P0" }] },
+        { type: "text", value: "：" },
+        { type: "del", children: [{ type: "text", value: "旧项" }] },
+        { type: "text", value: "、" },
+        { type: "code", value: "70%" },
+        { type: "text", value: "，详见 " },
+        { type: "link", href: "https://example.com/plan", children: [{ type: "text", value: "说明" }] },
+        { type: "text", value: "。" }
+      ]
+    }
+  ]);
+});
+
+test("解析嵌套任务列表、引用、代码块和带混排单元格的原始表格", () => {
+  const blocks = parseChapterMarkdown(`- [x] 🎯 已完成
+  1. 子项 *强调*
+  2. [ ] 待办
+
+> 引用 ~~旧内容~~
+
+\`\`\`js
+const emoji = "🎯";
+\`\`\`
+
+| 优先级 | 验证目标 |
+| --- | --- |
+| **P0** | ~~旧项~~ 与 \`70%\` |`);
+
+  assert.equal(blocks[0].type, "list");
+  assert.equal(blocks[0].items[0].checked, true);
+  assert.equal(blocks[0].items[0].children[0].ordered, true);
+  assert.equal(blocks[0].items[0].children[0].items[0].inline[1].type, "em");
+  assert.equal(blocks[0].items[0].children[0].items[1].checked, false);
+  assert.equal(blocks[1].type, "quote");
+  assert.equal(blocks[2].type, "codeBlock");
+  assert.equal(blocks[2].value, "const emoji = \"🎯\";");
+  assert.equal(blocks[3].type, "table");
+  assert.equal(blocks[3].rows[0][0][0].type, "strong");
+  assert.equal(blocks[3].rows[0][1][0].type, "del");
+  assert.equal(blocks[3].rows[0][1][2].type, "code");
+});
+
+test("原始图片、HTML 与未闭合 Markdown 保持普通文本", () => {
+  assert.equal(parseChapterMarkdown("![示例](https://example.com/image.png)"), null);
+  assert.equal(parseChapterMarkdown("<script>alert(1)</script>"), null);
+  assert.equal(parseChapterMarkdown("未闭合 **强调"), null);
+  assert.equal(parseChapterMarkdown("链接 [说明](javascript:alert(1))"), null);
 });
 
 test("安全重建嵌套任务列表、代码、引用、删除线和复杂表格", () => {

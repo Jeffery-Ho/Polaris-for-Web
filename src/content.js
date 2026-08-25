@@ -6,8 +6,9 @@ import { releaseNotesForUpdate } from "./release-notes.js";
 import {
   appendSanitizedChapterContent,
   appendSanitizedChapterNode,
+  appendParsedMarkdownInline,
   CHAPTER_BLOCK_SELECTOR,
-  parseMarkdownTable
+  parseChapterMarkdown
 } from "./chapter-markdown.js";
 
 (() => {
@@ -1744,7 +1745,7 @@ import {
     return appendExplosionTable(container, table);
   }
 
-  function renderMarkdownExplosionTable(container, markdownTable) {
+  function renderParsedMarkdownExplosionTable(container, markdownTable) {
     const table = document.createElement("table");
     table.className = "gpt-paragraph-nav__explosion-table";
     const head = document.createElement("thead");
@@ -1752,7 +1753,7 @@ import {
     markdownTable.headers.forEach((header) => {
       const cell = document.createElement("th");
       cell.scope = "col";
-      cell.textContent = header;
+      appendParsedMarkdownInline(cell, header, document, location.href);
       headerRow.appendChild(cell);
     });
     head.appendChild(headerRow);
@@ -1763,13 +1764,86 @@ import {
       const tableRow = document.createElement("tr");
       row.forEach((value) => {
         const cell = document.createElement("td");
-        cell.textContent = value;
+        appendParsedMarkdownInline(cell, value, document, location.href);
         tableRow.appendChild(cell);
       });
       body.appendChild(tableRow);
     });
     table.appendChild(body);
     return appendExplosionTable(container, table);
+  }
+
+  function appendParsedMarkdownList(target, list) {
+    const element = document.createElement(list.ordered ? "ol" : "ul");
+    element.className = "gpt-paragraph-nav__explosion-list";
+    list.items.forEach((item) => {
+      const listItem = document.createElement("li");
+      if (typeof item.checked === "boolean") {
+        listItem.className = "gpt-paragraph-nav__explosion-task-item";
+        const checkbox = document.createElement("input");
+        checkbox.className = "gpt-paragraph-nav__explosion-task-checkbox";
+        checkbox.type = "checkbox";
+        checkbox.checked = item.checked;
+        checkbox.disabled = true;
+        checkbox.setAttribute("aria-hidden", "true");
+        listItem.appendChild(checkbox);
+      }
+      appendParsedMarkdownInline(listItem, item.inline, document, location.href);
+      item.children.forEach((child) => appendParsedMarkdownList(listItem, child));
+      element.appendChild(listItem);
+    });
+    target.appendChild(element);
+  }
+
+  function renderParsedMarkdownBlocks(container, blocks, sectionRole, paragraphIndex) {
+    blocks.forEach((block) => {
+      if (block.type === "table") {
+        renderParsedMarkdownExplosionTable(container, block);
+        return;
+      }
+      if (block.type === "list") {
+        appendParsedMarkdownList(container, block);
+        return;
+      }
+      if (block.type === "codeBlock") {
+        const pre = document.createElement("pre");
+        pre.className = "gpt-paragraph-nav__explosion-code";
+        const code = document.createElement("code");
+        code.textContent = block.value;
+        pre.appendChild(code);
+        container.appendChild(pre);
+        return;
+      }
+      if (block.type === "rule") {
+        const rule = document.createElement("hr");
+        rule.className = "gpt-paragraph-nav__explosion-rule";
+        container.appendChild(rule);
+        return;
+      }
+      const isHeading = block.type === "heading";
+      const element = document.createElement(isHeading ? `h${block.level}` : block.type === "quote" ? "blockquote" : "p");
+      element.className = isHeading
+        ? "gpt-paragraph-nav__explosion-heading"
+        : block.type === "quote" ? "gpt-paragraph-nav__explosion-quote" : "gpt-paragraph-nav__explosion-paragraph";
+      element.dataset.explosionParagraphIndex = String(paragraphIndex);
+      element.dataset.explosionSectionRole = sectionRole;
+      if (block.type === "quote") {
+        renderParsedMarkdownBlocks(element, block.blocks, sectionRole, paragraphIndex);
+      } else {
+        appendParsedMarkdownInline(element, block.children, document, location.href);
+      }
+      container.appendChild(element);
+    });
+  }
+
+  function parsedMarkdownBlocksForExplosionBlock(block) {
+    if (block.tagName !== "p") {
+      return null;
+    }
+    if (block.element instanceof HTMLElement && Array.from(block.element.children).some((child) => child.tagName !== "BR")) {
+      return null;
+    }
+    return parseChapterMarkdown(block.text);
   }
 
   function renderExplosionSectionBlocks(container, blocks, sectionRole, section = null) {
@@ -1791,8 +1865,9 @@ import {
     }
 
     blocks.forEach((block, index) => {
-      const markdownTable = block.tagName === "p" ? parseMarkdownTable(block.text) : null;
-      if (markdownTable && renderMarkdownExplosionTable(container, markdownTable)) {
+      const markdownBlocks = parsedMarkdownBlocksForExplosionBlock(block);
+      if (markdownBlocks) {
+        renderParsedMarkdownBlocks(container, markdownBlocks, sectionRole, index);
         return;
       }
 

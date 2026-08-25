@@ -107,6 +107,327 @@ export function parseMarkdownTable(text) {
   return { headers, rows };
 }
 
+function appendMarkdownText(nodes, value) {
+  if (!value) {
+    return;
+  }
+  const previous = nodes[nodes.length - 1];
+  if (previous?.type === "text") {
+    previous.value += value;
+  } else {
+    nodes.push({ type: "text", value });
+  }
+}
+
+function safeRawMarkdownLink(value) {
+  return !/^[a-z][a-z0-9+.-]*:/i.test(value) || /^(?:https?:|mailto:)/i.test(value);
+}
+
+function matchingInlineMarker(text, start, marker) {
+  const end = text.indexOf(marker, start + marker.length);
+  return end > start + marker.length ? end : -1;
+}
+
+function parseMarkdownInline(text) {
+  const source = String(text || "");
+  const nodes = [];
+  let recognized = false;
+  let index = 0;
+
+  while (index < source.length) {
+    const character = source[index];
+    if (character === "\\" && index + 1 < source.length) {
+      appendMarkdownText(nodes, source[index + 1]);
+      index += 2;
+      continue;
+    }
+
+    if (character === "!" && source[index + 1] === "[") {
+      const imageEnd = source.indexOf(")", source.indexOf("](", index + 2) + 2);
+      if (imageEnd >= 0) {
+        appendMarkdownText(nodes, source.slice(index, imageEnd + 1));
+        index = imageEnd + 1;
+        continue;
+      }
+    }
+
+    if (character === "[") {
+      const labelEnd = source.indexOf("](", index + 1);
+      const hrefEnd = labelEnd >= 0 ? source.indexOf(")", labelEnd + 2) : -1;
+      if (labelEnd > index + 1 && hrefEnd > labelEnd + 2) {
+        const href = source.slice(labelEnd + 2, hrefEnd).trim();
+        if (safeRawMarkdownLink(href)) {
+          const label = parseMarkdownInline(source.slice(index + 1, labelEnd));
+          nodes.push({ type: "link", href, children: label.nodes });
+          recognized = true;
+          index = hrefEnd + 1;
+          continue;
+        }
+      }
+    }
+
+    if (character === "`") {
+      const end = matchingInlineMarker(source, index, "`");
+      if (end >= 0) {
+        nodes.push({ type: "code", value: source.slice(index + 1, end) });
+        recognized = true;
+        index = end + 1;
+        continue;
+      }
+    }
+
+    const canUseUnderscore = character !== "_" || !/[A-Za-z0-9]/.test(source[index - 1] || "");
+    const markers = (character === "*" || character === "_") && canUseUnderscore
+      ? [character + character, character]
+      : character === "~"
+        ? ["~~"]
+        : [];
+    const marker = markers.find((candidate) => source.startsWith(candidate, index));
+    if (marker) {
+      const end = matchingInlineMarker(source, index, marker);
+      if (end >= 0 && !/^\s|\s$/.test(source.slice(index + marker.length, end))) {
+        const child = parseMarkdownInline(source.slice(index + marker.length, end));
+        const type = marker === "~~" ? "del" : marker.length === 2 ? "strong" : "em";
+        nodes.push({ type, children: child.nodes });
+        recognized = true;
+        index = end + marker.length;
+        continue;
+      }
+    }
+
+    appendMarkdownText(nodes, character);
+    index += 1;
+  }
+
+  return { nodes, recognized };
+}
+
+function markdownIndent(line) {
+  return (String(line || "").match(/^[ \t]*/)?.[0] || "").replace(/\t/g, "  ").length;
+}
+
+function markdownListItem(line) {
+  const match = String(line || "").match(/^([ \t]*)([-+*]|\d+[.)])\s+(.+)$/);
+  if (!match) {
+    return null;
+  }
+  return {
+    indent: markdownIndent(match[1]),
+    ordered: /^\d/.test(match[2]),
+    value: match[3]
+  };
+}
+
+function markdownHeading(line) {
+  const match = String(line || "").match(/^ {0,3}(#{1,6})\s+(.+?)\s*#*\s*$/);
+  return match ? { level: match[1].length, value: match[2] } : null;
+}
+
+function isMarkdownRule(line) {
+  return /^(?: {0,3}[-*_])(?:[ \t]*[-*_]){2,}[ \t]*$/.test(String(line || ""));
+}
+
+function markdownFence(line) {
+  const match = String(line || "").match(/^ {0,3}(`{3,}|~{3,})[^`~]*$/);
+  return match ? match[1] : "";
+}
+
+function markdownTableAt(lines, index) {
+  const rows = [];
+  for (let cursor = index; cursor < lines.length && lines[cursor].trim(); cursor += 1) {
+    rows.push(lines[cursor]);
+  }
+  const table = parseMarkdownTable(rows.join("\n"));
+  return table ? { table, end: index + rows.length } : null;
+}
+
+function lineStartsMarkdownBlock(lines, index) {
+  const line = lines[index] || "";
+  return Boolean(
+    markdownHeading(line)
+    || isMarkdownRule(line)
+    || markdownFence(line)
+    || /^ {0,3}> ?/.test(line)
+    || markdownListItem(line)
+    || markdownTableAt(lines, index)
+  );
+}
+
+function parseMarkdownList(lines, start, indent = markdownListItem(lines[start]).indent) {
+  const first = markdownListItem(lines[start]);
+  const list = { type: "list", ordered: first.ordered, items: [] };
+  let index = start;
+
+  while (index < lines.length) {
+    const item = markdownListItem(lines[index]);
+    if (!item || item.indent !== indent || item.ordered !== list.ordered) {
+      break;
+    }
+
+    const task = item.value.match(/^\[([ xX])\]\s+(.*)$/);
+    const entry = {
+      children: [],
+      inline: parseMarkdownInline(task ? task[2] : item.value).nodes
+    };
+    if (task) {
+      entry.checked = task[1].toLowerCase() === "x";
+    }
+    list.items.push(entry);
+    index += 1;
+
+    const continuation = [];
+    while (index < lines.length) {
+      const next = markdownListItem(lines[index]);
+      if (next && next.indent <= indent) {
+        break;
+      }
+      if (next && next.indent > indent) {
+        const nested = parseMarkdownList(lines, index, next.indent);
+        entry.children.push(nested.list);
+        index = nested.end;
+        continue;
+      }
+      if (!lines[index].trim()) {
+        break;
+      }
+      continuation.push(lines[index].trim());
+      index += 1;
+    }
+    if (continuation.length) {
+      entry.inline.push({ type: "break" }, ...parseMarkdownInline(continuation.join("\n")).nodes);
+    }
+  }
+
+  return { list, end: index };
+}
+
+function parseMarkdownBlocks(lines) {
+  const blocks = [];
+  let recognized = false;
+  let index = 0;
+
+  while (index < lines.length) {
+    if (!lines[index].trim()) {
+      index += 1;
+      continue;
+    }
+
+    const fence = markdownFence(lines[index]);
+    if (fence) {
+      const end = lines.findIndex((line, cursor) => cursor > index && line.trimStart().startsWith(fence));
+      if (end > index) {
+        blocks.push({ type: "codeBlock", value: lines.slice(index + 1, end).join("\n") });
+        recognized = true;
+        index = end + 1;
+        continue;
+      }
+    }
+
+    const heading = markdownHeading(lines[index]);
+    if (heading) {
+      blocks.push({ type: "heading", level: heading.level, children: parseMarkdownInline(heading.value).nodes });
+      recognized = true;
+      index += 1;
+      continue;
+    }
+
+    if (isMarkdownRule(lines[index])) {
+      blocks.push({ type: "rule" });
+      recognized = true;
+      index += 1;
+      continue;
+    }
+
+    if (/^ {0,3}> ?/.test(lines[index])) {
+      const quoteLines = [];
+      while (index < lines.length && /^ {0,3}> ?/.test(lines[index])) {
+        quoteLines.push(lines[index].replace(/^ {0,3}> ?/, ""));
+        index += 1;
+      }
+      blocks.push({ type: "quote", blocks: parseMarkdownBlocks(quoteLines).blocks });
+      recognized = true;
+      continue;
+    }
+
+    const listItem = markdownListItem(lines[index]);
+    if (listItem) {
+      const parsed = parseMarkdownList(lines, index, listItem.indent);
+      blocks.push(parsed.list);
+      recognized = true;
+      index = parsed.end;
+      continue;
+    }
+
+    const markdownTable = markdownTableAt(lines, index);
+    if (markdownTable) {
+      blocks.push({
+        type: "table",
+        headers: markdownTable.table.headers.map((cell) => parseMarkdownInline(cell).nodes),
+        rows: markdownTable.table.rows.map((row) => row.map((cell) => parseMarkdownInline(cell).nodes))
+      });
+      recognized = true;
+      index = markdownTable.end;
+      continue;
+    }
+
+    const paragraph = [];
+    while (index < lines.length && lines[index].trim() && !lineStartsMarkdownBlock(lines, index)) {
+      paragraph.push(lines[index]);
+      index += 1;
+    }
+    const inline = parseMarkdownInline(paragraph.join("\n"));
+    blocks.push({ type: "paragraph", children: inline.nodes });
+    recognized ||= inline.recognized;
+  }
+
+  return { blocks, recognized };
+}
+
+export function parseChapterMarkdown(text) {
+  const source = String(text || "").replace(/\r\n/g, "\n").trim();
+  if (!source) {
+    return null;
+  }
+  const parsed = parseMarkdownBlocks(source.split("\n"));
+  return parsed.recognized ? parsed.blocks : null;
+}
+
+export function appendParsedMarkdownInline(target, nodes, ownerDocument, baseUrl) {
+  nodes.forEach((node) => {
+    if (node.type === "text") {
+      target.appendChild(ownerDocument.createTextNode(node.value));
+      return;
+    }
+    if (node.type === "break") {
+      target.appendChild(ownerDocument.createElement("br"));
+      return;
+    }
+    if (node.type === "code") {
+      const code = ownerDocument.createElement("code");
+      code.textContent = node.value;
+      target.appendChild(code);
+      return;
+    }
+    if (node.type === "link") {
+      const href = safeChapterLinkHref(node.href, baseUrl);
+      if (!href) {
+        appendParsedMarkdownInline(target, node.children, ownerDocument, baseUrl);
+        return;
+      }
+      const link = ownerDocument.createElement("a");
+      link.href = href;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      appendParsedMarkdownInline(link, node.children, ownerDocument, baseUrl);
+      target.appendChild(link);
+      return;
+    }
+    const element = ownerDocument.createElement(node.type);
+    appendParsedMarkdownInline(element, node.children, ownerDocument, baseUrl);
+    target.appendChild(element);
+  });
+}
+
 export function appendSanitizedChapterContent(target, source, ownerDocument, baseUrl) {
   source.childNodes.forEach((node) => appendSanitizedChapterNode(target, node, ownerDocument, baseUrl));
 }

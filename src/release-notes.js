@@ -1,5 +1,16 @@
 const RELEASE_NOTES = Object.freeze([
   {
+    version: "0.34.0",
+    en: {
+      title: "Mixed raw Markdown chapters",
+      changes: ["Chapter View now safely formats raw mixed Markdown, including nested task lists, inline styles, code, tables, and Unicode characters."]
+    },
+    zh: {
+      title: "章节支持混排 Markdown 与特殊字符",
+      changes: ["章节视图现可安全格式化原始混排 Markdown，支持嵌套任务列表、行内格式、代码、表格及 Unicode 特殊字符。"]
+    }
+  },
+  {
     version: "0.33.0",
     en: {
       title: "Raw Markdown tables in chapters",
