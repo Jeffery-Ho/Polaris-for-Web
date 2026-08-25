@@ -1,5 +1,16 @@
 const RELEASE_NOTES = Object.freeze([
   {
+    version: "0.32.0",
+    en: {
+      title: "Jump back to empty chapters",
+      changes: ["Empty Chapter View sections can now take you directly to their original conversation position."]
+    },
+    zh: {
+      title: "空章节可跳回原会话",
+      changes: ["没有可显示正文的章节现在可直接跳转到其在原会话中的位置。"]
+    }
+  },
+  {
     version: "0.31.0",
     en: {
       title: "Richer Markdown chapters",

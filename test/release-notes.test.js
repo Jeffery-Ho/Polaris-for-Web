@@ -48,11 +48,18 @@ test("章节 Markdown 功能版本提供内置更新说明", () => {
   assert.match(note.zh.changes[0], /任务列表/);
 });
 
+test("章节空内容跳转功能提供内置更新说明", () => {
+  const note = releaseNotesForUpdate("0.31.0", "0.32.0")[0];
+  assert.equal(note.version, "0.32");
+  assert.equal(note.isFallback, undefined);
+  assert.match(note.zh.changes[0], /跳转/);
+});
+
 test("缺失当前功能版本说明时按 0.xx 粒度安全降级", () => {
-  const note = releaseNotesForUpdate("0.31.0", "0.32.2")
+  const note = releaseNotesForUpdate("0.32.0", "0.33.2")
     .find((candidate) => candidate.isFallback);
   assert.ok(note);
-  assert.equal(note.version, "0.32");
+  assert.equal(note.version, "0.33");
   assert.equal(note.isFallback, true);
   assert.match(note.zh.title, /更新说明/);
 });

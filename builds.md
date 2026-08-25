@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 134
+
+- Date: 2026-08-25
+- Version: 0.32.0
+- Summary: Lets empty Chapter View sections jump back to their source heading.
+- Notes: The action closes the modal, restores page scrolling, and synchronizes the matching navigation marker. Run `pnpm test`, then `pnpm build` and load `dist/`.
+
 ## 133
 
 - Date: 2026-08-25

@@ -1739,12 +1739,21 @@ import {
     return true;
   }
 
-  function renderExplosionSectionBlocks(container, blocks, sectionRole) {
+  function renderExplosionSectionBlocks(container, blocks, sectionRole, section = null) {
     if (!blocks.length) {
       const empty = document.createElement("p");
       empty.className = "gpt-paragraph-nav__explosion-empty";
       empty.textContent = EXPLOSION_EMPTY_TEXT;
       container.appendChild(empty);
+      if (section?.startElement instanceof HTMLElement && section.startElement.isConnected) {
+        const jumpButton = document.createElement("button");
+        jumpButton.type = "button";
+        jumpButton.className = "gpt-paragraph-nav__explosion-action gpt-paragraph-nav__explosion-jump-source";
+        jumpButton.textContent = t("chapters.jumpToSource");
+        jumpButton.setAttribute("aria-label", t("chapters.jumpToSourceAria", { title: section.title }));
+        jumpButton.addEventListener("click", () => jumpToExplosionSectionSource(section));
+        container.appendChild(jumpButton);
+      }
       return;
     }
 
@@ -1823,7 +1832,7 @@ import {
     title.textContent = section.title;
     sectionNode.appendChild(title);
 
-    renderExplosionSectionBlocks(sectionNode, section.blocks || [], "current");
+    renderExplosionSectionBlocks(sectionNode, section.blocks || [], "current", section);
     body.appendChild(sectionNode);
   }
 
@@ -1971,6 +1980,23 @@ import {
     if (overlay instanceof HTMLElement) {
       syncExplosionOverlay(overlay);
     }
+  }
+
+  function jumpToExplosionSectionSource(section) {
+    const source = section?.startElement;
+    if (!(source instanceof HTMLElement) || !source.isConnected) {
+      return;
+    }
+
+    if (section.markerKey) {
+      state.activeMarkerKey = section.markerKey;
+    }
+    closeExplosionOverlay();
+    requestAnimationFrame(() => {
+      const activeMarker = syncActiveMarker();
+      updateFloatingActiveMarker(activeMarker);
+      jumpToHeading({ element: source });
+    });
   }
 
   function toggleExplosionOverlay() {

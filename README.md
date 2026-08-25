@@ -54,6 +54,7 @@ Preferences are saved to `chrome.storage.sync`.
 - Available on every supported platform: ChatGPT, Doubao, Kimi, Qianwen, Yuanbao, and Xiaohongshu Diandian AI.
 - Processes only AI response content on the current page; input fields, sidebars, and the extension's own interface are excluded.
 - Rebuilds supported rendered Markdown with a strict element and URL allowlist; images load from existing `http`/`https` page URLs and open in a new tab when clicked.
+- When a titled chapter has no extractable body, use **Go to original position** to close the modal and return to that chapter in the conversation.
 - Displays the response in a medium-sized modal approximately `524pt` wide, with a translucent backdrop, and divides the content into sections using the platform's existing marker results.
 - Use the modal search box, or press `Cmd/Ctrl+F` while the modal is open, to filter section chips by title and click a chip to switch sections.
 - Horizontal section chips appear at the top of the modal. By default, the current section and its adjacent sections are displayed.
@@ -66,7 +67,7 @@ Polaris for Web processes AI response content locally in your browser and does n
 
 ## Version
 
-Current version: `0.31.0(133)`
+Current version: `0.32.0(134)`
 
 ## License
 

@@ -1093,6 +1093,11 @@ html.gpt-paragraph-nav--dragging * {
   color: var(--gpt-explosion-muted-text);
 }
 
+.gpt-paragraph-nav__explosion-jump-source {
+  align-self: center;
+  margin-top: 4px;
+}
+
 @media (max-width: 720px) {
   .gpt-paragraph-nav__explosion-overlay {
     padding: 16px;
