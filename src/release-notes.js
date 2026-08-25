@@ -31,6 +31,17 @@ const RELEASE_NOTES = Object.freeze([
       title: "新增版本更新通知",
       changes: ["版本更新弹窗会说明本次改动，并提供直接反馈入口。"]
     }
+  },
+  {
+    version: "0.29.1",
+    en: {
+      title: "Friendlier update notice",
+      changes: ["Adds the Polaris app icon, friendlier emoji cues, and a visually centered close control."]
+    },
+    zh: {
+      title: "更新弹窗更亲切",
+      changes: ["标题新增 Polaris 应用小图标和 Emoji 提示，关闭按钮的 xmark 已居中对齐。"]
+    }
   }
 ]);
 

@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 127
+
+- Date: 2026-08-25
+- Version: 0.29.1
+- Summary: Refines the version-update notice title, close control, and friendly visual cues.
+- Notes: The title now includes a small sparkle icon, the feedback line includes an emoji cue, and the close xmark uses centered CSS strokes. Run `pnpm test`, then `pnpm build` and load `dist/`.
+
 ## 126
 
 - Date: 2026-08-25

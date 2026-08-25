@@ -29,7 +29,9 @@ test("跨多个版本升级最多展示最近三个遗漏版本", () => {
 });
 
 test("缺失当前版本说明时提供安全降级内容", () => {
-  const [note] = releaseNotesForUpdate("0.29.0", "0.30.0");
+  const note = releaseNotesForUpdate("0.29.0", "0.30.0")
+    .find((candidate) => candidate.isFallback);
+  assert.ok(note);
   assert.equal(note.version, "0.30.0");
   assert.equal(note.isFallback, true);
   assert.match(note.zh.title, /更新说明/);

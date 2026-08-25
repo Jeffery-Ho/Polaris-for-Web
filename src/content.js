@@ -802,13 +802,20 @@ import { releaseNotesForUpdate } from "./release-notes.js";
       const title = document.createElement("h2");
       title.id = "gpt-paragraph-nav-release-notice-title";
       title.className = "gpt-paragraph-nav__release-notice-title";
-      title.textContent = t("releaseNotice.title");
+      const titleIcon = document.createElement("img");
+      titleIcon.className = "gpt-paragraph-nav__release-notice-title-icon";
+      titleIcon.alt = "";
+      titleIcon.height = 20;
+      titleIcon.src = extensionMetadata.iconUrl;
+      titleIcon.width = 20;
+      const titleText = document.createElement("span");
+      titleText.textContent = t("releaseNotice.title");
+      title.append(titleIcon, titleText);
       const closeButton = document.createElement("button");
       closeButton.type = "button";
       closeButton.className = "gpt-paragraph-nav__release-notice-close";
       closeButton.setAttribute("aria-label", t("releaseNotice.close"));
       closeButton.setAttribute("title", t("releaseNotice.close"));
-      closeButton.textContent = "×";
       closeButton.addEventListener("click", closeReleaseNotice);
       header.append(title, closeButton);
 
@@ -821,7 +828,7 @@ import { releaseNotesForUpdate } from "./release-notes.js";
 
       const feedback = document.createElement("p");
       feedback.className = "gpt-paragraph-nav__release-notice-feedback";
-      feedback.textContent = t("releaseNotice.feedback");
+      feedback.textContent = `💬 ${t("releaseNotice.feedback")}`;
 
       const actions = document.createElement("div");
       actions.className = "gpt-paragraph-nav__release-notice-actions";
