@@ -918,8 +918,17 @@ html.gpt-paragraph-nav--dragging * {
   font-weight: 700;
 }
 
+.gpt-paragraph-nav__explosion-paragraph del,
+.gpt-paragraph-nav__explosion-quote del,
+.gpt-paragraph-nav__explosion-list del,
+.gpt-paragraph-nav__explosion-table del {
+  text-decoration: line-through;
+}
+
 .gpt-paragraph-nav__explosion-paragraph code,
-.gpt-paragraph-nav__explosion-quote code {
+.gpt-paragraph-nav__explosion-quote code,
+.gpt-paragraph-nav__explosion-list code,
+.gpt-paragraph-nav__explosion-table code {
   padding: 0.12em 0.38em;
   border-radius: 6px;
   background: var(--gpt-explosion-action-bg);
@@ -927,7 +936,9 @@ html.gpt-paragraph-nav--dragging * {
 }
 
 .gpt-paragraph-nav__explosion-paragraph a,
-.gpt-paragraph-nav__explosion-quote a {
+.gpt-paragraph-nav__explosion-quote a,
+.gpt-paragraph-nav__explosion-list a,
+.gpt-paragraph-nav__explosion-table a {
   color: inherit;
   text-decoration: underline;
   text-underline-offset: 0.16em;
@@ -941,6 +952,22 @@ html.gpt-paragraph-nav--dragging * {
 
 .gpt-paragraph-nav__explosion-list li + li {
   margin-top: 0.45em;
+}
+
+.gpt-paragraph-nav__explosion-list .gpt-paragraph-nav__explosion-list {
+  margin: 0.45em 0 0;
+}
+
+.gpt-paragraph-nav__explosion-task-item {
+  list-style: none;
+}
+
+.gpt-paragraph-nav__explosion-task-checkbox {
+  width: 1em;
+  height: 1em;
+  margin: 0 0.5em 0 0;
+  accent-color: var(--gpt-explosion-chip-active-bg);
+  vertical-align: -0.08em;
 }
 
 .gpt-paragraph-nav__explosion-quote {
@@ -1000,8 +1027,61 @@ html.gpt-paragraph-nav--dragging * {
   font-weight: 700;
 }
 
+.gpt-paragraph-nav__explosion-table caption {
+  padding: 10px 12px;
+  color: var(--gpt-explosion-muted-text);
+  text-align: left;
+}
+
 .gpt-paragraph-nav__explosion-table tr:last-child td {
   border-bottom: 0;
+}
+
+.gpt-paragraph-nav__explosion-heading {
+  width: 100%;
+  margin: 4px 0 0;
+  color: var(--gpt-explosion-title-text);
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  line-height: 1.35;
+}
+
+.gpt-paragraph-nav__explosion-heading:is(h1, h2) {
+  font-size: 1.35em;
+}
+
+.gpt-paragraph-nav__explosion-heading:is(h3, h4) {
+  font-size: 1.16em;
+}
+
+.gpt-paragraph-nav__explosion-heading:is(h5, h6) {
+  font-size: 1em;
+}
+
+.gpt-paragraph-nav__explosion-figure {
+  width: 100%;
+  margin: 0;
+}
+
+.gpt-paragraph-nav__explosion-image-link {
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+}
+
+.gpt-paragraph-nav__explosion-image {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  height: auto;
+  border: 1px solid var(--gpt-explosion-action-border);
+  border-radius: 14px;
+}
+
+.gpt-paragraph-nav__explosion-figure figcaption {
+  margin-top: 0.5em;
+  color: var(--gpt-explosion-muted-text);
+  font-size: 0.84em;
+  line-height: 1.5;
 }
 
 .gpt-paragraph-nav__explosion-paragraph + .gpt-paragraph-nav__explosion-paragraph,

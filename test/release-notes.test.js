@@ -41,11 +41,18 @@ test("内置功能版本按倒序展示", () => {
   );
 });
 
+test("章节 Markdown 功能版本提供内置更新说明", () => {
+  const note = releaseNotesForUpdate("0.30.1", "0.31.0")[0];
+  assert.equal(note.version, "0.31");
+  assert.equal(note.isFallback, undefined);
+  assert.match(note.zh.changes[0], /任务列表/);
+});
+
 test("缺失当前功能版本说明时按 0.xx 粒度安全降级", () => {
-  const note = releaseNotesForUpdate("0.30.0", "0.31.2")
+  const note = releaseNotesForUpdate("0.31.0", "0.32.2")
     .find((candidate) => candidate.isFallback);
   assert.ok(note);
-  assert.equal(note.version, "0.31");
+  assert.equal(note.version, "0.32");
   assert.equal(note.isFallback, true);
   assert.match(note.zh.title, /更新说明/);
 });

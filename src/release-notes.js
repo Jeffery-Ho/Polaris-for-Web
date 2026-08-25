@@ -1,5 +1,16 @@
 const RELEASE_NOTES = Object.freeze([
   {
+    version: "0.31.0",
+    en: {
+      title: "Richer Markdown chapters",
+      changes: ["Chapter View now renders headings, task lists, images, nested content, and complex tables safely."]
+    },
+    zh: {
+      title: "更完整的 Markdown 章节阅读",
+      changes: ["章节视图现可安全渲染标题、任务列表、图片、嵌套内容与复杂表格。"]
+    }
+  },
+  {
     version: "0.29.0",
     en: {
       title: "What's new notifications",

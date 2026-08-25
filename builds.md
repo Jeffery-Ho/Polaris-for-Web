@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 133
+
+- Date: 2026-08-25
+- Version: 0.31.0
+- Summary: Expands Chapter View into a richer, safe Markdown reader.
+- Notes: Chapters preserve headings, deletion, nested and task lists, images, and complex tables through a strict DOM and URL allowlist. Run `pnpm test`, then `pnpm build` and load `dist/`.
+
 ## 132
 
 - Date: 2026-08-25

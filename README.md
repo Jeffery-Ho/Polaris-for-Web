@@ -34,6 +34,7 @@ Polaris for Web automatically detects headings and list titles in AI responses a
 - User maker groups show the latest 20 groups by default; earlier groups are available from an expandable summary, and search covers every group.
 - ChatGPT user maker groups read the active conversation branch, so long virtualized conversations retain their historical user groups.
 - **Chapter View**, which organizes AI response content by marker section for convenient reading and copying on every supported platform.
+- Chapter View safely preserves rendered Markdown structure, including headings, nested and task lists, quotes, code, links, images, and wide tables.
 
 ## Settings
 
@@ -52,6 +53,7 @@ Preferences are saved to `chrome.storage.sync`.
 - Click **Chapter View** in the control area on the right, or press `Cmd/Ctrl+Shift+F`.
 - Available on every supported platform: ChatGPT, Doubao, Kimi, Qianwen, Yuanbao, and Xiaohongshu Diandian AI.
 - Processes only AI response content on the current page; input fields, sidebars, and the extension's own interface are excluded.
+- Rebuilds supported rendered Markdown with a strict element and URL allowlist; images load from existing `http`/`https` page URLs and open in a new tab when clicked.
 - Displays the response in a medium-sized modal approximately `524pt` wide, with a translucent backdrop, and divides the content into sections using the platform's existing marker results.
 - Use the modal search box, or press `Cmd/Ctrl+F` while the modal is open, to filter section chips by title and click a chip to switch sections.
 - Horizontal section chips appear at the top of the modal. By default, the current section and its adjacent sections are displayed.
@@ -64,7 +66,7 @@ Polaris for Web processes AI response content locally in your browser and does n
 
 ## Version
 
-Current version: `0.30.1(132)`
+Current version: `0.31.0(133)`
 
 ## License
 

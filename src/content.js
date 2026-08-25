@@ -3,6 +3,11 @@ import { chatGPTConversationIdFromPath, parseChatGPTConversation } from "./chatg
 import { doubaoMessageRoleFromClassNames } from "./doubao-message-role.js";
 import { pageThemeFromColors } from "./page-theme.js";
 import { releaseNotesForUpdate } from "./release-notes.js";
+import {
+  appendSanitizedChapterContent,
+  appendSanitizedChapterNode,
+  CHAPTER_BLOCK_SELECTOR
+} from "./chapter-markdown.js";
 
 (() => {
   const { locale, t } = globalThis.PolarisI18n;
@@ -157,7 +162,7 @@ import { releaseNotesForUpdate } from "./release-notes.js";
   const CONFIG_SCHEMA_VERSION = 7;
   const POINTER_DRAG_THRESHOLD = 4;
   const EXPLOSION_EMPTY_TEXT = t("chapters.empty");
-  const EXPLOSION_BLOCK_SELECTOR = "p, li, h1, h2, h3, h4, pre, blockquote, table, ul, ol";
+  const EXPLOSION_BLOCK_SELECTOR = CHAPTER_BLOCK_SELECTOR;
   const CONVERSATION_HEADER_SELECTOR = [
     '[data-testid="conversation-header"]',
     '[data-testid="chat-header"]',
@@ -1562,7 +1567,8 @@ import { releaseNotesForUpdate } from "./release-notes.js";
     const text = tagName === "table"
       ? tableTextFromElement(element)
       : normalizeExplosionText(element.innerText || element.textContent || "");
-    return { element, tagName, text };
+    const hasImage = tagName === "img" || Boolean(element.querySelector("img"));
+    return { element, tagName, text, hasImage };
   }
 
   function collectExplosionBlocksFromContainer(container) {
@@ -1573,7 +1579,7 @@ import { releaseNotesForUpdate } from "./release-notes.js";
       }
 
       const explosionBlock = explosionBlockFromElement(block);
-      if (!explosionBlock.text || isDecorativeExplosionText(explosionBlock.text)) {
+      if ((!explosionBlock.text && !explosionBlock.hasImage) || (explosionBlock.text && isDecorativeExplosionText(explosionBlock.text))) {
         return;
       }
 
@@ -1658,7 +1664,7 @@ import { releaseNotesForUpdate } from "./release-notes.js";
     const blocks = nodesBetweenHeadingBounds(container, heading, nextHeading);
     const sectionBlocks = blocks
       .map((block) => explosionBlockFromElement(block))
-      .filter((block) => block.text && !isDecorativeExplosionText(block.text));
+      .filter((block) => (block.text || block.hasImage) && (!block.text || !isDecorativeExplosionText(block.text)));
 
     const headingText = normalizeExplosionText(heading.innerText || heading.textContent || "");
     return sectionBlocks.filter((block, index) => !(index === 0 && block.text === headingText));
@@ -1714,55 +1720,12 @@ import { releaseNotesForUpdate } from "./release-notes.js";
     return Math.min(Math.max(state.activeExplosionSectionIndex, 0), sections.length - 1);
   }
 
-  function appendExplosionInlineContent(target, source) {
-    source.childNodes.forEach((node) => {
-      if (node.nodeType === Node.TEXT_NODE) {
-        target.appendChild(document.createTextNode(node.textContent || ""));
-        return;
-      }
-
-      if (!(node instanceof HTMLElement)) {
-        return;
-      }
-
-      if (node.tagName === "BR") {
-        target.appendChild(document.createElement("br"));
-        return;
-      }
-
-      const tagName = node.tagName.toLowerCase();
-      const inlineTag = tagName === "b" || tagName === "strong" ? "strong" : tagName === "i" || tagName === "em" ? "em" : tagName === "code" ? "code" : null;
-      if (inlineTag) {
-        const inline = document.createElement(inlineTag);
-        appendExplosionInlineContent(inline, node);
-        target.appendChild(inline);
-        return;
-      }
-
-      if (tagName === "a") {
-        try {
-          const url = new URL(node.getAttribute("href") || "", location.href);
-          if (["http:", "https:", "mailto:"].includes(url.protocol)) {
-            const link = document.createElement("a");
-            link.href = url.href;
-            link.target = "_blank";
-            link.rel = "noopener noreferrer";
-            appendExplosionInlineContent(link, node);
-            target.appendChild(link);
-            return;
-          }
-        } catch {}
-      }
-
-      appendExplosionInlineContent(target, node);
-    });
+  function appendExplosionContent(target, source) {
+    appendSanitizedChapterContent(target, source, document, location.href);
   }
 
   function renderExplosionTable(container, source) {
-    const rows = Array.from(source.querySelectorAll("tr"))
-      .map((row) => Array.from(row.children).filter((cell) => cell instanceof HTMLTableCellElement))
-      .filter((row) => row.length);
-    if (!rows.length) {
+    if (!source.querySelector("tr")) {
       return false;
     }
 
@@ -1770,15 +1733,7 @@ import { releaseNotesForUpdate } from "./release-notes.js";
     wrapper.className = "gpt-paragraph-nav__explosion-table-wrap";
     const table = document.createElement("table");
     table.className = "gpt-paragraph-nav__explosion-table";
-    rows.forEach((cells, rowIndex) => {
-      const row = document.createElement("tr");
-      cells.forEach((cell) => {
-        const cellElement = document.createElement(rowIndex === 0 ? "th" : "td");
-        appendExplosionInlineContent(cellElement, cell);
-        row.appendChild(cellElement);
-      });
-      table.appendChild(row);
-    });
+    appendExplosionContent(table, source);
     wrapper.appendChild(table);
     container.appendChild(wrapper);
     return true;
@@ -1811,23 +1766,34 @@ import { releaseNotesForUpdate } from "./release-notes.js";
       if (block.tagName === "ul" || block.tagName === "ol") {
         const list = document.createElement(block.tagName);
         list.className = "gpt-paragraph-nav__explosion-list";
-        Array.from(block.element?.children || []).filter((item) => item.matches("li")).forEach((item) => {
-          const listItem = document.createElement("li");
-          appendExplosionInlineContent(listItem, item);
-          list.appendChild(listItem);
-        });
+        if (block.element) {
+          appendExplosionContent(list, block.element);
+        }
         if (list.childElementCount) {
           container.appendChild(list);
           return;
         }
       }
 
-      const element = document.createElement(block.tagName === "blockquote" ? "blockquote" : "p");
-      element.className = `gpt-paragraph-nav__explosion-${block.tagName === "blockquote" ? "quote" : "paragraph"}`;
+      if (block.tagName === "img") {
+        const figure = document.createElement("figure");
+        figure.className = "gpt-paragraph-nav__explosion-figure";
+        appendSanitizedChapterNode(figure, block.element, document, location.href);
+        if (figure.childElementCount) {
+          container.appendChild(figure);
+        }
+        return;
+      }
+
+      const isHeading = /^h[1-6]$/.test(block.tagName);
+      const element = document.createElement(isHeading || block.tagName === "blockquote" || block.tagName === "figure" ? block.tagName : "p");
+      element.className = isHeading
+        ? "gpt-paragraph-nav__explosion-heading"
+        : `gpt-paragraph-nav__explosion-${block.tagName === "blockquote" ? "quote" : block.tagName === "figure" ? "figure" : "paragraph"}`;
       element.dataset.explosionParagraphIndex = String(index);
       element.dataset.explosionSectionRole = sectionRole;
       if (block.element) {
-        appendExplosionInlineContent(element, block.element);
+        appendExplosionContent(element, block.element);
       } else {
         element.textContent = block.text;
       }
