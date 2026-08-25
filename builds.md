@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 123
+
+- Date: 2026-08-25
+- Version: 0.28.4
+- Summary: Moves the global unloaded-reply glass toast to the top center.
+- Notes: The toast enters from above and remains non-interactive. Run `pnpm build` and load `dist/`.
+
 ## 122
 
 - Date: 2026-08-25
