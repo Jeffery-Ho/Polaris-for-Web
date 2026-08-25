@@ -10,6 +10,34 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 145
+
+- Date: 2026-08-25
+- Version: 0.35.7
+- Summary: Ensures Dia's drag-click suppression never blocks Maker buttons.
+- Notes: Even after a completed drag, capture-phase suppression clears its state but lets Maker clicks reach their navigation handlers. Run `pnpm test`, then `pnpm build`, reload `dist/` in Dia, and verify a distant normal heading and a table Maker jump.
+
+## 144
+
+- Date: 2026-08-25
+- Version: 0.35.6
+- Summary: Keeps Maker clicks separate from marker-list dragging in Dia.
+- Notes: Pressing a Maker no longer initializes list dragging, so pointer movement cannot suppress its click; list dragging remains available from blank list space. Run `pnpm test`, then `pnpm build`, reload `dist/` in Dia, and verify a distant normal heading and a table Maker jump.
+
+## 143
+
+- Date: 2026-08-25
+- Version: 0.35.5
+- Summary: Restores Maker navigation inside Dia's conversation scroll container.
+- Notes: All Maker types now calculate the nearest vertical conversation container target position, reserving the fixed-header height and safety gap; without an internal container, navigation falls back to `scrollIntoView`. Run `pnpm test`, then `pnpm build`, reload `dist/` in Dia, and verify both a table Maker and a normal heading Maker in the long ChatGPT conversation.
+
+## 142
+
+- Date: 2026-08-25
+- Version: 0.35.4
+- Summary: Restores navigation for duplicate table markers after a ChatGPT table rerender.
+- Notes: A matching table at the original candidate index is now preferred before unique title-and-fingerprint fallback, so repeated identical tables remain jumpable. Run `pnpm test`, then `pnpm build`, reload `dist/` in Dia, and verify the target table in the long ChatGPT conversation.
+
 ## 141
 
 - Date: 2026-08-25

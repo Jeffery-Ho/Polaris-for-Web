@@ -3,8 +3,9 @@ import { chatGPTConversationIdFromPath, parseChatGPTConversation } from "./chatg
 import { doubaoMessageRoleFromClassNames } from "./doubao-message-role.js";
 import { pageThemeFromColors } from "./page-theme.js";
 import { releaseNotesForUpdate } from "./release-notes.js";
+import { shouldStartMarkerListPointerDrag } from "./marker-list-drag.js";
 import {
-  scrollTableMarkerIntoView,
+  scrollMarkerIntoView,
   TABLE_MARKER_LEVEL,
   tableMarkerEntries,
   tableMarkerEntryForTarget
@@ -3176,8 +3177,8 @@ import {
     return null;
   }
 
-  function jumpToTable(heading, behavior) {
-    return scrollTableMarkerIntoView({
+  function jumpToMarker(heading, behavior) {
+    return scrollMarkerIntoView({
       element: heading.element,
       scrollContainer: nearestVerticalScrollContainer(heading.element),
       headerHeight: getConversationHeaderHeight(),
@@ -3214,13 +3215,7 @@ import {
       return false;
     }
     const currentHeading = element === heading.element ? heading : { ...heading, element };
-    let didJump;
-    if (currentHeading.sourceType === "table") {
-      didJump = jumpToTable(currentHeading, behavior);
-    } else {
-      element.scrollIntoView({ behavior, block: "start" });
-      didJump = true;
-    }
+    const didJump = jumpToMarker(currentHeading, behavior);
     if (!didJump) {
       return false;
     }
@@ -4148,6 +4143,9 @@ import {
     state.suppressNextClick = false;
     window.clearTimeout(state.suppressNextClickTimer);
     state.suppressNextClickTimer = 0;
+    if (!shouldStartMarkerListPointerDrag(event.target)) {
+      return;
+    }
     event.preventDefault();
     event.stopImmediatePropagation();
   }
@@ -4182,6 +4180,10 @@ import {
 
     const target = markerListInteractionTarget(event);
     if (!target) {
+      return;
+    }
+
+    if (!shouldStartMarkerListPointerDrag(event.target)) {
       return;
     }
 

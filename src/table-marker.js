@@ -10,7 +10,7 @@ export function tableMarkerScrollTop({ scrollTop, targetTop, scrollerTop, header
   return Math.min(maximum, Math.max(0, targetScrollTop));
 }
 
-export function scrollTableMarkerIntoView({ element, scrollContainer, headerHeight, gap, behavior }) {
+export function scrollMarkerIntoView({ element, scrollContainer, headerHeight, gap, behavior }) {
   if (!element || typeof element.scrollIntoView !== "function") {
     return false;
   }
@@ -67,11 +67,14 @@ export function tableMarkerEntries(entries) {
 export function tableMarkerEntryForTarget(entries, index, title, fingerprint) {
   const currentEntries = tableMarkerEntries(entries);
   const indexedEntry = currentEntries[index];
+  if (indexedEntry && indexedEntry.title === title && (!fingerprint || indexedEntry.fingerprint === fingerprint)) {
+    return indexedEntry;
+  }
   const matchingEntries = currentEntries.filter((entry) => (
     entry.title === title && (!fingerprint || entry.fingerprint === fingerprint)
   ));
   if (matchingEntries.length !== 1) {
     return null;
   }
-  return indexedEntry === matchingEntries[0] ? indexedEntry : matchingEntries[0];
+  return matchingEntries[0];
 }

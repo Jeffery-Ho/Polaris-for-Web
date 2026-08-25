@@ -7,7 +7,7 @@ import {
   tableMarkerEntryForTarget,
   tableMarkerScrollTop,
   tableMarkerTitleFromCells,
-  scrollTableMarkerIntoView
+  scrollMarkerIntoView
 } from "../src/table-marker.js";
 
 test("表格 Maker 按 H3 筛选开关参与显示", () => {
@@ -63,6 +63,18 @@ test("替换后的表格按候选序号、表头与正文指纹重新匹配", ()
   });
 });
 
+test("内容相同的重复表格按稳定候选序号恢复目标", () => {
+  const firstDuplicate = {};
+  const secondDuplicate = {};
+  assert.deepEqual(
+    tableMarkerEntryForTarget([
+      { element: firstDuplicate, cells: ["场景", "用户问题"], fingerprint: "场景 用户问题 相同" },
+      { element: secondDuplicate, cells: ["场景", "用户问题"], fingerprint: "场景 用户问题 相同" }
+    ], 1, "场景 / 用户问题", "场景 用户问题 相同"),
+    { element: secondDuplicate, title: "场景 / 用户问题", fingerprint: "场景 用户问题 相同" }
+  );
+});
+
 test("候选序号变化时按唯一同表头和指纹表格回退，避免跳错重复表格", () => {
   const uniqueTable = {};
   assert.deepEqual(
@@ -74,6 +86,7 @@ test("候选序号变化时按唯一同表头和指纹表格回退，避免跳�
   );
   assert.equal(
     tableMarkerEntryForTarget([
+      { element: {}, cells: ["场景", "用户问题"], fingerprint: "场景 用户问题 另一张表" },
       { element: {}, cells: ["场景", "用户问题"], fingerprint: "场景 用户问题 相同" },
       { element: {}, cells: ["场景", "用户问题"], fingerprint: "场景 用户问题 相同" }
     ], 0, "场景 / 用户问题", "场景 用户问题 相同"),
@@ -122,14 +135,14 @@ test("缺少可用滚动容器坐标时返回回退信号", () => {
   assert.equal(tableMarkerScrollTop({}), null);
 });
 
-test("没有内部滚动容器时回退为表格自身的 scrollIntoView", () => {
+test("没有内部滚动容器时任意 Maker 回退为自身的 scrollIntoView", () => {
   const calls = [];
   const table = {
     scrollIntoView: (options) => calls.push(options)
   };
 
   assert.equal(
-    scrollTableMarkerIntoView({
+    scrollMarkerIntoView({
       element: table,
       scrollContainer: null,
       headerHeight: 64,
@@ -141,7 +154,7 @@ test("没有内部滚动容器时回退为表格自身的 scrollIntoView", () =>
   assert.deepEqual(calls, [{ behavior: "smooth", block: "start" }]);
 });
 
-test("内部滚动容器会接收扣除顶部栏后的表格目标位置", () => {
+test("内部滚动容器会接收扣除顶部栏后的 Maker 目标位置", () => {
   const tableCalls = [];
   const containerCalls = [];
   const table = {
@@ -157,7 +170,7 @@ test("内部滚动容器会接收扣除顶部栏后的表格目标位置", () =>
   };
 
   assert.equal(
-    scrollTableMarkerIntoView({
+    scrollMarkerIntoView({
       element: table,
       scrollContainer,
       headerHeight: 64,
