@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 126
+
+- Date: 2026-08-25
+- Version: 0.29.0
+- Summary: Adds localized version-update notices with direct feedback actions.
+- Notes: First installs and version upgrades show up to three recent release notes. Closing the dialog records the current version locally. Every release must add its bundled note to `src/release-notes.js`. Run `pnpm test`, then `pnpm build` and load `dist/`.
+
 ## 125
 
 - Date: 2026-08-25

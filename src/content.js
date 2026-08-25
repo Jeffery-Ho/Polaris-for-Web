@@ -2,9 +2,10 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
 import { chatGPTConversationIdFromPath, parseChatGPTConversation } from "./chatgpt-conversation.js";
 import { doubaoMessageRoleFromClassNames } from "./doubao-message-role.js";
 import { pageThemeFromColors } from "./page-theme.js";
+import { releaseNotesForUpdate } from "./release-notes.js";
 
 (() => {
-  const { t } = globalThis.PolarisI18n;
+  const { locale, t } = globalThis.PolarisI18n;
   const ROOT_ID = "gpt-paragraph-nav";
   const DEBUG_ATTR = "data-gpt-paragraph-nav";
   const HEADING_SELECTOR = "h1, h2, h3, h4";
@@ -151,6 +152,7 @@ import { pageThemeFromColors } from "./page-theme.js";
   const DEFAULT_HEADER_HEIGHT = 64;
   const CONFIG_STORAGE_KEY = "gpt-paragraph-nav-config";
   const RATING_DISMISSAL_STORAGE_KEY = "polaris-rating-dismissed-until";
+  const RELEASE_NOTICE_STORAGE_KEY = "polaris-release-notice-version";
   const RATING_DISMISSAL_DURATION_MS = 24 * 60 * 60 * 1000;
   const CONFIG_SCHEMA_VERSION = 7;
   const POINTER_DRAG_THRESHOLD = 4;
@@ -204,6 +206,7 @@ import { pageThemeFromColors } from "./page-theme.js";
   const extensionMetadata = {
     iconUrl: "",
     routeBridgeUrl: "",
+    releaseVersion: "",
     version: ""
   };
   let nextMarkerKey = 1;
@@ -242,6 +245,9 @@ import { pageThemeFromColors } from "./page-theme.js";
     isCollapsed: false,
     collapsedListHeight: 0,
     ratingDismissedUntil: 0,
+    releaseNotes: [],
+    isReleaseNoticeOpen: false,
+    releaseNoticeFocusPending: false,
     config: { ...DEFAULT_CONFIG },
     activeControlTab: "navigation",
     isExplosionOpen: false,
@@ -266,6 +272,7 @@ import { pageThemeFromColors } from "./page-theme.js";
       const manifest = chrome.runtime.getManifest();
       extensionMetadata.iconUrl = chrome.runtime.getURL("icons/gpt-voyager-icon-96.png");
       extensionMetadata.routeBridgeUrl = chrome.runtime.getURL("src/route-bridge.js");
+      extensionMetadata.releaseVersion = manifest.version;
       extensionMetadata.version = manifest.version_name || `v${manifest.version}`;
       return true;
     } catch {
@@ -296,6 +303,8 @@ import { pageThemeFromColors } from "./page-theme.js";
     state.observer?.disconnect();
     state.liquidGlassObserver?.disconnect();
     closeExplosionOverlay();
+    state.isReleaseNoticeOpen = false;
+    unlockPageScroll();
     removeNavigationRoot();
   }
 
@@ -769,6 +778,122 @@ import { pageThemeFromColors } from "./page-theme.js";
     return overlay;
   }
 
+  function getReleaseNoticeOverlay(root = getRoot()) {
+    let overlay = root.querySelector(".gpt-paragraph-nav__release-notice-overlay");
+    if (!overlay) {
+      overlay = document.createElement("div");
+      overlay.className = "gpt-paragraph-nav__release-notice-overlay";
+      overlay.id = "gpt-paragraph-nav-release-notice";
+      overlay.setAttribute("role", "dialog");
+      overlay.setAttribute("aria-modal", "true");
+      overlay.setAttribute("aria-labelledby", "gpt-paragraph-nav-release-notice-title");
+      overlay.hidden = true;
+      overlay.addEventListener("click", (event) => {
+        if (event.target === overlay) {
+          closeReleaseNotice();
+        }
+      });
+
+      const card = document.createElement("section");
+      card.className = "gpt-paragraph-nav__release-notice-card";
+
+      const header = document.createElement("header");
+      header.className = "gpt-paragraph-nav__release-notice-header";
+      const title = document.createElement("h2");
+      title.id = "gpt-paragraph-nav-release-notice-title";
+      title.className = "gpt-paragraph-nav__release-notice-title";
+      title.textContent = t("releaseNotice.title");
+      const closeButton = document.createElement("button");
+      closeButton.type = "button";
+      closeButton.className = "gpt-paragraph-nav__release-notice-close";
+      closeButton.setAttribute("aria-label", t("releaseNotice.close"));
+      closeButton.setAttribute("title", t("releaseNotice.close"));
+      closeButton.textContent = "×";
+      closeButton.addEventListener("click", closeReleaseNotice);
+      header.append(title, closeButton);
+
+      const summary = document.createElement("p");
+      summary.className = "gpt-paragraph-nav__release-notice-summary";
+      summary.textContent = t("releaseNotice.summary", { version: extensionMetadata.version });
+
+      const notes = document.createElement("div");
+      notes.className = "gpt-paragraph-nav__release-notice-notes";
+
+      const feedback = document.createElement("p");
+      feedback.className = "gpt-paragraph-nav__release-notice-feedback";
+      feedback.textContent = t("releaseNotice.feedback");
+
+      const actions = document.createElement("div");
+      actions.className = "gpt-paragraph-nav__release-notice-actions";
+      const email = document.createElement("a");
+      email.className = "gpt-paragraph-nav__release-notice-action";
+      email.href = "mailto:jefferyho.build@gmail.com";
+      email.textContent = t("releaseNotice.emailAction");
+      const issue = document.createElement("a");
+      issue.className = "gpt-paragraph-nav__release-notice-action";
+      issue.href = "https://github.com/Jeffery-Ho/Polaris-for-Web/issues";
+      issue.rel = "noreferrer";
+      issue.target = "_blank";
+      issue.textContent = t("releaseNotice.issueAction");
+      const acknowledge = document.createElement("button");
+      acknowledge.type = "button";
+      acknowledge.className = "gpt-paragraph-nav__release-notice-action is-primary";
+      acknowledge.textContent = t("releaseNotice.acknowledge");
+      acknowledge.addEventListener("click", closeReleaseNotice);
+      actions.append(email, issue, acknowledge);
+
+      card.append(header, summary, notes, feedback, actions);
+      overlay.appendChild(card);
+      root.appendChild(overlay);
+    }
+
+    syncReleaseNoticeOverlay(overlay);
+    return overlay;
+  }
+
+  function syncReleaseNoticeOverlay(overlay) {
+    const notes = overlay.querySelector(".gpt-paragraph-nav__release-notice-notes");
+    if (notes instanceof HTMLElement) {
+      notes.replaceChildren();
+      state.releaseNotes.forEach((note) => {
+        const localizedNote = note[locale] || note.en;
+        const section = document.createElement("section");
+        section.className = "gpt-paragraph-nav__release-note";
+        const heading = document.createElement("h3");
+        heading.textContent = `${note.version} · ${localizedNote.title}`;
+        const changes = document.createElement("ul");
+        localizedNote.changes.forEach((change) => {
+          const item = document.createElement("li");
+          item.textContent = change;
+          changes.appendChild(item);
+        });
+        section.append(heading, changes);
+        notes.appendChild(section);
+      });
+    }
+
+    overlay.hidden = !state.isReleaseNoticeOpen;
+    if (state.isReleaseNoticeOpen && state.releaseNoticeFocusPending) {
+      state.releaseNoticeFocusPending = false;
+      const acknowledge = overlay.querySelector(".gpt-paragraph-nav__release-notice-action.is-primary");
+      if (acknowledge instanceof HTMLButtonElement) {
+        requestAnimationFrame(() => acknowledge.focus());
+      }
+    }
+  }
+
+  function closeReleaseNotice() {
+    if (!state.isReleaseNoticeOpen) {
+      return;
+    }
+
+    state.isReleaseNoticeOpen = false;
+    state.releaseNoticeFocusPending = false;
+    unlockPageScroll();
+    saveReleaseNoticeVersion();
+    render();
+  }
+
   function normalizeNumber(value, fallback, min, max) {
     const number = Number(value);
     if (!Number.isFinite(number)) {
@@ -958,6 +1083,64 @@ import { pageThemeFromColors } from "./page-theme.js";
         const error = runtimeLastError();
         if (error) {
           console.warn("[Polaris for Web] rating dismissal write failed", error);
+        }
+      });
+    } catch {
+      disposeInvalidExtensionContext();
+    }
+  }
+
+  function isTopLevelFrame() {
+    try {
+      return window.top === window;
+    } catch {
+      return false;
+    }
+  }
+
+  function readReleaseNoticeVersion() {
+    if (!hasLocalStorage()) {
+      return Promise.resolve(null);
+    }
+
+    return new Promise((resolve) => {
+      try {
+        chrome.storage.local.get(RELEASE_NOTICE_STORAGE_KEY, (result) => {
+          if (!isExtensionContextValid()) {
+            disposeInvalidExtensionContext();
+            resolve(null);
+            return;
+          }
+          const error = runtimeLastError();
+          if (error) {
+            console.warn("[Polaris for Web] release notice read failed", error);
+            resolve(null);
+            return;
+          }
+          const version = result[RELEASE_NOTICE_STORAGE_KEY];
+          resolve(typeof version === "string" ? version : null);
+        });
+      } catch {
+        disposeInvalidExtensionContext();
+        resolve(null);
+      }
+    });
+  }
+
+  function saveReleaseNoticeVersion() {
+    if (!hasLocalStorage()) {
+      return;
+    }
+
+    try {
+      chrome.storage.local.set({ [RELEASE_NOTICE_STORAGE_KEY]: extensionMetadata.releaseVersion }, () => {
+        if (!isExtensionContextValid()) {
+          disposeInvalidExtensionContext();
+          return;
+        }
+        const error = runtimeLastError();
+        if (error) {
+          console.warn("[Polaris for Web] release notice write failed", error);
         }
       });
     } catch {
@@ -3166,17 +3349,21 @@ import { pageThemeFromColors } from "./page-theme.js";
       return;
     }
 
+    const root = getRoot();
+    updatePageTheme(root);
+    getReleaseNoticeOverlay(root);
+
     const assistantContainers = getAssistantContainers();
     const userContainers = getUserContainers();
     const hasChatGPTConversation = isChatGPTPage() && Boolean(state.chatGPTConversation?.userMessages.length);
     if (!assistantContainers.length && !userContainers.length && !hasChatGPTConversation) {
       closeExplosionOverlay();
-      removeNavigationRoot();
+      if (!state.isReleaseNoticeOpen) {
+        removeNavigationRoot();
+      }
       return;
     }
 
-    const root = getRoot();
-    updatePageTheme(root);
     updateHeaderOffset(root);
     getControlCapsule(root);
     getSettings(root);
@@ -3645,7 +3832,7 @@ import { pageThemeFromColors } from "./page-theme.js";
   }
 
   function handleMarkerListWheel(event) {
-    if (state.isExplosionOpen || state.pointerDrag) {
+    if (state.isExplosionOpen || state.isReleaseNoticeOpen || state.pointerDrag) {
       return;
     }
 
@@ -3833,6 +4020,16 @@ import { pageThemeFromColors } from "./page-theme.js";
       return;
     }
 
+    if (event.key === "Escape" && state.isReleaseNoticeOpen) {
+      event.preventDefault();
+      closeReleaseNotice();
+      return;
+    }
+
+    if (state.isReleaseNoticeOpen) {
+      return;
+    }
+
     if (event.key === "Escape" && state.isExplosionOpen) {
       const copyMenu = document.querySelector(`#${ROOT_ID} .gpt-paragraph-nav__explosion-copy-menu`);
       if (copyMenu instanceof HTMLDetailsElement && copyMenu.open) {
@@ -3929,6 +4126,15 @@ import { pageThemeFromColors } from "./page-theme.js";
     document.documentElement.setAttribute(DEBUG_ATTR, "loaded:0");
     state.config = await loadConfig();
     state.ratingDismissedUntil = await readRatingDismissedUntil();
+    const lastSeenReleaseVersion = await readReleaseNoticeVersion();
+    if (isTopLevelFrame()) {
+      state.releaseNotes = releaseNotesForUpdate(lastSeenReleaseVersion, extensionMetadata.releaseVersion);
+      state.isReleaseNoticeOpen = state.releaseNotes.length > 0;
+      state.releaseNoticeFocusPending = state.isReleaseNoticeOpen;
+      if (state.isReleaseNoticeOpen) {
+        lockPageScroll();
+      }
+    }
     watchConfigChanges();
     state.routeKey = currentRouteKey();
     watchRouteChanges();
