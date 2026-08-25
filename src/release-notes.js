@@ -1,5 +1,16 @@
 const RELEASE_NOTES = Object.freeze([
   {
+    version: "0.33.0",
+    en: {
+      title: "Raw Markdown tables in chapters",
+      changes: ["Chapter View now formats complete pipe tables even when the source page leaves them as raw Markdown text."]
+    },
+    zh: {
+      title: "章节支持原始 Markdown 表格",
+      changes: ["网页未渲染的完整管道表格现在会在章节视图中格式化显示。"]
+    }
+  },
+  {
     version: "0.32.0",
     en: {
       title: "Jump back to empty chapters",

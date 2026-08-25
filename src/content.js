@@ -6,7 +6,8 @@ import { releaseNotesForUpdate } from "./release-notes.js";
 import {
   appendSanitizedChapterContent,
   appendSanitizedChapterNode,
-  CHAPTER_BLOCK_SELECTOR
+  CHAPTER_BLOCK_SELECTOR,
+  parseMarkdownTable
 } from "./chapter-markdown.js";
 
 (() => {
@@ -1724,19 +1725,51 @@ import {
     appendSanitizedChapterContent(target, source, document, location.href);
   }
 
+  function appendExplosionTable(container, table) {
+    const wrapper = document.createElement("div");
+    wrapper.className = "gpt-paragraph-nav__explosion-table-wrap";
+    wrapper.appendChild(table);
+    container.appendChild(wrapper);
+    return true;
+  }
+
   function renderExplosionTable(container, source) {
     if (!source.querySelector("tr")) {
       return false;
     }
 
-    const wrapper = document.createElement("div");
-    wrapper.className = "gpt-paragraph-nav__explosion-table-wrap";
     const table = document.createElement("table");
     table.className = "gpt-paragraph-nav__explosion-table";
     appendExplosionContent(table, source);
-    wrapper.appendChild(table);
-    container.appendChild(wrapper);
-    return true;
+    return appendExplosionTable(container, table);
+  }
+
+  function renderMarkdownExplosionTable(container, markdownTable) {
+    const table = document.createElement("table");
+    table.className = "gpt-paragraph-nav__explosion-table";
+    const head = document.createElement("thead");
+    const headerRow = document.createElement("tr");
+    markdownTable.headers.forEach((header) => {
+      const cell = document.createElement("th");
+      cell.scope = "col";
+      cell.textContent = header;
+      headerRow.appendChild(cell);
+    });
+    head.appendChild(headerRow);
+    table.appendChild(head);
+
+    const body = document.createElement("tbody");
+    markdownTable.rows.forEach((row) => {
+      const tableRow = document.createElement("tr");
+      row.forEach((value) => {
+        const cell = document.createElement("td");
+        cell.textContent = value;
+        tableRow.appendChild(cell);
+      });
+      body.appendChild(tableRow);
+    });
+    table.appendChild(body);
+    return appendExplosionTable(container, table);
   }
 
   function renderExplosionSectionBlocks(container, blocks, sectionRole, section = null) {
@@ -1758,6 +1791,11 @@ import {
     }
 
     blocks.forEach((block, index) => {
+      const markdownTable = block.tagName === "p" ? parseMarkdownTable(block.text) : null;
+      if (markdownTable && renderMarkdownExplosionTable(container, markdownTable)) {
+        return;
+      }
+
       if (block.tagName === "table" && block.element instanceof HTMLTableElement && renderExplosionTable(container, block.element)) {
         return;
       }

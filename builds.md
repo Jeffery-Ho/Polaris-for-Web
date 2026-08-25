@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 135
+
+- Date: 2026-08-25
+- Version: 0.33.0
+- Summary: Formats complete raw Markdown pipe tables inside Chapter View.
+- Notes: Only a header, delimiter row, and equal-width data rows are converted; incomplete text remains a paragraph. Run `pnpm test`, then `pnpm build` and load `dist/`.
+
 ## 134
 
 - Date: 2026-08-25

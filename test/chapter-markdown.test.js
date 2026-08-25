@@ -5,6 +5,7 @@ import {
   appendSanitizedChapterNode,
   chapterContentTagName,
   isChapterBlockTag,
+  parseMarkdownTable,
   safeChapterImageSrc,
   safeChapterLinkHref,
   shouldDiscardChapterNode
@@ -122,6 +123,30 @@ test("链接仅允许网页和邮件协议，图片仅允许网页协议", () =>
   assert.equal(safeChapterImageSrc("/images/example.png", baseUrl), "https://chatgpt.com/images/example.png");
   assert.equal(safeChapterImageSrc("data:image/png;base64,unsafe", baseUrl), "");
   assert.equal(safeChapterImageSrc("javascript:alert(1)", baseUrl), "");
+});
+
+test("解析列数一致的原始 Markdown 管道表格", () => {
+  const table = parseMarkdownTable(`| 优先级验证项验证目标 |            |                          |
+| ---------- | ---------- | ------------------------ |
+| P0         | 发射与供球可靠性   | 球速、旋转、落点稳定；连续发球不卡球       |
+| P2         | 接球、回球、自动捡球 | 作为后续产品路线，不进入首代范围         |`);
+
+  assert.deepEqual(table, {
+    headers: ["优先级验证项验证目标", "", ""],
+    rows: [
+      ["P0", "发射与供球可靠性", "球速、旋转、落点稳定；连续发球不卡球"],
+      ["P2", "接球、回球、自动捡球", "作为后续产品路线，不进入首代范围"]
+    ]
+  });
+});
+
+test("保留转义竖线并拒绝不完整的原始 Markdown 表格", () => {
+  assert.deepEqual(
+    parseMarkdownTable("| 名称 | 备注 |\n| --- | --- |\n| A\\|B | 可用 |"),
+    { headers: ["名称", "备注"], rows: [["A|B", "可用"]] }
+  );
+  assert.equal(parseMarkdownTable("| 名称 | 备注 |\n| --- | --- |\n| 只有一列 |"), null);
+  assert.equal(parseMarkdownTable("普通文本\n| --- | --- |"), null);
 });
 
 test("安全重建嵌套任务列表、代码、引用、删除线和复杂表格", () => {

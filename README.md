@@ -35,6 +35,7 @@ Polaris for Web automatically detects headings and list titles in AI responses a
 - ChatGPT user maker groups read the active conversation branch, so long virtualized conversations retain their historical user groups.
 - **Chapter View**, which organizes AI response content by marker section for convenient reading and copying on every supported platform.
 - Chapter View safely preserves rendered Markdown structure, including headings, nested and task lists, quotes, code, links, images, and wide tables.
+- Complete raw Markdown pipe tables are also formatted in Chapter View when a source page leaves them unrendered.
 
 ## Settings
 
@@ -67,7 +68,7 @@ Polaris for Web processes AI response content locally in your browser and does n
 
 ## Version
 
-Current version: `0.32.0(134)`
+Current version: `0.33.0(135)`
 
 ## License
 

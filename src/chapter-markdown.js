@@ -56,6 +56,57 @@ export function safeChapterImageSrc(value, baseUrl) {
   return safeChapterUrl(value, baseUrl, ["http:", "https:"]);
 }
 
+function markdownTableCells(line) {
+  const trimmed = String(line || "").trim();
+  if (!trimmed.includes("|")) {
+    return null;
+  }
+
+  const content = trimmed
+    .replace(/^\|/, "")
+    .replace(/\|$/, "");
+  const cells = [];
+  let cell = "";
+  for (let index = 0; index < content.length; index += 1) {
+    const character = content[index];
+    if (character === "\\" && content[index + 1] === "|") {
+      cell += "|";
+      index += 1;
+    } else if (character === "|") {
+      cells.push(cell.trim());
+      cell = "";
+    } else {
+      cell += character;
+    }
+  }
+  cells.push(cell.trim());
+  return cells;
+}
+
+function isMarkdownTableDelimiter(cell) {
+  return /^:?-{3,}:?$/.test(cell);
+}
+
+export function parseMarkdownTable(text) {
+  const lines = String(text || "").trim().split("\n");
+  if (lines.length < 3 || lines.some((line) => !line.trim())) {
+    return null;
+  }
+
+  const headers = markdownTableCells(lines[0]);
+  const delimiters = markdownTableCells(lines[1]);
+  if (!headers || !delimiters || headers.length < 2 || headers.length !== delimiters.length || !delimiters.every(isMarkdownTableDelimiter)) {
+    return null;
+  }
+
+  const rows = lines.slice(2).map(markdownTableCells);
+  if (rows.some((row) => !row || row.length !== headers.length)) {
+    return null;
+  }
+
+  return { headers, rows };
+}
+
 export function appendSanitizedChapterContent(target, source, ownerDocument, baseUrl) {
   source.childNodes.forEach((node) => appendSanitizedChapterNode(target, node, ownerDocument, baseUrl));
 }
