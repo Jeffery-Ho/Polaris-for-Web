@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 120
+
+- Date: 2026-08-25
+- Version: 0.28.1
+- Summary: Restores the blue background for user maker groups in light page themes.
+- Notes: The light-theme rule now preserves user maker and hover colors while active AI makers remain black. Run `pnpm build` and load `dist/`.
+
 ## 119
 
 - Date: 2026-08-25

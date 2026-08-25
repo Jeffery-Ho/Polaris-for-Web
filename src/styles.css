@@ -1177,6 +1177,20 @@ html.gpt-paragraph-nav--dragging * {
   color: var(--gpt-arco-text-1);
 }
 
+#gpt-paragraph-nav[data-page-theme="light"] .gpt-paragraph-nav__marker.gpt-paragraph-nav__marker--user {
+  background: rgba(219, 234, 254, 0.72);
+  box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.46), inset 0 1px 0 rgba(255, 255, 255, 0.54);
+}
+
+#gpt-paragraph-nav[data-page-theme="light"] .gpt-paragraph-nav__marker.gpt-paragraph-nav__marker--user:hover {
+  background: rgba(219, 234, 254, 0.86);
+  color: var(--gpt-arco-text-1);
+}
+
+#gpt-paragraph-nav[data-page-theme="light"] .gpt-paragraph-nav__marker.is-active {
+  background: var(--gpt-highlight-bg);
+}
+
 #gpt-paragraph-nav[data-page-theme="light"] .gpt-paragraph-nav__marker.is-active,
 #gpt-paragraph-nav[data-page-theme="light"] .gpt-paragraph-nav__floating-active {
   color: #ffffff;
