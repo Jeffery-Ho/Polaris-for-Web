@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 139
+
+- Date: 2026-08-25
+- Version: 0.35.1
+- Summary: Fixes table marker navigation inside conversation scroll containers.
+- Notes: Table markers calculate the nearest vertical conversation container's target scroll position, reserving the existing fixed-header height and a safety gap; without such a container, navigation falls back to `scrollIntoView`. Run `pnpm test`, then `pnpm build` and reload `dist/`.
+
 ## 138
 
 - Date: 2026-08-25

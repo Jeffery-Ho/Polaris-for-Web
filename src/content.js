@@ -3,7 +3,7 @@ import { chatGPTConversationIdFromPath, parseChatGPTConversation } from "./chatg
 import { doubaoMessageRoleFromClassNames } from "./doubao-message-role.js";
 import { pageThemeFromColors } from "./page-theme.js";
 import { releaseNotesForUpdate } from "./release-notes.js";
-import { tableMarkerEntries } from "./table-marker.js";
+import { scrollTableMarkerIntoView, tableMarkerEntries } from "./table-marker.js";
 import {
   appendSanitizedChapterContent,
   appendSanitizedChapterNode,
@@ -155,6 +155,7 @@ import {
   ].join(", ");
   const QUEUE_MAX_VISIBLE = 30;
   const DEFAULT_TOP_GAP = 8;
+  const TABLE_MARKER_SCROLL_GAP = 12;
   const DEFAULT_RIGHT_OFFSET = 14;
   const MARKER_LIST_SCROLL_PERSIST_MS = 1200;
   const DEFAULT_HEADER_HEIGHT = 64;
@@ -3153,9 +3154,42 @@ import {
     return key;
   }
 
+  function nearestVerticalScrollContainer(element) {
+    for (let parent = element.parentElement; parent instanceof HTMLElement; parent = parent.parentElement) {
+      const overflowY = window.getComputedStyle(parent).overflowY;
+      if (parent.scrollHeight > parent.clientHeight && /^(auto|scroll|overlay)$/.test(overflowY)) {
+        return parent;
+      }
+    }
+    return null;
+  }
+
+  function jumpToTable(heading, behavior) {
+    return scrollTableMarkerIntoView({
+      element: heading.element,
+      scrollContainer: nearestVerticalScrollContainer(heading.element),
+      headerHeight: getConversationHeaderHeight(),
+      gap: TABLE_MARKER_SCROLL_GAP,
+      behavior
+    });
+  }
+
   function jumpToHeading(heading, behavior = "smooth") {
-    heading.element.scrollIntoView({ behavior, block: "start" });
+    if (!(heading.element instanceof HTMLElement) || !heading.element.isConnected) {
+      return false;
+    }
+    let didJump;
+    if (heading.sourceType === "table") {
+      didJump = jumpToTable(heading, behavior);
+    } else {
+      heading.element.scrollIntoView({ behavior, block: "start" });
+      didJump = true;
+    }
+    if (!didJump) {
+      return false;
+    }
     window.history.replaceState(null, "", `#${encodeURIComponent(heading.element.id)}`);
+    return true;
   }
 
   function scrollMarkerIntoListView(marker) {
@@ -3393,10 +3427,12 @@ import {
     marker.appendChild(label);
 
     marker.addEventListener("click", () => {
+      if (!jumpToHeading(heading)) {
+        return;
+      }
       state.activeMarkerKey = markerKey;
       syncActiveMarker(state.activeMarkerKey);
       requestActiveMarkerListScrollPersistence();
-      jumpToHeading(heading);
       updateFloatingActiveMarker();
     });
     appendMarkerRow(list, "ai", marker);
