@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 132
+
+- Date: 2026-08-25
+- Version: 0.30.1
+- Summary: Restores the Settings panel after dismissing its update-notes dialog.
+- Notes: The manual entry preserves the active Settings tab while the dialog is open. Run `pnpm test`, then `pnpm build` and load `dist/`.
+
 ## 131
 
 - Date: 2026-08-25

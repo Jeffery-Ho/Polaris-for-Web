@@ -248,6 +248,7 @@ import { releaseNotesForUpdate } from "./release-notes.js";
     releaseNotes: [],
     isReleaseNoticeOpen: false,
     releaseNoticeFocusPending: false,
+    releaseNoticeReturnControlTab: null,
     shouldMarkReleaseNoticeRead: false,
     config: { ...DEFAULT_CONFIG },
     activeControlTab: "navigation",
@@ -929,6 +930,10 @@ import { releaseNotesForUpdate } from "./release-notes.js";
 
     state.isReleaseNoticeOpen = false;
     state.releaseNoticeFocusPending = false;
+    if (state.releaseNoticeReturnControlTab) {
+      state.activeControlTab = state.releaseNoticeReturnControlTab;
+      state.releaseNoticeReturnControlTab = null;
+    }
     unlockPageScroll();
     if (state.shouldMarkReleaseNoticeRead) {
       state.shouldMarkReleaseNoticeRead = false;
@@ -1372,6 +1377,7 @@ import { releaseNotesForUpdate } from "./release-notes.js";
         state.releaseNoticeFocusPending = state.isReleaseNoticeOpen;
         state.shouldMarkReleaseNoticeRead = false;
         if (state.isReleaseNoticeOpen) {
+          state.releaseNoticeReturnControlTab = state.activeControlTab;
           lockPageScroll();
           render();
         }
@@ -3529,6 +3535,7 @@ import { releaseNotesForUpdate } from "./release-notes.js";
     state.isCollapsed = false;
     state.collapsedListHeight = 0;
     state.activeControlTab = "navigation";
+    state.releaseNoticeReturnControlTab = null;
     state.explosionSections = [];
     state.activeExplosionSectionIndex = 0;
     state.lastExplosionRenderSignature = "";
@@ -4163,6 +4170,10 @@ import { releaseNotesForUpdate } from "./release-notes.js";
     }
 
     const root = document.getElementById(ROOT_ID);
+    const releaseNotice = root && root.querySelector(".gpt-paragraph-nav__release-notice-overlay");
+    if (releaseNotice instanceof HTMLElement && releaseNotice.contains(event.target)) {
+      return;
+    }
     const controls = root && root.querySelector(`.${CONTROLS_CLASS}`);
     if (controls instanceof HTMLElement && controls.contains(event.target)) {
       return;
