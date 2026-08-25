@@ -3,7 +3,12 @@ import { chatGPTConversationIdFromPath, parseChatGPTConversation } from "./chatg
 import { doubaoMessageRoleFromClassNames } from "./doubao-message-role.js";
 import { pageThemeFromColors } from "./page-theme.js";
 import { releaseNotesForUpdate } from "./release-notes.js";
-import { scrollTableMarkerIntoView, tableMarkerEntries, tableMarkerEntryForTarget } from "./table-marker.js";
+import {
+  scrollTableMarkerIntoView,
+  TABLE_MARKER_LEVEL,
+  tableMarkerEntries,
+  tableMarkerEntryForTarget
+} from "./table-marker.js";
 import {
   appendSanitizedChapterContent,
   appendSanitizedChapterNode,
@@ -2638,7 +2643,7 @@ import {
       seen.add(element);
       headings.push({
         element,
-        level: 2,
+        level: TABLE_MARKER_LEVEL,
         title,
         id: element.id || `gpt-paragraph-heading-${headings.length + 1}`,
         sourceType: "table",

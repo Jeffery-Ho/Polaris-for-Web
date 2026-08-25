@@ -2,12 +2,17 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  TABLE_MARKER_LEVEL,
   tableMarkerEntries,
   tableMarkerEntryForTarget,
   tableMarkerScrollTop,
   tableMarkerTitleFromCells,
   scrollTableMarkerIntoView
 } from "../src/table-marker.js";
+
+test("表格 Maker 按 H3 筛选开关参与显示", () => {
+  assert.equal(TABLE_MARKER_LEVEL, 3);
+});
 
 test("以首行的 th 或 td 文本生成单个表格 maker 标题", () => {
   assert.equal(

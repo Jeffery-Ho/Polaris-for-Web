@@ -1,4 +1,5 @@
 const TABLE_MARKER_TITLE_MAX_LENGTH = 160;
+export const TABLE_MARKER_LEVEL = 3;
 
 export function tableMarkerScrollTop({ scrollTop, targetTop, scrollerTop, headerHeight, gap, maxScrollTop = Infinity }) {
   if (![scrollTop, targetTop, scrollerTop, headerHeight, gap].every(Number.isFinite)) {

@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 141
+
+- Date: 2026-08-25
+- Version: 0.35.3
+- Summary: Makes table markers follow the H3 filter instead of the incorrect H2 filter.
+- Notes: On the verified ChatGPT conversation, H3 was enabled while H2 was disabled, so the prior H2 classification removed all ten recognized table markers. Run `pnpm test`, then `pnpm build` and reload `dist/`.
+
 ## 140
 
 - Date: 2026-08-25
