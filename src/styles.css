@@ -11,6 +11,7 @@
   --gpt-glass-border: rgba(255, 255, 255, 0.1);
   --gpt-glass-shadow: 0 18px 42px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.12);
   --gpt-glass-marker-bg: var(--gpt-glass-bg);
+  --gpt-glass-fold-hover-bg: rgba(20, 22, 30, 0.88);
   --gpt-highlight-bg: #ffffff;
   --gpt-highlight-text: #000000;
   --gpt-glass-hover-bg: var(--gpt-highlight-bg);
@@ -1432,6 +1433,7 @@ html.gpt-paragraph-nav--dragging * {
   --gpt-glass-border: rgba(15, 23, 42, 0.12);
   --gpt-glass-shadow: 0 10px 28px rgba(15, 23, 42, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.72);
   --gpt-glass-marker-bg: var(--gpt-glass-bg);
+  --gpt-glass-fold-hover-bg: rgba(255, 255, 255, 0.72);
   --gpt-highlight-bg: #000000;
   --gpt-highlight-text: #ffffff;
   --gpt-glass-hover-bg: var(--gpt-highlight-bg);
@@ -1482,6 +1484,22 @@ html.gpt-paragraph-nav--dragging * {
 #gpt-paragraph-nav[data-page-theme="light"] .gpt-paragraph-nav__marker.is-active,
 #gpt-paragraph-nav[data-page-theme="light"] .gpt-paragraph-nav__floating-active {
   color: #ffffff;
+}
+
+/* AI maker 分组展开后保持玻璃底色；悬停时仅增加同色背景的不透明度。 */
+#gpt-paragraph-nav[data-page-theme] .gpt-paragraph-nav__fold.is-expanded,
+#gpt-paragraph-nav[data-page-theme] .gpt-paragraph-nav__fold.is-expanded::before,
+#gpt-paragraph-nav[data-page-theme] .gpt-paragraph-nav__fold.is-expanded::after {
+  background: var(--gpt-glass-marker-bg);
+}
+
+#gpt-paragraph-nav[data-page-theme] .gpt-paragraph-nav__fold.is-expanded {
+  color: var(--gpt-arco-text-1);
+}
+
+#gpt-paragraph-nav[data-page-theme] .gpt-paragraph-nav__fold:hover {
+  background: var(--gpt-glass-fold-hover-bg);
+  color: var(--gpt-arco-text-1);
 }
 
 #gpt-paragraph-nav[data-page-theme="light"] .gpt-paragraph-nav__label {

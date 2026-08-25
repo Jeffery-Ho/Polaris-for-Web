@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 136
+
+- Date: 2026-08-25
+- Version: 0.33.1
+- Summary: Uses a more opaque same-color surface when AI maker groups are hovered.
+- Notes: The count-fold group retains its original surface when expanded and increases only its same-color background opacity on hover; individual markers, user markers, tabs, and the floating active entry are unchanged. Run `pnpm check`, then `pnpm build` and reload `dist/`.
+
 ## 135
 
 - Date: 2026-08-25
