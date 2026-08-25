@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   tableMarkerEntries,
+  tableMarkerEntryForTarget,
   tableMarkerScrollTop,
   tableMarkerTitleFromCells,
   scrollTableMarkerIntoView
@@ -40,6 +41,39 @@ test("去重重复表格并保留 assistant 容器提供的候选顺序", () => 
     { element: firstTable, title: "状态 / 产品形态" },
     { element: secondTable, title: "场景 / 用户问题" }
   ]);
+});
+
+test("替换后的表格按候选序号、表头与正文指纹重新匹配", () => {
+  const firstTable = {};
+  const replacementTable = {};
+  const target = tableMarkerEntryForTarget([
+    { element: firstTable, cells: ["状态", "产品形态"], fingerprint: "状态 产品形态 已归档" },
+    { element: replacementTable, cells: ["场景", "用户问题"], fingerprint: "场景 用户问题 新表格正文" }
+  ], 1, "场景 / 用户问题", "场景 用户问题 新表格正文");
+
+  assert.deepEqual(target, {
+    element: replacementTable,
+    title: "场景 / 用户问题",
+    fingerprint: "场景 用户问题 新表格正文"
+  });
+});
+
+test("候选序号变化时按唯一同表头和指纹表格回退，避免跳错重复表格", () => {
+  const uniqueTable = {};
+  assert.deepEqual(
+    tableMarkerEntryForTarget([
+      { element: {}, cells: ["场景", "用户问题"], fingerprint: "场景 用户问题 另一张表" },
+      { element: uniqueTable, cells: ["场景", "用户问题"], fingerprint: "场景 用户问题 目标表" }
+    ], 0, "场景 / 用户问题", "场景 用户问题 目标表"),
+    { element: uniqueTable, title: "场景 / 用户问题", fingerprint: "场景 用户问题 目标表" }
+  );
+  assert.equal(
+    tableMarkerEntryForTarget([
+      { element: {}, cells: ["场景", "用户问题"], fingerprint: "场景 用户问题 相同" },
+      { element: {}, cells: ["场景", "用户问题"], fingerprint: "场景 用户问题 相同" }
+    ], 0, "场景 / 用户问题", "场景 用户问题 相同"),
+    null
+  );
 });
 
 test("按内部会话滚动容器、顶部栏与安全间距计算表格定位位置", () => {

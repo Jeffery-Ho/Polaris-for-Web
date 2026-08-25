@@ -50,12 +50,27 @@ export function tableMarkerTitleFromCells(cells) {
 
 export function tableMarkerEntries(entries) {
   const seen = new Set();
-  return Array.from(entries || []).flatMap(({ element, cells }) => {
+  return Array.from(entries || []).flatMap(({ element, cells, fingerprint }) => {
     if (seen.has(element)) {
       return [];
     }
     seen.add(element);
     const title = tableMarkerTitleFromCells(cells);
-    return title ? [{ element, title }] : [];
+    if (!title) {
+      return [];
+    }
+    return fingerprint ? [{ element, title, fingerprint }] : [{ element, title }];
   });
+}
+
+export function tableMarkerEntryForTarget(entries, index, title, fingerprint) {
+  const currentEntries = tableMarkerEntries(entries);
+  const indexedEntry = currentEntries[index];
+  const matchingEntries = currentEntries.filter((entry) => (
+    entry.title === title && (!fingerprint || entry.fingerprint === fingerprint)
+  ));
+  if (matchingEntries.length !== 1) {
+    return null;
+  }
+  return indexedEntry === matchingEntries[0] ? indexedEntry : matchingEntries[0];
 }

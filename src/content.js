@@ -3,7 +3,7 @@ import { chatGPTConversationIdFromPath, parseChatGPTConversation } from "./chatg
 import { doubaoMessageRoleFromClassNames } from "./doubao-message-role.js";
 import { pageThemeFromColors } from "./page-theme.js";
 import { releaseNotesForUpdate } from "./release-notes.js";
-import { scrollTableMarkerIntoView, tableMarkerEntries } from "./table-marker.js";
+import { scrollTableMarkerIntoView, tableMarkerEntries, tableMarkerEntryForTarget } from "./table-marker.js";
 import {
   appendSanitizedChapterContent,
   appendSanitizedChapterNode,
@@ -2616,17 +2616,22 @@ import {
     };
   }
 
-  function collectTableHeadings(containers, seen, headings) {
-    const tables = containers.flatMap((container) => Array.from(container.querySelectorAll("table"))
+  function tableMarkerCandidates(containers) {
+    return containers.flatMap((container) => Array.from(container.querySelectorAll("table"))
       .filter((table) => table instanceof HTMLTableElement && isVisible(table))
       .map((table) => ({
         element: table,
+        fingerprint: normalizeTitle(table.innerText || table.textContent || ""),
         cells: table.rows.length
           ? Array.from(table.rows[0].cells).map((cell) => cell.innerText || cell.textContent || "")
           : []
       })));
+  }
 
-    tableMarkerEntries(tables).forEach(({ element, title }) => {
+  function collectTableHeadings(containers, seen, headings) {
+    const tables = tableMarkerCandidates(containers);
+
+    tableMarkerEntries(tables).forEach(({ element, title, fingerprint }, tableMarkerIndex) => {
       if (seen.has(element)) {
         return;
       }
@@ -2636,7 +2641,9 @@ import {
         level: 2,
         title,
         id: element.id || `gpt-paragraph-heading-${headings.length + 1}`,
-        sourceType: "table"
+        sourceType: "table",
+        tableMarkerIndex,
+        tableMarkerFingerprint: fingerprint
       });
     });
   }
@@ -3174,21 +3181,45 @@ import {
     });
   }
 
+  function currentElementForHeading(heading) {
+    if (heading.element instanceof HTMLElement && heading.element.isConnected) {
+      return heading.element;
+    }
+    const element = document.getElementById(heading.id);
+    if (element instanceof HTMLElement && element.isConnected && heading.sourceType !== "table") {
+      return element;
+    }
+    if (heading.sourceType !== "table") {
+      return null;
+    }
+    const currentTable = tableMarkerEntryForTarget(
+      tableMarkerCandidates(getAssistantContainers()),
+      heading.tableMarkerIndex,
+      heading.title,
+      heading.tableMarkerFingerprint
+    );
+    return currentTable && currentTable.element instanceof HTMLElement && currentTable.element.isConnected
+      ? currentTable.element
+      : null;
+  }
+
   function jumpToHeading(heading, behavior = "smooth") {
-    if (!(heading.element instanceof HTMLElement) || !heading.element.isConnected) {
+    const element = currentElementForHeading(heading);
+    if (!element) {
       return false;
     }
+    const currentHeading = element === heading.element ? heading : { ...heading, element };
     let didJump;
-    if (heading.sourceType === "table") {
-      didJump = jumpToTable(heading, behavior);
+    if (currentHeading.sourceType === "table") {
+      didJump = jumpToTable(currentHeading, behavior);
     } else {
-      heading.element.scrollIntoView({ behavior, block: "start" });
+      element.scrollIntoView({ behavior, block: "start" });
       didJump = true;
     }
     if (!didJump) {
       return false;
     }
-    window.history.replaceState(null, "", `#${encodeURIComponent(heading.element.id)}`);
+    window.history.replaceState(null, "", `#${encodeURIComponent(element.id)}`);
     return true;
   }
 

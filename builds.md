@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 140
+
+- Date: 2026-08-25
+- Version: 0.35.2
+- Summary: Keeps table marker navigation valid after marker filtering rerenders the page.
+- Notes: A stale table marker target is resolved again by its title, content fingerprint, and current table-candidate index before scrolling; identical duplicate tables are not selected. Run `pnpm test`, then `pnpm build` and reload `dist/`.
+
 ## 139
 
 - Date: 2026-08-25
