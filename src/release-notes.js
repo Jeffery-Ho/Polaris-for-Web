@@ -1,5 +1,16 @@
 const RELEASE_NOTES = Object.freeze([
   {
+    version: "0.35.0",
+    en: {
+      title: "Table markers across AI chats",
+      changes: ["Visible response tables now create one navigation marker from their first row on every supported platform."]
+    },
+    zh: {
+      title: "全平台表格 Maker",
+      changes: ["所有支持平台的可见回复表格现在都会按首行生成一个导航 Maker。"]
+    }
+  },
+  {
     version: "0.34.0",
     en: {
       title: "Mixed raw Markdown chapters",

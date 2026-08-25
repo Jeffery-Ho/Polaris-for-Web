@@ -17,6 +17,7 @@ Polaris for Web automatically detects headings and list titles in AI responses a
 
 - Automatically detects H1, H2, H3, and H4 headings according to platform-specific rules.
 - Detects headings in unordered lists across all supported platforms, controlled by a separate **Unordered Lists** setting.
+- Detects every visible response table across all supported platforms as one H2-level marker, titled from its first row's non-empty cells.
 - Kimi and Yuanbao display H1 and H2 markers by default.
 - ChatGPT, Doubao, and Qianwen display H1, H2, and H3 markers by default.
 - Xiaohongshu Diandian AI displays H1, H2, H3, and H4 markers by default.
@@ -69,7 +70,7 @@ Polaris for Web processes AI response content locally in your browser and does n
 
 ## Version
 
-Current version: `0.34.0(137)`
+Current version: `0.35.0(138)`
 
 ## License
 

@@ -3,6 +3,7 @@ import { chatGPTConversationIdFromPath, parseChatGPTConversation } from "./chatg
 import { doubaoMessageRoleFromClassNames } from "./doubao-message-role.js";
 import { pageThemeFromColors } from "./page-theme.js";
 import { releaseNotesForUpdate } from "./release-notes.js";
+import { tableMarkerEntries } from "./table-marker.js";
 import {
   appendSanitizedChapterContent,
   appendSanitizedChapterNode,
@@ -2614,6 +2615,31 @@ import {
     };
   }
 
+  function collectTableHeadings(containers, seen, headings) {
+    const tables = containers.flatMap((container) => Array.from(container.querySelectorAll("table"))
+      .filter((table) => table instanceof HTMLTableElement && isVisible(table))
+      .map((table) => ({
+        element: table,
+        cells: table.rows.length
+          ? Array.from(table.rows[0].cells).map((cell) => cell.innerText || cell.textContent || "")
+          : []
+      })));
+
+    tableMarkerEntries(tables).forEach(({ element, title }) => {
+      if (seen.has(element)) {
+        return;
+      }
+      seen.add(element);
+      headings.push({
+        element,
+        level: 2,
+        title,
+        id: element.id || `gpt-paragraph-heading-${headings.length + 1}`,
+        sourceType: "table"
+      });
+    });
+  }
+
   function markdownLevelFromText(text) {
     const match = text.match(/^(#{1,4})\s+\S/);
     return match ? match[1].length : null;
@@ -2912,6 +2938,7 @@ import {
       });
     });
 
+    collectTableHeadings(containers, seen, headings);
     collectYuanbaoVideoCardHeadings(seen, headings);
     collectQianwenVideoListHeadings(seen, headings);
     const platformKey = currentPlatformKey();
@@ -2928,7 +2955,7 @@ import {
       return item.level <= maxHeadingLevel && enabledLevels.has(item.level);
     });
     debugCollection(containers, usableHeadings);
-    return usableHeadings;
+    return usableHeadings.sort((left, right) => compareConversationPosition(left.element, right.element));
   }
 
   function debugCollection(containers, headings) {

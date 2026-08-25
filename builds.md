@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 138
+
+- Date: 2026-08-25
+- Version: 0.35.0
+- Summary: Adds one navigation marker for each visible AI response table across supported platforms.
+- Notes: The marker title joins the first row's non-empty cells and respects the existing H2 visibility setting; tables with fewer than two populated first-row cells are ignored. Run `pnpm test`, then `pnpm build` and reload `dist/`.
+
 ## 137
 
 - Date: 2026-08-25
