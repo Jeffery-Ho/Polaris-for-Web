@@ -46,6 +46,7 @@
       "userMarker.earlierGroups": "+{count} earlier user groups",
       "userMarker.expandEarlierAria": "Show {count} earlier user groups",
       "userMarker.collapseEarlierAria": "Hide {count} earlier user groups",
+      "userMarker.replyNotLoaded": "This reply has not loaded yet. Scroll the conversation to load it, then try again.",
       "heading.fallback": "Heading {index}"
     }),
     zh: Object.freeze({
@@ -94,6 +95,7 @@
       "userMarker.earlierGroups": "+{count} 个更早分组",
       "userMarker.expandEarlierAria": "显示 {count} 个更早用户分组",
       "userMarker.collapseEarlierAria": "收起 {count} 个更早用户分组",
+      "userMarker.replyNotLoaded": "该回复尚未加载，请滚动会话加载后再试。",
       "heading.fallback": "标题 {index}"
     })
   });

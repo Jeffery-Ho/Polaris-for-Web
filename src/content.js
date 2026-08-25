@@ -217,6 +217,7 @@ import { pageThemeFromColors } from "./page-theme.js";
     markerListScrollUntil: 0,
     markerListScrollAnimation: 0,
     markerListScrollTarget: 0,
+    markerNoticeTimer: 0,
     pointerDrag: null,
     suppressNextClick: false,
     suppressNextClickTimer: 0,
@@ -284,6 +285,7 @@ import { pageThemeFromColors } from "./page-theme.js";
 
     state.isExtensionContextInvalidated = true;
     window.clearTimeout(state.scheduled);
+    window.clearTimeout(state.markerNoticeTimer);
     window.cancelAnimationFrame(state.markerListScrollAnimation);
     state.markerListScrollAnimation = 0;
     state.observer?.disconnect();
@@ -3009,6 +3011,23 @@ import { pageThemeFromColors } from "./page-theme.js";
     appendMarkerRow(list, "ai", marker);
   }
 
+  function showMarkerNotice(message) {
+    const root = getRoot();
+    root.querySelectorAll(".gpt-paragraph-nav__marker-notice").forEach((notice) => notice.remove());
+    const notice = document.createElement("div");
+    notice.className = "gpt-paragraph-nav__marker-notice";
+    notice.setAttribute("role", "status");
+    notice.setAttribute("aria-live", "polite");
+    notice.textContent = message;
+    root.appendChild(notice);
+    requestAnimationFrame(() => notice.classList.add("is-visible"));
+    window.clearTimeout(state.markerNoticeTimer);
+    state.markerNoticeTimer = window.setTimeout(() => {
+      notice.classList.remove("is-visible");
+      window.setTimeout(() => notice.remove(), 180);
+    }, 2200);
+  }
+
   function appendUserMarker(list, group) {
     const { user } = group;
     const isExpanded = state.expandedUserMarkerKeys.has(group.key);
@@ -3038,6 +3057,10 @@ import { pageThemeFromColors } from "./page-theme.js";
     marker.appendChild(label);
 
     marker.addEventListener("click", () => {
+      if (isChatGPTPage() && !user.element && group.headings.length === 0) {
+        showMarkerNotice(t("userMarker.replyNotLoaded"));
+        return;
+      }
       if (state.expandedUserMarkerKeys.has(group.key)) {
         state.expandedUserMarkerKeys.delete(group.key);
       } else {
@@ -3228,6 +3251,8 @@ import { pageThemeFromColors } from "./page-theme.js";
 
   function resetRouteState() {
     window.clearTimeout(state.scheduled);
+    window.clearTimeout(state.markerNoticeTimer);
+    state.markerNoticeTimer = 0;
     window.cancelAnimationFrame(state.markerListScrollAnimation);
     state.markerListScrollAnimation = 0;
     state.markerListScrollTarget = 0;

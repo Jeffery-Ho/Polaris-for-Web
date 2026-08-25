@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 121
+
+- Date: 2026-08-25
+- Version: 0.28.2
+- Summary: Shows a notice when a ChatGPT history user group has no mounted reply DOM.
+- Notes: The notice only applies to conversation-tree groups without AI heading DOM; other empty user groups retain their existing behavior. Run `pnpm build` and load `dist/`.
+
 ## 120
 
 - Date: 2026-08-25
