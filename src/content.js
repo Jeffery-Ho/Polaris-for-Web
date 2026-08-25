@@ -3057,7 +3057,7 @@ import { pageThemeFromColors } from "./page-theme.js";
     marker.appendChild(label);
 
     marker.addEventListener("click", () => {
-      if (isChatGPTPage() && !user.element && group.headings.length === 0) {
+      if (isChatGPTPage() && group.visibleHeadings.length === 0) {
         showMarkerNotice(t("userMarker.replyNotLoaded"));
         return;
       }

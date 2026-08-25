@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 124
+
+- Date: 2026-08-25
+- Version: 0.28.5
+- Summary: Shows the unloaded-reply toast whenever a ChatGPT user group has no visible AI makers.
+- Notes: The notice now follows the rendered child list, so every empty ChatGPT group provides feedback on click. Run `pnpm build` and load `dist/`.
+
 ## 123
 
 - Date: 2026-08-25
