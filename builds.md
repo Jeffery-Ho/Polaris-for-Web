@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 129
+
+- Date: 2026-08-25
+- Version: 0.29.3
+- Summary: Replaces update-notice feedback text actions with mail and GitHub icons.
+- Notes: The icon buttons retain localized ARIA labels and hover tooltips. Run `pnpm test`, then `pnpm build` and load `dist/`.
+
 ## 128
 
 - Date: 2026-08-25

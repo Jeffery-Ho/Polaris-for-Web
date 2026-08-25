@@ -53,6 +53,17 @@ const RELEASE_NOTES = Object.freeze([
       title: "更新说明最新优先",
       changes: ["更新说明现在按版本倒序展示。"]
     }
+  },
+  {
+    version: "0.29.3",
+    en: {
+      title: "Icon feedback actions",
+      changes: ["Email feedback and GitHub Issue actions now use familiar icons."]
+    },
+    zh: {
+      title: "反馈入口改用图标",
+      changes: ["邮件反馈和 GitHub Issue 入口现在使用直观图标。"]
+    }
   }
 ]);
 

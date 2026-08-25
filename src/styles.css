@@ -539,6 +539,16 @@ html.gpt-paragraph-nav--dragging * {
   color: var(--gpt-highlight-text);
 }
 
+.gpt-paragraph-nav__release-notice-action.is-icon {
+  width: 34px;
+  padding: 0;
+}
+
+.gpt-paragraph-nav__release-notice-action.is-icon svg {
+  width: 17px;
+  height: 17px;
+}
+
 #gpt-paragraph-nav[data-page-theme="dark"] .gpt-paragraph-nav__release-notice-overlay {
   background: rgba(2, 6, 23, 0.42);
 }
