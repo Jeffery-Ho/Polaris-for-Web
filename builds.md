@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 125
+
+- Date: 2026-08-25
+- Version: 0.28.6
+- Summary: Restores Doubao user maker groups after its sent-message DOM update.
+- Notes: Polaris classifies the semantic `bg-g-send-msg-bubble-bg` bubble as an internal user message while retaining legacy selectors. Run `pnpm test`, then `pnpm build` and load `dist/`.
+
 ## 124
 
 - Date: 2026-08-25

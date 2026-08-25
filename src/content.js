@@ -1,5 +1,6 @@
 import { mountSettingsPanel } from "./settings-panel.jsx";
 import { chatGPTConversationIdFromPath, parseChatGPTConversation } from "./chatgpt-conversation.js";
+import { doubaoMessageRoleFromClassNames } from "./doubao-message-role.js";
 import { pageThemeFromColors } from "./page-theme.js";
 
 (() => {
@@ -19,11 +20,15 @@ import { pageThemeFromColors } from "./page-theme.js";
     '[class*="receive-message-box"]',
     '[class*="receive-message-content-block"]'
   ].join(", ");
-  const DOUBAO_USER_MESSAGE_SELECTOR = [
+  const DOUBAO_LEGACY_USER_MESSAGE_SELECTOR = [
     ".send-message-box",
     ".send-message-content-block",
     '[class*="send-message-box"]',
     '[class*="send-message-content-block"]'
+  ].join(", ");
+  const DOUBAO_USER_MESSAGE_SELECTOR = [
+    ".bg-g-send-msg-bubble-bg",
+    DOUBAO_LEGACY_USER_MESSAGE_SELECTOR
   ].join(", ");
   const KIMI_ASSISTANT_MESSAGE_SELECTOR = [
     ".segment.segment-assistant .markdown",
@@ -2031,13 +2036,24 @@ import { pageThemeFromColors } from "./page-theme.js";
     return [USER_MESSAGE_SELECTOR];
   }
 
+  function doubaoMessageRoleForContainer(container) {
+    if (!(container instanceof HTMLElement)) {
+      return "";
+    }
+    if (doubaoMessageRoleFromClassNames(container.classList) === "user") {
+      return "user";
+    }
+    return container.matches(USER_MESSAGE_SELECTOR) ? "user" : "";
+  }
+
   function getUserContainers() {
     for (const selector of getUserContainerSelectors()) {
       const containers = Array.from(document.querySelectorAll(selector))
         .filter((node) => node instanceof HTMLElement
           && isVisible(node)
           && !isInsideNavigationRoot(node)
-          && !isUserInputContext(node));
+          && !isUserInputContext(node)
+          && (!isDoubaoPage() || doubaoMessageRoleForContainer(node) === "user"));
       if (containers.length > 0) {
         return containers;
       }
