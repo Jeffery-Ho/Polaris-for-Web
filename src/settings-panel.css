@@ -101,6 +101,28 @@
   font: 500 12px/var(--polaris-bar-content-height) ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
+.polaris-settings-version-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.polaris-settings-release-notes {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--polaris-muted);
+  cursor: pointer;
+  font: 600 12px/var(--polaris-bar-content-height) ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.polaris-settings-release-notes:hover,
+.polaris-settings-release-notes:focus-visible {
+  color: var(--polaris-text);
+  text-decoration: underline;
+}
+
 .polaris-settings-body {
   min-height: 0;
   padding: 12px !important;

@@ -248,6 +248,7 @@ import { releaseNotesForUpdate } from "./release-notes.js";
     releaseNotes: [],
     isReleaseNoticeOpen: false,
     releaseNoticeFocusPending: false,
+    shouldMarkReleaseNoticeRead: false,
     config: { ...DEFAULT_CONFIG },
     activeControlTab: "navigation",
     isExplosionOpen: false,
@@ -929,7 +930,10 @@ import { releaseNotesForUpdate } from "./release-notes.js";
     state.isReleaseNoticeOpen = false;
     state.releaseNoticeFocusPending = false;
     unlockPageScroll();
-    saveReleaseNoticeVersion();
+    if (state.shouldMarkReleaseNoticeRead) {
+      state.shouldMarkReleaseNoticeRead = false;
+      saveReleaseNoticeVersion();
+    }
     render();
   }
 
@@ -1362,6 +1366,16 @@ import { releaseNotesForUpdate } from "./release-notes.js";
         saveConfig(state.config);
         render();
       },
+      onOpenReleaseNotes() {
+        state.releaseNotes = releaseNotesForUpdate(null, extensionMetadata.releaseVersion, 1);
+        state.isReleaseNoticeOpen = state.releaseNotes.length > 0;
+        state.releaseNoticeFocusPending = state.isReleaseNoticeOpen;
+        state.shouldMarkReleaseNoticeRead = false;
+        if (state.isReleaseNoticeOpen) {
+          lockPageScroll();
+          render();
+        }
+      },
       onReset() {
         state.config = normalizeConfig(DEFAULT_CONFIG);
         state.areEarlierUserGroupsExpanded = false;
@@ -1379,6 +1393,7 @@ import { releaseNotesForUpdate } from "./release-notes.js";
       ratingDismissLabel: t("settings.ratingDismiss"),
       ratingPrompt: t("settings.ratingPrompt"),
       ratingUrl: "https://chromewebstore.google.com/detail/polaris-ai-chat-navigator/lkdbbnpcfkjdfnopecpbdaeegncdmajb",
+      releaseNotesLabel: t("settings.releaseNotes"),
       settingsTitle: t("settings.title"),
       showRating: state.ratingDismissedUntil <= Date.now(),
       supportedPlatformsLabel: t("settings.supportedPlatforms"),
@@ -4170,6 +4185,7 @@ import { releaseNotesForUpdate } from "./release-notes.js";
       state.releaseNotes = releaseNotesForUpdate(lastSeenReleaseVersion, extensionMetadata.releaseVersion);
       state.isReleaseNoticeOpen = state.releaseNotes.length > 0;
       state.releaseNoticeFocusPending = state.isReleaseNoticeOpen;
+      state.shouldMarkReleaseNoticeRead = state.isReleaseNoticeOpen;
       if (state.isReleaseNoticeOpen) {
         lockPageScroll();
       }

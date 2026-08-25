@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 131
+
+- Date: 2026-08-25
+- Version: 0.30.0
+- Summary: Adds a settings entry for reopening the current feature-version update notes.
+- Notes: The entry sits beside the loaded version and opens the same localized notice dialog without changing read status. Run `pnpm test`, then `pnpm build` and load `dist/`.
+
 ## 130
 
 - Date: 2026-08-25

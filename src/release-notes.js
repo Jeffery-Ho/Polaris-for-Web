@@ -9,6 +9,17 @@ const RELEASE_NOTES = Object.freeze([
       title: "新增版本更新通知",
       changes: ["版本更新弹窗会说明本次改动，并提供直接反馈入口。"]
     }
+  },
+  {
+    version: "0.30.0",
+    en: {
+      title: "Review updates anytime",
+      changes: ["About & Settings now provides a nearby entry to reopen update notes."]
+    },
+    zh: {
+      title: "随时查看更新说明",
+      changes: ["关于与设置面板在版本号旁新增入口，可再次查看更新说明。"]
+    }
   }
 ]);
 

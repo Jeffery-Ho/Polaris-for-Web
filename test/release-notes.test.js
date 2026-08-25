@@ -34,11 +34,18 @@ test("跨多个功能版本升级仅展示当前已内置的说明", () => {
   );
 });
 
+test("内置功能版本按倒序展示", () => {
+  assert.deepEqual(
+    releaseNotesForUpdate("0.28.9", "0.30.0").map((note) => note.version),
+    ["0.30", "0.29"]
+  );
+});
+
 test("缺失当前功能版本说明时按 0.xx 粒度安全降级", () => {
-  const note = releaseNotesForUpdate("0.29.3", "0.30.2")
+  const note = releaseNotesForUpdate("0.30.0", "0.31.2")
     .find((candidate) => candidate.isFallback);
   assert.ok(note);
-  assert.equal(note.version, "0.30");
+  assert.equal(note.version, "0.31");
   assert.equal(note.isFallback, true);
   assert.match(note.zh.title, /更新说明/);
 });
