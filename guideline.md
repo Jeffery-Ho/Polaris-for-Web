@@ -121,4 +121,4 @@
 - Bug fix updates the last version segment, feature update updates the middle segment, and major update updates the first segment.
 - Ask the user to declare the update type before changing the version.
 - After each build is recorded, confirm the build number and version with the user.
-- Every version update must add a localized bundled entry in `src/release-notes.js` so the in-product update notice can explain the release.
+- Every feature update must add a localized `x.y.0` entry in `src/release-notes.js`; patch updates remain in release records without a separate in-product notice.

@@ -1,38 +1,44 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { releaseNotesForUpdate } from "../src/release-notes.js";
+import { isFeatureVersion, releaseNotesForUpdate } from "../src/release-notes.js";
 
-test("首次安装展示最近三个版本的更新说明", () => {
+test("只接受精确的 x.y.0 功能版本", () => {
+  assert.equal(isFeatureVersion("0.29.0"), true);
+  assert.equal(isFeatureVersion("0.29.0.1"), false);
+  assert.equal(isFeatureVersion("0.xx.0"), false);
+});
+
+test("首次安装只展示当前功能版本的更新说明", () => {
   assert.deepEqual(
-    releaseNotesForUpdate(null, "0.29.0").map((note) => note.version),
-    ["0.29.0", "0.28.6", "0.28.5"]
+    releaseNotesForUpdate(null, "0.29.3").map((note) => note.version),
+    ["0.29"]
   );
 });
 
-test("已读当前版本时不展示更新说明", () => {
-  assert.deepEqual(releaseNotesForUpdate("0.29.0", "0.29.0"), []);
+test("补丁版本更新不会单独展示更新说明", () => {
+  assert.deepEqual(releaseNotesForUpdate("0.29.2", "0.29.3"), []);
 });
 
-test("单次版本升级只展示遗漏版本的更新说明", () => {
+test("跨功能版本升级只展示新的 0.xx 说明", () => {
   assert.deepEqual(
-    releaseNotesForUpdate("0.28.5", "0.28.6").map((note) => note.version),
-    ["0.28.6"]
+    releaseNotesForUpdate("0.28.6", "0.29.3").map((note) => note.version),
+    ["0.29"]
   );
 });
 
-test("跨多个版本升级最多展示最近三个遗漏版本", () => {
+test("跨多个功能版本升级仅展示当前已内置的说明", () => {
   assert.deepEqual(
-    releaseNotesForUpdate("0.28.4", "0.29.0").map((note) => note.version),
-    ["0.29.0", "0.28.6", "0.28.5"]
+    releaseNotesForUpdate("0.26.13", "0.29.3").map((note) => note.version),
+    ["0.29"]
   );
 });
 
-test("缺失当前版本说明时提供安全降级内容", () => {
-  const note = releaseNotesForUpdate("0.29.0", "0.30.0")
+test("缺失当前功能版本说明时按 0.xx 粒度安全降级", () => {
+  const note = releaseNotesForUpdate("0.29.3", "0.30.2")
     .find((candidate) => candidate.isFallback);
   assert.ok(note);
-  assert.equal(note.version, "0.30.0");
+  assert.equal(note.version, "0.30");
   assert.equal(note.isFallback, true);
   assert.match(note.zh.title, /更新说明/);
 });

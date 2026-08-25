@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 130
+
+- Date: 2026-08-25
+- Version: 0.29.4
+- Summary: Limits update notices to feature-version (`0.xx`) summaries.
+- Notes: Patch releases remain in `builds.md` and `changelog.md` but do not create separate notice cards or prompts. Run `pnpm test`, then `pnpm build` and load `dist/`.
+
 ## 129
 
 - Date: 2026-08-25
