@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 149
+
+- Date: 2026-08-26
+- Version: 0.36.2
+- Summary: Lets historical empty Maker groups toggle when their AI reply exists.
+- Notes: The unloaded-reply notice now depends on whether the ChatGPT conversation branch contains an assistant message for that user turn, rather than whether the group currently has visible Makers. Historical groups with an AI message remain expandable and collapsible even with zero Makers; only historical groups with no AI message show the notice. Run `pnpm test`, `pnpm check`, then `pnpm build`; confirm `dist/manifest.json` is `0.36.2(149)` and its description remains unchanged.
+
 ## 148
 
 - Date: 2026-08-26

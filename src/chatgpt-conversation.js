@@ -46,18 +46,24 @@ export function parseChatGPTConversation(conversation) {
 
   const assistantToUserMessageId = {};
   const userMessages = [];
-  let currentUserMessageId = "";
+  let currentUserMessage = null;
   activeMessages.forEach((message) => {
     if (message.role === "user") {
       if (!message.text) {
         return;
       }
-      currentUserMessageId = message.id;
-      userMessages.push({ id: message.id, text: message.text, order: userMessages.length });
+      currentUserMessage = {
+        id: message.id,
+        text: message.text,
+        order: userMessages.length,
+        hasAssistantMessage: false
+      };
+      userMessages.push(currentUserMessage);
       return;
     }
-    if (currentUserMessageId) {
-      assistantToUserMessageId[message.id] = currentUserMessageId;
+    if (currentUserMessage) {
+      assistantToUserMessageId[message.id] = currentUserMessage.id;
+      currentUserMessage.hasAssistantMessage = true;
     }
   });
 

@@ -53,28 +53,28 @@ test("流式新增的最新用户分组未 ready 也默认展开且后续尊重�
   assert.equal(expandedKeys.has("streaming"), false);
 });
 
-test("最新空分组允许切换而 ChatGPT 历史空分组继续提示未加载", () => {
+test("历史空分组仅在没有 AI 消息时提示未加载", () => {
   assert.equal(shouldShowUserMarkerNotLoadedNotice({
     isChatGPT: true,
-    visibleHeadingCount: 0,
+    hasAssistantMessage: false,
     groupKey: "latest",
     latestGroupKey: "latest"
   }), false);
   assert.equal(shouldShowUserMarkerNotLoadedNotice({
     isChatGPT: true,
-    visibleHeadingCount: 0,
-    groupKey: "history",
-    latestGroupKey: "latest"
-  }), true);
-  assert.equal(shouldShowUserMarkerNotLoadedNotice({
-    isChatGPT: true,
-    visibleHeadingCount: 1,
+    hasAssistantMessage: true,
     groupKey: "history",
     latestGroupKey: "latest"
   }), false);
   assert.equal(shouldShowUserMarkerNotLoadedNotice({
+    isChatGPT: true,
+    hasAssistantMessage: false,
+    groupKey: "history",
+    latestGroupKey: "latest"
+  }), true);
+  assert.equal(shouldShowUserMarkerNotLoadedNotice({
     isChatGPT: false,
-    visibleHeadingCount: 0,
+    hasAssistantMessage: false,
     groupKey: "history",
     latestGroupKey: "latest"
   }), false);

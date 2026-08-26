@@ -2522,7 +2522,12 @@ import {
         title,
         order: message.order
       };
-      return [message.id, { key: user.markerKey, user, headings: [] }];
+      return [message.id, {
+        key: user.markerKey,
+        user,
+        headings: [],
+        hasAssistantMessage: message.hasAssistantMessage
+      }];
     }));
     const orphanGroup = { key: "orphan", user: null, headings: [] };
 
@@ -3530,7 +3535,7 @@ import {
     marker.addEventListener("click", () => {
       if (shouldShowUserMarkerNotLoadedNotice({
         isChatGPT: isChatGPTPage(),
-        visibleHeadingCount: group.visibleHeadings.length,
+        hasAssistantMessage: group.hasAssistantMessage,
         groupKey: group.key,
         latestGroupKey: state.latestUserMarkerKey
       })) {

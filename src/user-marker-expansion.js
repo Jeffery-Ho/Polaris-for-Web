@@ -15,9 +15,9 @@ export function syncLatestUserMarkerExpansion({ groups, expandedKeys, seenKeys }
 
 export function shouldShowUserMarkerNotLoadedNotice({
   isChatGPT,
-  visibleHeadingCount,
+  hasAssistantMessage,
   groupKey,
   latestGroupKey
 }) {
-  return isChatGPT && visibleHeadingCount === 0 && groupKey !== latestGroupKey;
+  return isChatGPT && !hasAssistantMessage && groupKey !== latestGroupKey;
 }
