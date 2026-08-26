@@ -1436,6 +1436,14 @@ html.gpt-paragraph-nav--dragging * {
   transform: translate(0, -50%);
 }
 
+#gpt-paragraph-nav.is-marker-motion-suppressed .gpt-paragraph-nav__marker,
+#gpt-paragraph-nav.is-marker-motion-suppressed .gpt-paragraph-nav__fold,
+#gpt-paragraph-nav.is-marker-motion-suppressed .gpt-paragraph-nav__label,
+#gpt-paragraph-nav.is-marker-motion-suppressed .gpt-paragraph-nav__user-chevron,
+#gpt-paragraph-nav.is-marker-motion-suppressed .gpt-paragraph-nav__fold-chevron {
+  transition: none;
+}
+
 .gpt-paragraph-nav__marker-notice {
   position: fixed;
   top: 24px;

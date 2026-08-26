@@ -4,6 +4,7 @@ import { doubaoMessageRoleFromClassNames } from "./doubao-message-role.js";
 import { pageThemeFromColors } from "./page-theme.js";
 import { releaseNotesForUpdate } from "./release-notes.js";
 import { shouldStartMarkerListPointerDrag } from "./marker-list-drag.js";
+import { createMarkerMotionSuppressor } from "./marker-motion-suppression.js";
 import { createMarkerRenderStateMachine } from "./marker-render-state-machine.js";
 import {
   shouldShowUserMarkerNotLoadedNotice,
@@ -26,6 +27,7 @@ import {
 (() => {
   const { locale, t } = globalThis.PolarisI18n;
   const ROOT_ID = "gpt-paragraph-nav";
+  const MARKER_MOTION_SUPPRESSION_CLASS = "is-marker-motion-suppressed";
   const DEBUG_ATTR = "data-gpt-paragraph-nav";
   const HEADING_SELECTOR = "h1, h2, h3, h4";
   const ROLE_HEADING_SELECTOR = '[role="heading"][aria-level]';
@@ -239,6 +241,7 @@ import {
     activeMarkerKey: "",
     observer: null,
     scheduled: 0,
+    scheduledRenderSuppressesMarkerMotion: false,
     scrollScheduled: 0,
     floatingScheduled: 0,
     markerListScrollScheduled: 0,
@@ -281,10 +284,15 @@ import {
     routeKey: "",
     isExtensionContextInvalidated: false
   };
+  const markerMotionSuppressor = createMarkerMotionSuppressor({
+    setSuppressed: (isSuppressed) => {
+      document.getElementById(ROOT_ID)?.classList.toggle(MARKER_MOTION_SUPPRESSION_CLASS, isSuppressed);
+    }
+  });
   const markerRenderStateMachine = createMarkerRenderStateMachine({
     readSnapshot: collectMarkerRenderSnapshot,
     hasStartPoint: (snapshot) => snapshot.headings.length > 0,
-    renderSnapshot: render
+    renderSnapshot: (snapshot) => render(snapshot, { suppressMarkerMotion: true })
   });
 
   function isExtensionContextValid() {
@@ -325,6 +333,8 @@ import {
 
     state.isExtensionContextInvalidated = true;
     window.clearTimeout(state.scheduled);
+    state.scheduledRenderSuppressesMarkerMotion = false;
+    markerMotionSuppressor.reset();
     markerRenderStateMachine.reset();
     window.clearTimeout(state.markerNoticeTimer);
     window.cancelAnimationFrame(state.markerListScrollAnimation);
@@ -3646,7 +3656,7 @@ import {
     };
   }
 
-  function render(snapshot = null) {
+  function render(snapshot = null, { suppressMarkerMotion = false } = {}) {
     if (!isExtensionContextValid()) {
       disposeInvalidExtensionContext();
       return;
@@ -3716,6 +3726,9 @@ import {
     root.classList.toggle("is-collapsed", state.isCollapsed && hasMarkers);
     list.style.height = state.isCollapsed && state.collapsedListHeight > 0 ? `${state.collapsedListHeight}px` : "";
     list.setAttribute("aria-hidden", String(state.isCollapsed));
+    if (suppressMarkerMotion) {
+      markerMotionSuppressor.suppress();
+    }
     list.textContent = "";
     syncLiquidGlassElements(root);
 
@@ -3756,13 +3769,21 @@ import {
     }
   }
 
-  function scheduleRender() {
+  function scheduleRender({ suppressMarkerMotion = false } = {}) {
+    state.scheduledRenderSuppressesMarkerMotion ||= suppressMarkerMotion;
     window.clearTimeout(state.scheduled);
-    state.scheduled = window.setTimeout(render, 120);
+    state.scheduled = window.setTimeout(() => {
+      state.scheduled = 0;
+      const shouldSuppressMarkerMotion = state.scheduledRenderSuppressesMarkerMotion;
+      state.scheduledRenderSuppressesMarkerMotion = false;
+      render(null, { suppressMarkerMotion: shouldSuppressMarkerMotion });
+    }, 120);
   }
 
   function resetRouteState() {
     window.clearTimeout(state.scheduled);
+    state.scheduledRenderSuppressesMarkerMotion = false;
+    markerMotionSuppressor.reset();
     markerRenderStateMachine.reset();
     window.clearTimeout(state.markerNoticeTimer);
     state.markerNoticeTimer = 0;
@@ -3879,7 +3900,7 @@ import {
       return;
     }
     state.chatGPTConversation = conversation;
-    scheduleRender();
+    scheduleRender({ suppressMarkerMotion: true });
   }
 
   function watchRouteChanges() {
@@ -4481,7 +4502,7 @@ import {
     window.addEventListener("pointerup", handlePointerUp, { capture: true });
     window.addEventListener("pointercancel", handlePointerCancel, { capture: true });
     window.addEventListener("click", handlePointerDragClick, { capture: true });
-    window.addEventListener("resize", scheduleRender, { passive: true });
+    window.addEventListener("resize", () => scheduleRender(), { passive: true });
     window.addEventListener("keydown", handleKeydown, { capture: true });
     document.addEventListener("click", handleDocumentClick);
     console.info("[Polaris for Web] loaded");

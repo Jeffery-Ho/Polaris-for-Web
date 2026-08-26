@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 150
+
+- Date: 2026-08-26
+- Version: 0.36.3
+- Summary: Prevents Maker hover motion from replaying during streaming refreshes.
+- Notes: Mutation-driven progressive renders and ChatGPT conversation refreshes temporarily suppress transitions while the Marker list is rebuilt, then restore the existing idle hover animation after the first painted frame. A generation guard prevents stale frame callbacks from restoring motion during a newer refresh; route changes and extension invalidation reset pending suppression. Run `pnpm test`, `pnpm check`, then `pnpm build`; confirm `dist/manifest.json` is `0.36.3(150)` and its description remains unchanged.
+
 ## 149
 
 - Date: 2026-08-26
