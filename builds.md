@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 147
+
+- Date: 2026-08-26
+- Version: 0.36.0
+- Summary: Starts progressive Maker rendering as soon as streaming output contains its first valid marker.
+- Notes: Relevant DOM mutations now enter a two-state scheduler that waits for a non-empty supported Maker, then renders the latest snapshot at most once per fixed 120ms window without sliding the first deadline. Route changes and extension invalidation reset the scheduler; empty headings no longer produce placeholder Makers. Run `pnpm test`, `pnpm check`, then `pnpm build`; confirm `dist/manifest.json` is `0.36.0(147)`, reload `dist/` in Tabbit Browser, and verify Makers appear before a long response finishes while editor mutations remain ignored.
+
 ## 146
 
 - Date: 2026-08-26

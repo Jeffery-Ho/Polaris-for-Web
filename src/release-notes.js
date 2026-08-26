@@ -1,5 +1,16 @@
 const RELEASE_NOTES = Object.freeze([
   {
+    version: "0.36.0",
+    en: {
+      title: "Progressive Maker rendering",
+      changes: ["Makers now appear during streaming output as soon as the first valid section is available, without waiting for the response to finish."]
+    },
+    zh: {
+      title: "Maker 流式渐进渲染",
+      changes: ["流式输出识别到首个有效 Maker 后即开始渐进渲染，不再等待整段回答结束。"]
+    }
+  },
+  {
     version: "0.35.0",
     en: {
       title: "Table markers across AI chats",

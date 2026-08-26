@@ -4,6 +4,7 @@ import { doubaoMessageRoleFromClassNames } from "./doubao-message-role.js";
 import { pageThemeFromColors } from "./page-theme.js";
 import { releaseNotesForUpdate } from "./release-notes.js";
 import { shouldStartMarkerListPointerDrag } from "./marker-list-drag.js";
+import { createMarkerRenderStateMachine } from "./marker-render-state-machine.js";
 import {
   scrollMarkerIntoView,
   TABLE_MARKER_LEVEL,
@@ -275,6 +276,11 @@ import {
     routeKey: "",
     isExtensionContextInvalidated: false
   };
+  const markerRenderStateMachine = createMarkerRenderStateMachine({
+    readSnapshot: collectMarkerRenderSnapshot,
+    hasStartPoint: (snapshot) => snapshot.headings.length > 0,
+    renderSnapshot: render
+  });
 
   function isExtensionContextValid() {
     try {
@@ -314,6 +320,7 @@ import {
 
     state.isExtensionContextInvalidated = true;
     window.clearTimeout(state.scheduled);
+    markerRenderStateMachine.reset();
     window.clearTimeout(state.markerNoticeTimer);
     window.cancelAnimationFrame(state.markerListScrollAnimation);
     state.markerListScrollAnimation = 0;
@@ -407,12 +414,12 @@ import {
         if (input.value) {
           state.isCollapsed = false;
         }
-        scheduleRender();
+        render();
       });
       input.addEventListener("focus", () => {
         if (state.isCollapsed) {
           state.isCollapsed = false;
-          scheduleRender();
+          render();
         }
       });
 
@@ -2622,7 +2629,7 @@ import {
     return {
       element,
       level: clampLevel(level),
-      title: normalizeTitle(element.textContent || t("heading.fallback", { index: index + 1 })),
+      title: normalizeTitle(element.textContent || ""),
       id: element.id || `gpt-paragraph-heading-${index + 1}`,
       sourceType
     };
@@ -3602,7 +3609,34 @@ import {
     }
   }
 
-  function render() {
+  function collectMarkerRenderSnapshot() {
+    const assistantContainers = getAssistantContainers();
+    const userContainers = getUserContainers();
+    const hasChatGPTConversation = isChatGPTPage() && Boolean(state.chatGPTConversation?.userMessages.length);
+    const hasConversation = assistantContainers.length > 0 || userContainers.length > 0 || hasChatGPTConversation;
+    if (!hasConversation) {
+      return {
+        assistantContainers,
+        userContainers,
+        hasConversation,
+        headings: [],
+        markerGroups: [],
+        metrics: null
+      };
+    }
+
+    const headings = collectHeadings(assistantContainers);
+    return {
+      assistantContainers,
+      userContainers,
+      hasConversation,
+      headings,
+      markerGroups: collectMarkerGroups(userContainers, assistantContainers, headings),
+      metrics: getConversationMetrics([...assistantContainers, ...userContainers])
+    };
+  }
+
+  function render(snapshot = null) {
     if (!isExtensionContextValid()) {
       disposeInvalidExtensionContext();
       return;
@@ -3614,14 +3648,12 @@ import {
       return;
     }
 
+    const renderSnapshot = snapshot || collectMarkerRenderSnapshot();
     const root = getRoot();
     updatePageTheme(root);
     getReleaseNoticeOverlay(root);
 
-    const assistantContainers = getAssistantContainers();
-    const userContainers = getUserContainers();
-    const hasChatGPTConversation = isChatGPTPage() && Boolean(state.chatGPTConversation?.userMessages.length);
-    if (!assistantContainers.length && !userContainers.length && !hasChatGPTConversation) {
+    if (!renderSnapshot.hasConversation) {
       closeExplosionOverlay();
       if (!state.isReleaseNoticeOpen) {
         removeNavigationRoot();
@@ -3650,12 +3682,14 @@ import {
       searchWrapper.hidden = state.isCollapsed;
     }
     getExplosionOverlay(root);
-    const headings = collectHeadings(assistantContainers);
-    const markerGroups = collectMarkerGroups(userContainers, assistantContainers, headings);
+    const {
+      headings,
+      markerGroups,
+      metrics
+    } = renderSnapshot;
     syncUserMarkerExpansion(markerGroups);
     const filteredGroups = filteredMarkerGroups(markerGroups);
     const { groups: visibleGroups, earlierUserGroupCount } = limitedMarkerGroups(filteredGroups);
-    const metrics = getConversationMetrics([...assistantContainers, ...userContainers]);
     ensureHeadingIds(headings);
     state.headings = headings;
     state.markerGroups = markerGroups;
@@ -3719,6 +3753,7 @@ import {
 
   function resetRouteState() {
     window.clearTimeout(state.scheduled);
+    markerRenderStateMachine.reset();
     window.clearTimeout(state.markerNoticeTimer);
     state.markerNoticeTimer = 0;
     window.cancelAnimationFrame(state.markerListScrollAnimation);
@@ -3864,7 +3899,7 @@ import {
       return;
     }
     scheduleChatGPTConversationRefresh();
-    scheduleRender();
+    markerRenderStateMachine.request();
   }
 
   function getActiveHeading() {
