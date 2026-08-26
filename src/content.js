@@ -6,6 +6,10 @@ import { releaseNotesForUpdate } from "./release-notes.js";
 import { shouldStartMarkerListPointerDrag } from "./marker-list-drag.js";
 import { createMarkerRenderStateMachine } from "./marker-render-state-machine.js";
 import {
+  shouldShowUserMarkerNotLoadedNotice,
+  syncLatestUserMarkerExpansion
+} from "./user-marker-expansion.js";
+import {
   scrollMarkerIntoView,
   TABLE_MARKER_LEVEL,
   tableMarkerEntries,
@@ -256,8 +260,9 @@ import {
     explosionSearchQuery: "",
     expandedFoldGroups: new Set(),
     expandedUserMarkerKeys: new Set(),
+    seenUserMarkerKeys: new Set(),
+    latestUserMarkerKey: "",
     areEarlierUserGroupsExpanded: false,
-    userMarkerExpansionInitialized: false,
     isCollapsed: false,
     collapsedListHeight: 0,
     ratingDismissedUntil: 0,
@@ -2599,16 +2604,11 @@ import {
   }
 
   function syncUserMarkerExpansion(groups) {
-    if (state.userMarkerExpansionInitialized) {
-      return;
-    }
-
-    const userGroups = groups.filter((group) => group.user);
-    if (!userGroups.length) {
-      return;
-    }
-    state.expandedUserMarkerKeys.add(userGroups[userGroups.length - 1].key);
-    state.userMarkerExpansionInitialized = true;
+    state.latestUserMarkerKey = syncLatestUserMarkerExpansion({
+      groups,
+      expandedKeys: state.expandedUserMarkerKeys,
+      seenKeys: state.seenUserMarkerKeys
+    });
   }
 
   function clampLevel(level) {
@@ -3528,7 +3528,12 @@ import {
     marker.appendChild(label);
 
     marker.addEventListener("click", () => {
-      if (isChatGPTPage() && group.visibleHeadings.length === 0) {
+      if (shouldShowUserMarkerNotLoadedNotice({
+        isChatGPT: isChatGPTPage(),
+        visibleHeadingCount: group.visibleHeadings.length,
+        groupKey: group.key,
+        latestGroupKey: state.latestUserMarkerKey
+      })) {
         showMarkerNotice(t("userMarker.replyNotLoaded"));
         return;
       }
@@ -3788,8 +3793,9 @@ import {
     state.explosionSearchQuery = "";
     state.expandedFoldGroups.clear();
     state.expandedUserMarkerKeys.clear();
+    state.seenUserMarkerKeys.clear();
+    state.latestUserMarkerKey = "";
     state.areEarlierUserGroupsExpanded = false;
-    state.userMarkerExpansionInitialized = false;
   }
 
   function removeNavigationRoot() {

@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 148
+
+- Date: 2026-08-26
+- Version: 0.36.1
+- Summary: Keeps the newest user Maker group expanded while its AI markers begin streaming.
+- Notes: User-group expansion now tracks every seen group key and auto-expands only a newly observed latest group, even when it has no AI markers yet. Subsequent renders preserve manual collapse state when the same group key is temporarily omitted and later returns. The latest empty group remains toggleable, while unloaded historical ChatGPT groups keep the existing notice. Run `pnpm test`, `pnpm check`, then `pnpm build`; confirm `dist/manifest.json` is `0.36.1(148)` and its description remains unchanged.
+
 ## 147
 
 - Date: 2026-08-26

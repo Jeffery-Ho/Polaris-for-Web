@@ -33,7 +33,7 @@ Polaris for Web automatically detects headings and list titles in AI responses a
 - An expanded mouse-wheel hit area that makes the marker list easier to scroll.
 - Fuzzy title search for both the navigation marker queue and Chapter View, with `Cmd/Ctrl+F` focusing the current search box.
 - Long marker queues are grouped into stacks of `N` markers (default 20); each full group collapses into a stack card with its first title and remaining count.
-- User maker groups show the latest 20 groups by default; earlier groups are available from an expandable summary, and search covers every group.
+- User maker groups show the latest 20 groups by default, with earlier groups available on demand and search covering every group. Each newly observed latest group opens even before its AI markers are ready, while later streaming updates preserve manual collapse state.
 - ChatGPT user maker groups read the active conversation branch, so long virtualized conversations retain their historical user groups.
 - **Chapter View**, which organizes AI response content by marker section for convenient reading and copying on every supported platform.
 - Chapter View safely preserves rendered Markdown structure, including headings, nested and task lists, quotes, code, links, images, and wide tables.
@@ -71,7 +71,7 @@ Polaris for Web processes AI response content locally in your browser and does n
 
 ## Version
 
-Current version: `0.36.0(147)`
+Current version: `0.36.1(148)`
 
 ## License
 
