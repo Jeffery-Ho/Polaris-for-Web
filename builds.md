@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 152
+
+- Date: 2026-08-26
+- Version: 0.36.5
+- Summary: Prevents Chapter View from controlling the underlying main tabs with navigation keys.
+- Notes: The control capsule now resolves keyboard navigation through an internal state-aware helper. While the chapter modal is open, Arrow Left, Arrow Right, Home, and End return no tab target, so the active main tab and focus remain unchanged; closing the modal restores the existing wrapped navigation, while `Shift + Arrow Left/Right` continues to switch chapters outside editable fields. Run `pnpm test`, `pnpm check`, then `pnpm build`; confirm `dist/manifest.json` is `0.36.5(152)` and its description remains unchanged.
+
 ## 151
 
 - Date: 2026-08-26

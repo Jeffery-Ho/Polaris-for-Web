@@ -3,6 +3,7 @@ import { chatGPTConversationIdFromPath, parseChatGPTConversation } from "./chatg
 import { doubaoMessageRoleFromClassNames } from "./doubao-message-role.js";
 import { pageThemeFromColors } from "./page-theme.js";
 import { releaseNotesForUpdate } from "./release-notes.js";
+import { nextControlTabIndex } from "./control-tab-keyboard.js";
 import { shouldStartMarkerListPointerDrag } from "./marker-list-drag.js";
 import { createMarkerMotionSuppressor } from "./marker-motion-suppression.js";
 import { createMarkerRenderStateMachine } from "./marker-render-state-machine.js";
@@ -671,16 +672,13 @@ import {
         if (currentIndex < 0) {
           return;
         }
-        let nextIndex = currentIndex;
-        if (event.key === "ArrowRight") {
-          nextIndex = (currentIndex + 1) % tabs.length;
-        } else if (event.key === "ArrowLeft") {
-          nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
-        } else if (event.key === "Home") {
-          nextIndex = 0;
-        } else if (event.key === "End") {
-          nextIndex = tabs.length - 1;
-        } else {
+        const nextIndex = nextControlTabIndex({
+          key: event.key,
+          currentIndex,
+          tabCount: tabs.length,
+          isChapterModalOpen: state.isExplosionOpen
+        });
+        if (nextIndex === null) {
           return;
         }
         event.preventDefault();
