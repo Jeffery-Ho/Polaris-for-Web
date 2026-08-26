@@ -27,6 +27,7 @@ Polaris for Web automatically detects headings and list titles in AI responses a
 
 - Progressive Maker rendering begins during streaming output as soon as the first non-empty supported marker is available; ongoing response changes are coalesced into fixed 120ms windows without replaying hover motion on rebuilt markers.
 - Click-to-jump navigation, active-section highlighting, and a scrollable marker queue.
+- Visible titles inside AI markers, user groups, and the floating active marker are left-aligned; user group capsules remain on the queue's right edge while AI markers and folded stacks remain on the left.
 - Platform-specific marker filters for H1, H2, H3, H4, and unordered lists.
 - Settings synchronization through `chrome.storage.sync`.
 - Light and dark adaptive glass styling for markers, buttons, and the settings panel.
@@ -71,7 +72,7 @@ Polaris for Web processes AI response content locally in your browser and does n
 
 ## Version
 
-Current version: `0.36.3(150)`
+Current version: `0.36.4(151)`
 
 ## License
 

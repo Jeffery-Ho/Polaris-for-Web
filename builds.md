@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 151
+
+- Date: 2026-08-26
+- Version: 0.36.4
+- Summary: Left-aligns visible Maker titles without changing their queue placement.
+- Notes: AI markers, user groups, and the floating active marker now align their visible text and internal content from the left. User group capsules remain right-aligned in the queue, while AI markers and folded stacks remain left-aligned; existing widths, padding, chevron budgets, navigation, and hover behavior are unchanged. Run `pnpm test`, `pnpm check`, then `pnpm build`; confirm `dist/manifest.json` is `0.36.4(151)` and its description remains unchanged.
+
 ## 150
 
 - Date: 2026-08-26

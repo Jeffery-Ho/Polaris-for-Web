@@ -25,3 +25,22 @@ test("缩小模式为折叠分组的计数、余量和箭头扩展宽度", () =>
     /is-control-minimized \.gpt-paragraph-nav__fold \{\n  max-width: min\(280px, calc\(100vw - 28px\)\);/
   );
 });
+
+test("Maker 正文默认左对齐且不改变 AI 与用户分组的队列位置", () => {
+  assert.match(
+    styles,
+    /\.gpt-paragraph-nav__marker \{[^}]*justify-content: flex-start;[^}]*text-align: left;/
+  );
+  assert.match(
+    styles,
+    /\.gpt-paragraph-nav__floating-active \{[^}]*justify-content: flex-start;[^}]*text-align: left;/
+  );
+  assert.match(
+    styles,
+    /\.gpt-paragraph-nav__fold-label \{[^}]*text-align: left;/
+  );
+  assert.match(
+    styles,
+    /\.gpt-paragraph-nav__marker-row--ai \{\n  justify-content: flex-start;\n\}[\s\S]*?\.gpt-paragraph-nav__marker-row--user \{\n  justify-content: flex-end;\n\}/
+  );
+});
