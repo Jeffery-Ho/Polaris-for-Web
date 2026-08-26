@@ -38,10 +38,6 @@
   pointer-events: none;
 }
 
-#gpt-paragraph-nav.is-control-minimized:not(.has-custom-control-position) {
-  right: 0;
-}
-
 .gpt-paragraph-nav__controls {
   position: relative;
   display: inline-flex;
@@ -1201,8 +1197,10 @@ html.gpt-paragraph-nav--dragging * {
 }
 
 .gpt-paragraph-nav__user-chevron {
-  width: 6px;
-  height: 6px;
+  flex: 0 0 8px;
+  width: 8px;
+  height: 8px;
+  box-sizing: border-box;
   border-right: 1.5px solid currentColor;
   border-bottom: 1.5px solid currentColor;
   transform: rotate(45deg) translateY(-2px);
@@ -1380,6 +1378,34 @@ html.gpt-paragraph-nav--dragging * {
   letter-spacing: 0;
   overflow-wrap: anywhere;
   white-space: normal;
+}
+
+#gpt-paragraph-nav.is-control-minimized .gpt-paragraph-nav__marker,
+#gpt-paragraph-nav.is-control-minimized .gpt-paragraph-nav__fold,
+#gpt-paragraph-nav.is-control-minimized .gpt-paragraph-nav__floating-active {
+  min-width: 0;
+  max-width: min(160px, calc(100vw - 28px));
+}
+
+#gpt-paragraph-nav.is-control-minimized .gpt-paragraph-nav__fold {
+  max-width: min(280px, calc(100vw - 28px));
+}
+
+#gpt-paragraph-nav.is-control-minimized .gpt-paragraph-nav__marker.gpt-paragraph-nav__marker--user {
+  max-width: min(190px, calc(100vw - 28px));
+}
+
+#gpt-paragraph-nav.is-control-minimized .gpt-paragraph-nav__preview,
+#gpt-paragraph-nav.is-control-minimized .gpt-paragraph-nav__floating-active-preview {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#gpt-paragraph-nav.is-control-minimized .gpt-paragraph-nav__marker--user .gpt-paragraph-nav__preview {
+  max-width: 160px;
 }
 
 .gpt-paragraph-nav__label {

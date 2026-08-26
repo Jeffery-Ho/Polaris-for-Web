@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 146
+
+- Date: 2026-08-26
+- Version: 0.35.8
+- Summary: Keeps safe viewport spacing and concise Maker titles in minimized control mode.
+- Notes: Minimized navigation preserves the normal viewport inset. AI, user, folded, and floating Maker titles use a 160px single-line ellipsis while full labels and interactions remain unchanged; the user Maker pill reserves its 16px horizontal padding plus 14px for a non-shrinking 8px collapse chevron and gap, and a folded group can expand to 280px so its count, remainder, and chevron remain visible. Run `pnpm test`, then `pnpm build`, reload `dist/` in Dia, and verify title truncation, complete chevrons, hover labels, navigation, and restore behavior.
+
 ## 145
 
 - Date: 2026-08-25

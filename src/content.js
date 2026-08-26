@@ -452,6 +452,12 @@ import {
       });
       root.appendChild(floating);
     }
+    let preview = floating.querySelector(".gpt-paragraph-nav__floating-active-preview");
+    if (!(preview instanceof HTMLSpanElement)) {
+      preview = document.createElement("span");
+      preview.className = "gpt-paragraph-nav__floating-active-preview";
+      floating.replaceChildren(preview);
+    }
     return floating;
   }
 
@@ -3947,21 +3953,23 @@ import {
     const floating = getFloatingActive(root);
     if (!(activeMarker instanceof HTMLElement) || state.isCollapsed || state.activeControlTab === "settings") {
       floating.hidden = true;
-      floating.textContent = "";
+      floating.querySelector(".gpt-paragraph-nav__floating-active-preview").textContent = "";
       return;
     }
 
     const list = getList(root);
     if (isMarkerVisibleInViewport(activeMarker)) {
       floating.hidden = true;
-      floating.textContent = "";
+      floating.querySelector(".gpt-paragraph-nav__floating-active-preview").textContent = "";
       return;
     }
 
     const rootRect = root.getBoundingClientRect();
     const listRect = list.getBoundingClientRect();
     const preview = activeMarker.querySelector(".gpt-paragraph-nav__preview");
-    floating.textContent = preview ? preview.textContent : activeMarker.getAttribute("aria-label") || "";
+    const title = preview ? preview.textContent : activeMarker.getAttribute("aria-label") || "";
+    floating.querySelector(".gpt-paragraph-nav__floating-active-preview").textContent = title;
+    floating.title = title;
     floating.style.setProperty("--marker-width", activeMarker.style.getPropertyValue("--marker-width") || "24px");
     floating.style.setProperty("--floating-active-bottom", `calc(${Math.max(0, rootRect.bottom - listRect.bottom)}px + 20pt)`);
     floating.hidden = false;
