@@ -6,8 +6,8 @@ import {
   syncLatestUserMarkerExpansion
 } from "../src/user-marker-expansion.js";
 
-function userGroup(key, headings = []) {
-  return { key, user: { markerKey: key }, headings };
+function userGroup(key, headings = [], hasAssistantMessage = false) {
+  return { key, user: { markerKey: key }, headings, hasAssistantMessage };
 }
 
 test("流式新增的最新用户分组未 ready 也默认展开且后续尊重手动折叠", () => {
@@ -78,4 +78,36 @@ test("历史空分组仅在没有 AI 消息时提示未加载", () => {
     groupKey: "history",
     latestGroupKey: "latest"
   }), false);
+});
+
+test("较晚出现且已有 AI 消息的直接上一组只自动展开一次", () => {
+  const expandedKeys = new Set();
+  const seenKeys = new Set();
+
+  syncLatestUserMarkerExpansion({
+    groups: [userGroup("latest")],
+    expandedKeys,
+    seenKeys
+  });
+  syncLatestUserMarkerExpansion({
+    groups: [userGroup("previous", [], true), userGroup("latest")],
+    expandedKeys,
+    seenKeys
+  });
+
+  assert.deepEqual([...expandedKeys], ["latest", "previous"]);
+
+  expandedKeys.delete("previous");
+  syncLatestUserMarkerExpansion({
+    groups: [userGroup("latest")],
+    expandedKeys,
+    seenKeys
+  });
+  syncLatestUserMarkerExpansion({
+    groups: [userGroup("previous", [], true), userGroup("latest")],
+    expandedKeys,
+    seenKeys
+  });
+
+  assert.equal(expandedKeys.has("previous"), false);
 });

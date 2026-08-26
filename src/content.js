@@ -1,5 +1,9 @@
 import { mountSettingsPanel } from "./settings-panel.jsx";
 import { chatGPTConversationIdFromPath, parseChatGPTConversation } from "./chatgpt-conversation.js";
+import {
+  recoverChatGPTMarkerGroups,
+  resolveChatGPTUserMessageId
+} from "./chatgpt-marker-groups.js";
 import { doubaoMessageRoleFromClassNames } from "./doubao-message-role.js";
 import { pageThemeFromColors } from "./page-theme.js";
 import { releaseNotesForUpdate } from "./release-notes.js";
@@ -259,6 +263,7 @@ import {
     lastRenderedHeadingCount: 0,
     markerSearchQuery: "",
     chatGPTConversation: null,
+    chatGPTAssistantUserMessageIds: new Map(),
     chatGPTConversationRefreshTimer: 0,
     chatGPTConversationRequestId: 0,
     explosionSearchQuery: "",
@@ -342,6 +347,7 @@ import {
     state.markerListScrollAnimation = 0;
     state.observer?.disconnect();
     state.liquidGlassObserver?.disconnect();
+    state.chatGPTAssistantUserMessageIds.clear();
     closeExplosionOverlay();
     state.isReleaseNoticeOpen = false;
     unlockPageScroll();
@@ -2542,14 +2548,23 @@ import {
     headings.forEach((heading) => {
       const assistantContainer = assistantContainerForHeading(heading, assistantContainers);
       const assistantMessageId = chatGPTMessageIdForContainer(assistantContainer);
-      const userMessageId = conversation.assistantToUserMessageId[assistantMessageId];
+      const userMessageId = resolveChatGPTUserMessageId({
+        assistantMessageId,
+        currentAssignments: conversation.assistantToUserMessageId,
+        rememberedAssignments: state.chatGPTAssistantUserMessageIds
+      });
       const group = groupsByMessageId.get(userMessageId) || orphanGroup;
       group.headings.push(heading);
     });
 
-    return [...groupsByMessageId.values(), orphanGroup]
+    const groups = [...groupsByMessageId.values(), orphanGroup]
       .filter((group) => group.user || group.headings.length)
       .sort((left, right) => (left.user ? left.user.order : Number.MAX_SAFE_INTEGER) - (right.user ? right.user.order : Number.MAX_SAFE_INTEGER));
+    return recoverChatGPTMarkerGroups({
+      groups,
+      previousGroups: state.markerGroups,
+      headings
+    });
   }
 
   function collectMarkerGroups(userContainers, assistantContainers, headings) {
@@ -3812,6 +3827,7 @@ import {
     state.markerListScrollUntil = 0;
     state.markerSearchQuery = "";
     state.chatGPTConversation = null;
+    state.chatGPTAssistantUserMessageIds.clear();
     window.clearTimeout(state.chatGPTConversationRefreshTimer);
     state.chatGPTConversationRefreshTimer = 0;
     state.explosionSearchQuery = "";

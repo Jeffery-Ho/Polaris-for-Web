@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 153
+
+- Date: 2026-08-26
+- Version: 0.36.6
+- Summary: Keeps the previous user group's loaded Makers available when the newest group expands.
+- Notes: After the initial snapshot, a directly preceding group first observed with an assistant reply opens once; subsequent renders preserve manual collapse and reappearance state. ChatGPT marker grouping prefers current assistant-to-user metadata, falls back only to the same remembered assistant ID, and recovers still-connected headings from orphan by DOM identity without guessing from duplicate titles. Route changes and extension invalidation clear the association cache. Run `pnpm test`, `pnpm check`, then `pnpm build`; confirm `dist/manifest.json` is `0.36.6(153)` and its description remains unchanged.
+
 ## 152
 
 - Date: 2026-08-26
