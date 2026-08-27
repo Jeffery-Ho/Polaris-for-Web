@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 159
+
+- Date: 2026-08-27
+- Version: 0.37.5
+- Summary: Improves the navigation search placeholder contrast at rest.
+- Notes: The navigation search placeholder now uses the theme's secondary text color instead of muted text, keeping it legible against the default main-navigation glass background in both themes. Typed text, hover background, focus behavior, and layout remain unchanged. Run `pnpm test`, `pnpm check`, then run `pnpm build` exactly once; confirm `dist/manifest.json` is `0.37.5(159)` and its description remains unchanged.
+
 ## 158
 
 - Date: 2026-08-27

@@ -120,7 +120,7 @@
 }
 
 .gpt-paragraph-nav__search-input::placeholder {
-  color: var(--gpt-arco-text-3);
+  color: var(--gpt-arco-text-2);
 }
 
 .gpt-paragraph-nav__search-input::-webkit-search-cancel-button,

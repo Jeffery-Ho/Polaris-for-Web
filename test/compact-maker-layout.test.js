@@ -62,4 +62,8 @@ test("搜索栏默认沿用主导航背景，悬停时显示输入背景", () =>
     styles,
     /\.gpt-paragraph-nav__search-input:hover \{\n  background: var\(--gpt-glass-input-bg\);\n\}/
   );
+  assert.match(
+    styles,
+    /\.gpt-paragraph-nav__search-input::placeholder \{\n  color: var\(--gpt-arco-text-2\);\n\}/
+  );
 });
