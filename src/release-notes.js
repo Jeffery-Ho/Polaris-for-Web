@@ -1,5 +1,16 @@
 const RELEASE_NOTES = Object.freeze([
   {
+    version: "0.39.0",
+    en: {
+      title: "A direct support entry",
+      changes: ["A heart button at the right edge of the Polaris header now opens the support page in a new tab."]
+    },
+    zh: {
+      title: "新增赞赏入口",
+      changes: ["Polaris Header 右侧新增心形入口，可在新标签页打开赞赏页。"]
+    }
+  },
+  {
     version: "0.38.0",
     en: {
       title: "A new Polaris support page",

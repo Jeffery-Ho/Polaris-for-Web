@@ -159,6 +159,8 @@ import {
   const CONTROL_CAPSULE_CLASS = "gpt-paragraph-nav__control-capsule";
   const CONTROL_TAB_INDICATOR_CLASS = "gpt-paragraph-nav__control-tab-indicator";
   const CONTROL_COMPACT_TOGGLE_CLASS = "gpt-paragraph-nav__control-compact-toggle";
+  const SUPPORT_LINK_CLASS = "gpt-paragraph-nav__support-link";
+  const SUPPORT_PAGE_URL = "https://jeffery-ho.github.io/polaris-landing/";
   const SETTINGS_CLASS = "gpt-paragraph-nav__settings";
   const LIST_ID = "gpt-paragraph-nav-list";
   const SETTINGS_PANEL_ID = "gpt-paragraph-nav-settings-panel";
@@ -171,6 +173,7 @@ import {
   const LIQUID_GLASS_SELECTOR = [
     `.${CONTROL_CAPSULE_CLASS}`,
     `.${CONTROL_COMPACT_TOGGLE_CLASS}`,
+    `.${SUPPORT_LINK_CLASS}`,
     ".gpt-paragraph-nav__search-input",
     ".gpt-paragraph-nav__fold",
     ".gpt-paragraph-nav__marker",
@@ -620,6 +623,36 @@ import {
       : "M5 12H19");
     icon.appendChild(path);
     return icon;
+  }
+
+  function createSupportHeartIcon() {
+    const namespace = "http://www.w3.org/2000/svg";
+    const icon = document.createElementNS(namespace, "svg");
+    icon.setAttribute("viewBox", "0 0 24 24");
+    icon.setAttribute("aria-hidden", "true");
+    icon.setAttribute("focusable", "false");
+    const path = document.createElementNS(namespace, "path");
+    path.setAttribute("fill", "currentColor");
+    path.setAttribute("d", "M12 21.1 4.4 13.6A5.4 5.4 0 0 1 12 6a5.4 5.4 0 0 1 7.6 7.6Z");
+    icon.appendChild(path);
+    return icon;
+  }
+
+  function getSupportLink(root = getRoot()) {
+    const controls = getControls(root);
+    let link = controls.querySelector(`.${SUPPORT_LINK_CLASS}`);
+    if (!(link instanceof HTMLAnchorElement)) {
+      link = document.createElement("a");
+      link.className = SUPPORT_LINK_CLASS;
+      link.href = SUPPORT_PAGE_URL;
+      link.target = "_blank";
+      link.rel = "noreferrer";
+      link.setAttribute("aria-label", t("support.aria"));
+      link.title = t("support.aria");
+      link.appendChild(createSupportHeartIcon());
+      controls.appendChild(link);
+    }
+    return link;
   }
 
   function setControlMinimized(isMinimized) {
@@ -3806,6 +3839,7 @@ import {
 
     updateHeaderOffset(root);
     getControlCapsule(root);
+    getSupportLink(root);
     getSettings(root);
     applyConfig(root);
     const controls = getControls(root);
@@ -4353,7 +4387,8 @@ import {
 
     const capsule = root.querySelector(`.${CONTROL_CAPSULE_CLASS}`);
     if (capsule instanceof HTMLElement && event.target instanceof Node && capsule.contains(event.target)) {
-      const rect = capsule.getBoundingClientRect();
+      const controls = root.querySelector(`.${CONTROLS_CLASS}`);
+      const rect = controls instanceof HTMLElement ? controls.getBoundingClientRect() : capsule.getBoundingClientRect();
       state.pointerDrag = {
         kind: "controls",
         pointerId: event.pointerId,

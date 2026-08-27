@@ -4,6 +4,7 @@
 
 - GitHub Pages 正式地址为 `https://jeffery-ho.github.io/polaris-landing/`，由独立的 `polaris-landing` 仓库发布；原仓库的 `/support.html` 仅保留为即时跳转入口，不再展示页面内容。页面使用现有 Polaris 图标与浅色玻璃布局，浏览器标签图标使用 `icons/gpt-voyager-icon-32.png`。
 - 视频窗口使用响应式 16:9 比例，最大宽度为 `960px`，让桌面首屏保留 PayPal CTA 的可见空间。
+- 扩展的 Polaris Header 最右侧提供心形赞赏入口，点击后在新标签页打开正式赞赏页；入口独立于可拖动的导航胶囊，外沿与 Header 内容右边缘对齐。
 - 顶部右侧保留带图标的 Chrome Web Store 与 GitHub Issues 链接；底部只让 `JEFFERY HO` 跳转到 X，不显示单独的 X 图标。
 - 页面文案为 `Thank you for installing Polaris!` 与 `Your long AI conversations just got easier to navigate.`。
 

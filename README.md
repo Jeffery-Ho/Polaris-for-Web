@@ -37,6 +37,7 @@ Polaris for Web automatically detects headings and list titles in AI responses a
 - User maker groups show the latest 20 groups by default, with earlier groups available on demand and search covering every group. Each newly observed latest group opens even before its AI markers are ready; a directly preceding group that arrives late with a loaded reply opens once, while later streaming updates preserve manual collapse state. ChatGPT keeps already loaded markers with their stable user group when message metadata briefly lags behind the DOM.
 - ChatGPT user maker groups read the active conversation branch, so long virtualized conversations retain their historical user groups.
 - **Chapter View**, which organizes AI response content by marker section for convenient reading and copying on every supported platform.
+- A heart-shaped support entry at the far right of the Polaris header, opening the [Polaris support page](https://jeffery-ho.github.io/polaris-landing/) in a new tab.
 - While Chapter View is open, its modal blocks arrow, Home, and End keys from changing the underlying main tab; `Shift + ← / →` continues to switch chapters outside editable fields.
 - Chapter View safely preserves rendered Markdown structure, including headings, nested and task lists, quotes, code, links, images, and wide tables.
 - Complete raw Markdown pipe tables are also formatted in Chapter View when a source page leaves them unrendered.
@@ -77,7 +78,7 @@ Visit the [Polaris support page](https://jeffery-ho.github.io/polaris-landing/) 
 
 ## Version
 
-Current version: `0.38.8(169)`
+Current version: `0.39.0(170)`
 
 ## License
 

@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 170
+
+- Date: 2026-08-27
+- Version: 0.39.0
+- Summary: Adds a heart-shaped support entry to the Polaris header.
+- Notes: The rightmost header control opens `https://jeffery-ho.github.io/polaris-landing/` in a new tab, stays outside the draggable control capsule, and shares the existing liquid-glass surface. Run `pnpm test`, `pnpm check`, then run `pnpm build` exactly once; confirm `dist/manifest.json` is `0.39.0(170)` and its description remains unchanged.
+
 ## 169
 
 - Date: 2026-08-27

@@ -38,7 +38,7 @@
 1. Keep `assets/polaris-introduction.mp4` and `support-config.js` together when deploying the static site.
 2. If first-load weight becomes a concern, replace the MP4 with an optimized file at the same path and re-run this QA check.
 
-## Follow-up verification — 0.38.8(169)
+## Follow-up verification — 0.39.0(170)
 
 - The header brand and document title now use `Polaris` without the `for Web` suffix, as requested.
 - The extracted MP4 thumbnail remains visible while the full video loads; only a buffered range that covers the complete duration starts the muted autoplay. A buffering prompt does not intercept native video controls if autoplay is rejected.
@@ -47,5 +47,6 @@
 - Browser tab icon resolves to the existing 32px Polaris PNG asset.
 - Video frame is capped at 960px while retaining its responsive 16:9 ratio.
 - The legacy project-page URL immediately redirects to the standalone landing page.
+- The Polaris Header has a right-aligned heart control that opens the support page in a new tab and remains outside the draggable navigation capsule.
 
 final result: passed
