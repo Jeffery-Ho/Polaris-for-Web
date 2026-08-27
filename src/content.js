@@ -3466,7 +3466,6 @@ import {
       ariaLabel,
       title: first.title,
       preview: markerPreviewFor(first.title),
-      count: headings.length,
       remainder,
       signature: markerRenderSignature(["fold", isExpanded, ariaLabel, first.title, headings.length, remainder])
     };
@@ -3542,10 +3541,6 @@ import {
     row.appendChild(marker);
 
     if (item.type === "fold") {
-      const countBadge = document.createElement("span");
-      countBadge.className = "gpt-paragraph-nav__fold-count";
-      marker.appendChild(countBadge);
-
       const label = document.createElement("span");
       label.className = "gpt-paragraph-nav__fold-label";
       marker.appendChild(label);
@@ -3599,7 +3594,6 @@ import {
       marker.setAttribute("aria-expanded", String(item.isExpanded));
       marker.setAttribute("aria-label", item.ariaLabel);
       marker.title = item.title;
-      marker.querySelector(".gpt-paragraph-nav__fold-count").textContent = String(item.count);
       marker.querySelector(".gpt-paragraph-nav__fold-label").textContent = item.preview;
       marker.querySelector(".gpt-paragraph-nav__fold-remainder").textContent = item.remainder;
       return;

@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 const styles = readFileSync(new URL("../src/styles.css", import.meta.url), "utf8");
+const contentSource = readFileSync(new URL("../src/content.js", import.meta.url), "utf8");
 
 test("缩小模式为用户 Maker 的标题、内边距和折叠箭头分别预留宽度", () => {
   assert.match(
@@ -19,11 +20,18 @@ test("缩小模式为用户 Maker 的标题、内边距和折叠箭头分别预�
   );
 });
 
-test("缩小模式为折叠分组的计数、余量和箭头扩展宽度", () => {
+test("缩小模式为折叠分组的标题、余量和箭头扩展宽度", () => {
   assert.match(
     styles,
     /is-control-minimized \.gpt-paragraph-nav__fold \{\n  max-width: min\(280px, calc\(100vw - 28px\)\);/
   );
+});
+
+test("折叠 Maker 分组仅保留后置余量和箭头", () => {
+  assert.doesNotMatch(contentSource, /gpt-paragraph-nav__fold-count/);
+  assert.doesNotMatch(styles, /gpt-paragraph-nav__fold-count/);
+  assert.match(contentSource, /gpt-paragraph-nav__fold-remainder/);
+  assert.match(contentSource, /gpt-paragraph-nav__fold-chevron/);
 });
 
 test("Maker 正文默认左对齐且不改变 AI 与用户分组的队列位置", () => {
