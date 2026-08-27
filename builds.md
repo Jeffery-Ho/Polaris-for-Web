@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 164
+
+- Date: 2026-08-27
+- Version: 0.38.3
+- Summary: Gives the PayPal CTA an Apple Blue liquid-glass treatment.
+- Notes: The support page CTA now uses a translucent Apple Blue surface with blur, a light glass edge, inset highlights, and stronger hover elevation while retaining high-contrast white text. Run `pnpm test`, `pnpm check`, then run `pnpm build` exactly once; confirm `dist/manifest.json` is `0.38.3(164)` and its description remains unchanged.
+
 ## 163
 
 - Date: 2026-08-27

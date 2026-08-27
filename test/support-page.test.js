@@ -20,6 +20,8 @@ test("赞赏页保留加载提示、自动播放视频属性和配置入口", ()
   assert.match(supportPage, /addEventListener\("waiting"/);
   assert.match(supportPage, /video\.controls = true/);
   assert.match(supportPage, /Video is ready\. Tap to play\./);
+  assert.match(supportPage, /background: rgba\(0, 122, 255, 0\.82\)/);
+  assert.match(supportPage, /backdrop-filter: blur\(20px\) saturate\(155%\)/);
   assert.match(supportConfig, /videoSource: "assets\/polaris-introduction\.mp4"/);
   assert.match(supportConfig, /paypalUrl: "https:\/\/paypal\.me\/jefferyhoHK"/);
 });
