@@ -2,6 +2,9 @@
 
 ## 2026-08-27
 
+- 发布：原仓库的 `/support.html` 不再承载页面内容，访问时立即跳转至独立 landing 地址。
+- 版本：修订更新到 `0.38.8(169)`。
+
 - 发布：赞赏页迁移至独立的 `polaris-landing` GitHub Pages 仓库，正式地址改为 `https://jeffery-ho.github.io/polaris-landing/`。
 - 版本：修订更新到 `0.38.7(168)`。
 

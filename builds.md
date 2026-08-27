@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 169
+
+- Date: 2026-08-27
+- Version: 0.38.8
+- Summary: Redirects the former project support page to the standalone landing page.
+- Notes: `support.html` now immediately redirects to `https://jeffery-ho.github.io/polaris-landing/` and exposes a no-script fallback link. Run `pnpm test`, `pnpm check`, then run `pnpm build` exactly once; confirm `dist/manifest.json` is `0.38.8(169)` and its description remains unchanged.
+
 ## 168
 
 - Date: 2026-08-27

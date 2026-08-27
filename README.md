@@ -77,7 +77,7 @@ Visit the [Polaris support page](https://jeffery-ho.github.io/polaris-landing/) 
 
 ## Version
 
-Current version: `0.38.7(168)`
+Current version: `0.38.8(169)`
 
 ## License
 
