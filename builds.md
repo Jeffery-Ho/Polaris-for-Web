@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 162
+
+- Date: 2026-08-27
+- Version: 0.38.1
+- Summary: Gives Maker hover tips a compact diffuse shadow.
+- Notes: Hover tips now use a centered 12px diffuse shadow with reduced opacity instead of the former 12px-down, 32px-blur shadow. The shadow stays visually close to each Maker, reducing lower-edge clipping without changing tip position, width, or list behavior. Run `pnpm test`, `pnpm check`, then run `pnpm build` exactly once; confirm `dist/manifest.json` is `0.38.1(162)` and its description remains unchanged.
+
 ## 161
 
 - Date: 2026-08-27

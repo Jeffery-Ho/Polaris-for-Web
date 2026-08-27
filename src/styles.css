@@ -1417,7 +1417,7 @@ html.gpt-paragraph-nav--dragging * {
   white-space: normal;
   overflow-wrap: anywhere;
   word-break: break-word;
-  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.26);
+  box-shadow: 0 0 12px rgba(15, 23, 42, 0.18);
   opacity: 0;
   pointer-events: none;
   transform: translate(6px, -50%);

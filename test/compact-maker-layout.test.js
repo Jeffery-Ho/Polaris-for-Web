@@ -18,6 +18,13 @@ test("Maker 队列为 tips 阴影保留完整缓冲区", () => {
   );
 });
 
+test("Maker tips 使用贴近本体的轻量弥散阴影", () => {
+  assert.match(
+    styles,
+    /\.gpt-paragraph-nav__label \{[\s\S]*?box-shadow: 0 0 12px rgba\(15, 23, 42, 0\.18\);/
+  );
+});
+
 test("缩小模式为用户 Maker 的标题、内边距和折叠箭头分别预留宽度", () => {
   assert.match(
     styles,
