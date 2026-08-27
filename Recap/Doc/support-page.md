@@ -2,7 +2,7 @@
 
 ## 页面与链接
 
-- GitHub Pages 页面路径为 `/support.html`，使用现有 Polaris 图标与浅色玻璃布局。
+- GitHub Pages 页面路径为 `/support.html`，使用现有 Polaris 图标与浅色玻璃布局；浏览器标签图标使用 `icons/gpt-voyager-icon-32.png`。
 - 顶部右侧保留带图标的 Chrome Web Store 与 GitHub Issues 链接；底部只让 `JEFFERY HO` 跳转到 X，不显示单独的 X 图标。
 - 页面文案为 `Thank you for installing Polaris!` 与 `Your long AI conversations just got easier to navigate.`。
 

@@ -77,7 +77,7 @@ Visit the [Polaris support page](https://jeffery-ho.github.io/Polaris-for-Web/su
 
 ## Version
 
-Current version: `0.38.3(164)`
+Current version: `0.38.4(165)`
 
 ## License
 

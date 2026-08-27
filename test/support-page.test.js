@@ -7,6 +7,7 @@ const supportConfig = await readFile(new URL("../support-config.js", import.meta
 
 test("赞赏页保留加载提示、自动播放视频属性和配置入口", () => {
   assert.match(supportPage, /<title>Support Polaris<\/title>/);
+  assert.match(supportPage, /<link rel="icon" type="image\/png" sizes="32x32" href="icons\/gpt-voyager-icon-32\.png">/);
   assert.match(supportPage, /<span>Polaris<\/span>/);
   assert.doesNotMatch(supportPage, /Polaris for Web/);
   assert.match(supportPage, /Thank you for installing Polaris!/);
