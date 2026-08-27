@@ -149,6 +149,7 @@
       }
 
       .support-video,
+      .video-thumbnail,
       .video-placeholder,
       .video-status {
         position: absolute;
@@ -161,18 +162,23 @@
         object-fit: cover;
       }
 
+      .video-thumbnail {
+        z-index: 1;
+        object-fit: cover;
+      }
+
       .video-placeholder {
         background: #edf0fb;
       }
 
       .video-status {
-        z-index: 1;
+        z-index: 2;
         display: grid;
-        place-items: center;
+        place-items: end center;
         padding: 24px;
-        background: rgba(237, 240, 251, 0.94);
-        color: #405576;
-        font-size: clamp(16px, 2vw, 20px);
+        background: linear-gradient(transparent 58%, rgba(8, 27, 67, 0.66));
+        color: #ffffff;
+        font-size: clamp(14px, 1.6vw, 18px);
         font-weight: 650;
         letter-spacing: -0.025em;
         pointer-events: none;
@@ -343,9 +349,10 @@
         <p class="intro">Your long AI conversations just got easier to navigate.</p>
 
         <section class="video-frame" aria-label="Polaris introduction video">
-          <video class="support-video" data-support-video autoplay muted loop playsinline preload="metadata" hidden></video>
+          <video class="support-video" data-support-video autoplay muted loop playsinline preload="auto" hidden></video>
+          <img class="video-thumbnail" data-video-thumbnail src="assets/polaris-introduction-thumbnail.jpg" alt="" aria-hidden="true">
           <div class="video-placeholder" data-video-placeholder aria-hidden="true"></div>
-          <p class="video-status" data-video-status role="status" aria-live="polite">Loading video…</p>
+          <p class="video-status" data-video-status role="status" aria-live="polite">Preparing full video…</p>
         </section>
 
         <a class="support-button" data-paypal-link aria-disabled="true" aria-label="Support Polaris on PayPal">Support on PayPal</a>
@@ -360,6 +367,7 @@
       import { supportConfig } from "./support-config.js";
 
       const video = document.querySelector("[data-support-video]");
+      const videoThumbnail = document.querySelector("[data-video-thumbnail]");
       const placeholder = document.querySelector("[data-video-placeholder]");
       const videoStatus = document.querySelector("[data-video-status]");
       const paypalLink = document.querySelector("[data-paypal-link]");
@@ -380,19 +388,50 @@
         }
       }
 
+      function isVideoFullyBuffered() {
+        if (!Number.isFinite(video.duration) || video.duration <= 0 || video.buffered.length === 0) {
+          return false;
+        }
+
+        let bufferedEnd = 0;
+
+        for (let index = 0; index < video.buffered.length; index += 1) {
+          if (video.buffered.start(index) > bufferedEnd + 0.1) {
+            return false;
+          }
+
+          bufferedEnd = video.buffered.end(index);
+        }
+
+        return bufferedEnd >= video.duration - 0.1;
+      }
+
+      function revealFullyBufferedVideo() {
+        if (!isVideoFullyBuffered() || !video.hidden) {
+          return;
+        }
+
+        video.hidden = false;
+        videoThumbnail.hidden = true;
+        startVideoPlayback();
+      }
+
       if (supportConfig.videoSource) {
         video.muted = true;
         video.defaultMuted = true;
         video.playsInline = true;
         video.src = supportConfig.videoSource;
-        video.hidden = false;
-        showVideoStatus("Loading video…");
-        video.addEventListener("canplay", startVideoPlayback, { once: true });
+        showVideoStatus("Preparing full video…");
+        video.addEventListener("loadedmetadata", revealFullyBufferedVideo);
+        video.addEventListener("progress", revealFullyBufferedVideo);
+        video.addEventListener("canplaythrough", revealFullyBufferedVideo);
         video.addEventListener("playing", () => {
           placeholder.hidden = true;
           videoStatus.hidden = true;
         });
-        video.addEventListener("waiting", () => showVideoStatus("Buffering video…"));
+        video.addEventListener("waiting", () => {
+          if (!video.hidden) showVideoStatus("Buffering video…");
+        });
         video.addEventListener("stalled", () => showVideoStatus("Buffering video…"));
         video.addEventListener("error", () => showVideoStatus("Video could not load. Please refresh the page."));
         video.load();

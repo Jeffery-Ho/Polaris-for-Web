@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 166
+
+- Date: 2026-08-27
+- Version: 0.38.5
+- Summary: Keeps the support thumbnail visible until the video is ready for uninterrupted playback.
+- Notes: The support page preloads its MP4, shows `assets/polaris-introduction-thumbnail.jpg` during loading, and starts playback only after its buffered ranges cover the full video duration. Run `pnpm test`, `pnpm check`, then run `pnpm build` exactly once; confirm `dist/manifest.json` is `0.38.5(166)` and its description remains unchanged.
+
 ## 165
 
 - Date: 2026-08-27

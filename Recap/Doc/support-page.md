@@ -8,7 +8,7 @@
 
 ## 外部内容配置
 
-- `support-config.js` 是视频与 PayPal 地址的唯一配置位置：`videoSource` 已指向 `assets/polaris-introduction.mp4`。页面在视频开始前显示加载提示，在缓冲时显示缓冲提示，并在 `canplay` 后显式发起 `autoplay muted loop playsinline` 播放；赞赏按钮以 Apple Blue 液态玻璃主 CTA 的形式在新标签页直达 `https://paypal.me/jefferyhoHK`。
+- `support-config.js` 是视频与 PayPal 地址的唯一配置位置：`videoSource` 已指向 `assets/polaris-introduction.mp4`。页面加载时显示 `assets/polaris-introduction-thumbnail.jpg`，仅在浏览器缓冲区覆盖完整视频时才显式发起 `autoplay muted loop playsinline`；赞赏按钮以 Apple Blue 液态玻璃主 CTA 的形式在新标签页直达 `https://paypal.me/jefferyhoHK`。
 - 当前 MP4 约 68 MB、56 秒。部署前应保留其文件名与相对路径；若要降低首次加载量，可在不改变画面比例的前提下另行压缩替换。
 
 ## 验证
