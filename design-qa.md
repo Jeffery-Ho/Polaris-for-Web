@@ -38,4 +38,10 @@
 1. Keep `assets/polaris-introduction.mp4` and `support-config.js` together when deploying the static site.
 2. If first-load weight becomes a concern, replace the MP4 with an optimized file at the same path and re-run this QA check.
 
+## Follow-up verification — 0.38.2(163)
+
+- The header brand and document title now use `Polaris` without the `for Web` suffix, as requested.
+- A visible loading prompt is present before MP4 playback; it changes to a buffering prompt when data stalls and does not intercept native video controls if autoplay is rejected.
+- Browser verification confirmed `Support Polaris`, a playing muted video with non-zero playback time, and a hidden status prompt after playback begins.
+
 final result: passed

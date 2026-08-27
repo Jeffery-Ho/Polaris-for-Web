@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 163
+
+- Date: 2026-08-27
+- Version: 0.38.2
+- Summary: Shows loading feedback before the support video begins playback.
+- Notes: The support page now keeps a visible loading prompt until the muted MP4 starts, shows a buffering prompt when playback pauses for data, and calls `video.play()` after `canplay`. Run `pnpm test`, `pnpm check`, then run `pnpm build` exactly once; confirm `dist/manifest.json` is `0.38.2(163)` and its description remains unchanged.
+
 ## 162
 
 - Date: 2026-08-27

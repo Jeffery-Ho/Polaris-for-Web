@@ -5,10 +5,21 @@ import { readFile } from "node:fs/promises";
 const supportPage = await readFile(new URL("../support.html", import.meta.url), "utf8");
 const supportConfig = await readFile(new URL("../support-config.js", import.meta.url), "utf8");
 
-test("赞赏页保留已确认的文案、自动播放视频属性和配置入口", () => {
+test("赞赏页保留加载提示、自动播放视频属性和配置入口", () => {
+  assert.match(supportPage, /<title>Support Polaris<\/title>/);
+  assert.match(supportPage, /<span>Polaris<\/span>/);
+  assert.doesNotMatch(supportPage, /Polaris for Web/);
   assert.match(supportPage, /Thank you for installing Polaris!/);
   assert.match(supportPage, /Your long AI conversations just got easier to navigate\./);
   assert.match(supportPage, /autoplay muted loop playsinline preload="metadata"/);
+  assert.match(supportPage, /Loading video…/);
+  assert.match(supportPage, /Buffering video…/);
+  assert.match(supportPage, /video\.play\(\)/);
+  assert.match(supportPage, /video\.muted = true/);
+  assert.match(supportPage, /addEventListener\("playing"/);
+  assert.match(supportPage, /addEventListener\("waiting"/);
+  assert.match(supportPage, /video\.controls = true/);
+  assert.match(supportPage, /Video is ready\. Tap to play\./);
   assert.match(supportConfig, /videoSource: "assets\/polaris-introduction\.mp4"/);
   assert.match(supportConfig, /paypalUrl: "https:\/\/paypal\.me\/jefferyhoHK"/);
 });
