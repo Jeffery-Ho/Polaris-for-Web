@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 155
+
+- Date: 2026-08-27
+- Version: 0.37.1
+- Summary: Keeps a loaded previous Maker group collapsible while the next reply streams.
+- Notes: The ChatGPT unloaded-reply guard now treats existing group Makers as direct evidence that the reply is available, even when assistant conversation metadata briefly lags behind the DOM. Historical groups still show the notice only when they are neither the latest group nor backed by an assistant message or any Maker. Run `pnpm test`, `pnpm check`, then `pnpm build`; confirm `dist/manifest.json` is `0.37.1(155)` and its description remains unchanged.
+
 ## 154
 
 - Date: 2026-08-27

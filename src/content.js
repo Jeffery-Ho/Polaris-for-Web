@@ -3679,6 +3679,7 @@ import {
     if (shouldShowUserMarkerNotLoadedNotice({
       isChatGPT: isChatGPTPage(),
       hasAssistantMessage: group.hasAssistantMessage,
+      hasMarkers: group.headings.length > 0,
       groupKey,
       latestGroupKey: state.latestUserMarkerKey
     })) {

@@ -80,6 +80,16 @@ test("历史空分组仅在没有 AI 消息时提示未加载", () => {
   }), false);
 });
 
+test("历史分组已有 Maker 时即使消息元数据滞后也允许折叠", () => {
+  assert.equal(shouldShowUserMarkerNotLoadedNotice({
+    isChatGPT: true,
+    hasAssistantMessage: false,
+    hasMarkers: true,
+    groupKey: "previous",
+    latestGroupKey: "streaming"
+  }), false);
+});
+
 test("较晚出现且已有 AI 消息的直接上一组只自动展开一次", () => {
   const expandedKeys = new Set();
   const seenKeys = new Set();
