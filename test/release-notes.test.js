@@ -97,10 +97,11 @@ test("赞赏页功能提供内置更新说明", () => {
   assert.match(note.zh.changes[0], /赞赏页/);
 });
 
-test("Header 赞赏入口提供内置更新说明", () => {
+test("设置面板 Header 赞赏入口提供内置更新说明", () => {
   const note = releaseNotesForUpdate("0.38.8", "0.39.0")[0];
   assert.equal(note.version, "0.39");
   assert.match(note.zh.changes[0], /心形入口/);
+  assert.match(note.zh.changes[0], /设置面板 Header/);
 });
 
 test("缺失当前功能版本说明时按 0.xx 粒度安全降级", () => {

@@ -246,38 +246,6 @@
   outline-offset: 1px;
 }
 
-.gpt-paragraph-nav__support-link {
-  display: inline-grid;
-  width: 30px;
-  height: 30px;
-  flex: 0 0 30px;
-  place-items: center;
-  border-radius: 999px;
-  background: var(--gpt-glass-dark-button-bg);
-  box-shadow: var(--gpt-glass-shadow), 0 0 0 1px var(--gpt-glass-border);
-  color: #ff375f;
-  pointer-events: auto;
-  text-decoration: none;
-  transition: background 120ms ease, color 120ms ease, transform 120ms ease;
-}
-
-.gpt-paragraph-nav__support-link svg {
-  width: 15px;
-  height: 15px;
-}
-
-.gpt-paragraph-nav__support-link:hover,
-.gpt-paragraph-nav__support-link:focus-visible {
-  background: rgba(255, 55, 95, 0.18);
-  color: #ff2d55;
-  transform: translateY(-1px);
-}
-
-.gpt-paragraph-nav__support-link:focus-visible {
-  outline: 2px solid #ff375f;
-  outline-offset: 2px;
-}
-
 #gpt-paragraph-nav .gpt-paragraph-nav__control-tab-indicator {
   position: absolute;
   top: 3px;

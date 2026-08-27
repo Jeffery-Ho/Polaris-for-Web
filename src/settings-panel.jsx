@@ -40,6 +40,10 @@ function createStarIcon() {
   return createIcon("M12 2.75l2.8 5.68 6.27.91-4.54 4.42 1.07 6.24L12 17.08l-5.6 2.94 1.07-6.24-4.54-4.42 6.27-.91L12 2.75Z");
 }
 
+function createSupportHeartIcon() {
+  return createIcon("M12 21.1 4.4 13.6A5.4 5.4 0 0 1 12 6a5.4 5.4 0 0 1 7.6 7.6Z");
+}
+
 function createSlider(field, model) {
   const wrapper = createElement("label", "polaris-settings-slider");
   const label = createElement("span", "polaris-settings-slider-label");
@@ -129,7 +133,14 @@ function createSettingsPanel(model) {
   const title = createElement("span", "polaris-settings-app-title");
   title.textContent = model.appName;
   app.append(icon, title);
-  header.appendChild(app);
+  const support = createElement("a", "polaris-settings-support-link");
+  support.href = model.supportUrl;
+  support.target = "_blank";
+  support.rel = "noreferrer";
+  support.setAttribute("aria-label", model.supportLabel);
+  support.title = model.supportLabel;
+  support.appendChild(createSupportHeartIcon());
+  header.append(app, support);
 
   const body = createElement("div", "polaris-settings-body");
   const supportedPlatforms = createElement("p", "polaris-settings-supported-platforms");

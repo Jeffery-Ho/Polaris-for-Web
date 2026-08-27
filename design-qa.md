@@ -47,6 +47,6 @@
 - Browser tab icon resolves to the existing 32px Polaris PNG asset.
 - Video frame is capped at 960px while retaining its responsive 16:9 ratio.
 - The legacy project-page URL immediately redirects to the standalone landing page.
-- The Polaris Header has a right-aligned heart control that opens the support page in a new tab and remains outside the draggable navigation capsule.
+- The About & Settings header has a right-aligned heart control that opens the support page in a new tab; the draggable navigation capsule has no support control.
 
 final result: passed

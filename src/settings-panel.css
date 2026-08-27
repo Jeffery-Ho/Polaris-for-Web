@@ -96,6 +96,38 @@
   font: 700 13px/var(--polaris-bar-content-height) ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
+.polaris-settings-support-link {
+  display: inline-grid;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  place-items: center;
+  border: 1px solid var(--polaris-control-border);
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.06), transparent), var(--polaris-control-surface);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  color: #ff375f;
+  text-decoration: none;
+  transition: background 120ms ease, color 120ms ease, transform 120ms ease;
+}
+
+.polaris-settings-support-link svg {
+  width: 15px;
+  height: 15px;
+}
+
+.polaris-settings-support-link:hover,
+.polaris-settings-support-link:focus-visible {
+  background: rgba(255, 55, 95, 0.18);
+  color: #ff2d55;
+  transform: translateY(-1px);
+}
+
+.polaris-settings-support-link:focus-visible {
+  outline: 2px solid #ff375f;
+  outline-offset: 2px;
+}
+
 .polaris-settings-version {
   color: var(--polaris-muted);
   font: 500 12px/var(--polaris-bar-content-height) ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
