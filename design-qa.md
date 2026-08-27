@@ -38,12 +38,13 @@
 1. Keep `assets/polaris-introduction.mp4` and `support-config.js` together when deploying the static site.
 2. If first-load weight becomes a concern, replace the MP4 with an optimized file at the same path and re-run this QA check.
 
-## Follow-up verification — 0.38.5(166)
+## Follow-up verification — 0.38.6(167)
 
 - The header brand and document title now use `Polaris` without the `for Web` suffix, as requested.
 - The extracted MP4 thumbnail remains visible while the full video loads; only a buffered range that covers the complete duration starts the muted autoplay. A buffering prompt does not intercept native video controls if autoplay is rejected.
 - Browser verification confirmed `Support Polaris`, a playing muted video with non-zero playback time, and a hidden status prompt after playback begins.
 - PayPal CTA uses an Apple Blue translucent surface with blur, light edge, inset highlights, and white high-contrast text.
 - Browser tab icon resolves to the existing 32px Polaris PNG asset.
+- Video frame is capped at 960px while retaining its responsive 16:9 ratio.
 
 final result: passed

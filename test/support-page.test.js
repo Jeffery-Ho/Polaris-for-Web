@@ -12,6 +12,7 @@ test("赞赏页保留加载提示、自动播放视频属性和配置入口", ()
   assert.doesNotMatch(supportPage, /Polaris for Web/);
   assert.match(supportPage, /Thank you for installing Polaris!/);
   assert.match(supportPage, /Your long AI conversations just got easier to navigate\./);
+  assert.match(supportPage, /\.video-frame \{[\s\S]*width: min\(100%, 960px\)/);
   assert.match(supportPage, /autoplay muted loop playsinline preload="auto"/);
   assert.match(supportPage, /data-video-thumbnail src="assets\/polaris-introduction-thumbnail\.jpg"/);
   assert.match(supportPage, /Preparing full video…/);

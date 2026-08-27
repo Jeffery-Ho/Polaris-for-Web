@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 167
+
+- Date: 2026-08-27
+- Version: 0.38.6
+- Summary: Limits the support video frame to 960px.
+- Notes: The video frame uses `width: min(100%, 960px)` so it remains responsive while exposing the PayPal CTA earlier on desktop. Run `pnpm test`, `pnpm check`, then run `pnpm build` exactly once; confirm `dist/manifest.json` is `0.38.6(167)` and its description remains unchanged.
+
 ## 166
 
 - Date: 2026-08-27
