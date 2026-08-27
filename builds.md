@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 156
+
+- Date: 2026-08-27
+- Version: 0.37.2
+- Summary: Lets manual Maker-list scrolling override temporary Active Maker positioning.
+- Notes: Wheel, trackpad, and actual list-drag input cancel the short Active Maker visibility lease without stopping user-driven list animation. The clicked Maker still receives its initial positioning when the host page settles, while later streaming snapshots preserve the user's viewport and allow that Maker to remain outside the visible list. Route changes, extension invalidation, and missing conversations clear pending positioning frames. Run `pnpm test`, `pnpm check`, then run `pnpm build` exactly once; confirm `dist/manifest.json` is `0.37.2(156)` and its description remains unchanged.
+
 ## 155
 
 - Date: 2026-08-27

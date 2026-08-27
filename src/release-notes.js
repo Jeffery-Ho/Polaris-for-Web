@@ -3,11 +3,11 @@ const RELEASE_NOTES = Object.freeze([
     version: "0.37.0",
     en: {
       title: "Stable Maker lists while streaming",
-      changes: ["Existing Makers now stay stable while responses stream, so you can keep scrolling and collapse the list without flicker or forced repositioning."]
+      changes: ["Existing Makers stay stable while responses stream, so the list remains scrollable and collapsible; wheel, trackpad, or list-drag input takes control immediately so Makers can remain outside the visible list without being pulled back."]
     },
     zh: {
       title: "Maker 列表流式稳定化",
-      changes: ["回答流式生成时复用已有 Maker，列表可持续滚动与折叠，不再闪烁或被强制改变位置。"]
+      changes: ["回答流式生成时复用已有 Maker，列表仍可持续滚动与折叠；滚轮、触摸板或列表拖动会立即接管滚动，Maker 可保持在列表不可见区域，不再闪烁或被自动拉回。"]
     }
   },
   {

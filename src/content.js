@@ -13,6 +13,7 @@ import {
   shouldStartMarkerListPointerDrag
 } from "./marker-list-drag.js";
 import { createMarkerListReconciler } from "./marker-list-reconciler.js";
+import { createMarkerListScrollPersistence } from "./marker-list-scroll-persistence.js";
 import { createMarkerMotionSuppressor } from "./marker-motion-suppression.js";
 import { createMarkerRenderStateMachine } from "./marker-render-state-machine.js";
 import {
@@ -253,8 +254,6 @@ import {
     scheduledRenderSuppressesMarkerMotion: false,
     scrollScheduled: 0,
     floatingScheduled: 0,
-    markerListScrollScheduled: 0,
-    markerListScrollUntil: 0,
     markerListScrollAnimation: 0,
     markerListScrollTarget: 0,
     markerNoticeTimer: 0,
@@ -302,6 +301,21 @@ import {
   const markerListReconciler = createMarkerListReconciler({
     createRow: createMarkerRenderRow,
     updateRow: updateMarkerRenderRow
+  });
+  const markerListScrollPersistence = createMarkerListScrollPersistence({
+    durationMs: MARKER_LIST_SCROLL_PERSIST_MS,
+    now: () => performance.now(),
+    requestFrame: (callback) => window.requestAnimationFrame(callback),
+    cancelFrame: (frameId) => window.cancelAnimationFrame(frameId),
+    keepActiveMarkerVisible() {
+      const marker = getActiveMarker();
+      if (!(marker instanceof HTMLElement) || state.isCollapsed) {
+        return false;
+      }
+      scrollMarkerIntoListView(marker);
+      updateFloatingActiveMarker(marker);
+      return true;
+    }
   });
   const markerRenderStateMachine = createMarkerRenderStateMachine({
     readSnapshot: collectMarkerRenderSnapshot,
@@ -351,6 +365,7 @@ import {
     markerMotionSuppressor.reset();
     markerRenderStateMachine.reset();
     markerListReconciler.reset();
+    markerListScrollPersistence.reset();
     window.clearTimeout(state.markerNoticeTimer);
     window.cancelAnimationFrame(state.markerListScrollAnimation);
     state.markerListScrollAnimation = 0;
@@ -3413,28 +3428,7 @@ import {
   }
 
   function requestActiveMarkerListScrollPersistence() {
-    state.markerListScrollUntil = performance.now() + MARKER_LIST_SCROLL_PERSIST_MS;
-    persistActiveMarkerListScroll();
-  }
-
-  function persistActiveMarkerListScroll() {
-    if (state.markerListScrollScheduled) {
-      return;
-    }
-    state.markerListScrollScheduled = window.requestAnimationFrame(() => {
-      state.markerListScrollScheduled = 0;
-      const marker = getActiveMarker();
-      if (!(marker instanceof HTMLElement) || state.isCollapsed) {
-        state.markerListScrollUntil = 0;
-        return;
-      }
-
-      scrollMarkerIntoListView(marker);
-      updateFloatingActiveMarker(marker);
-      if (performance.now() < state.markerListScrollUntil) {
-        persistActiveMarkerListScroll();
-      }
-    });
+    markerListScrollPersistence.request();
   }
 
   function markerRenderSignature(values) {
@@ -3796,6 +3790,7 @@ import {
     if (!isSupportedRoute()) {
       closeExplosionOverlay();
       markerListReconciler.reset();
+      markerListScrollPersistence.reset();
       removeNavigationRoot();
       return;
     }
@@ -3808,6 +3803,7 @@ import {
     if (!renderSnapshot.hasConversation) {
       closeExplosionOverlay();
       markerListReconciler.reset();
+      markerListScrollPersistence.reset();
       if (!state.isReleaseNoticeOpen) {
         removeNavigationRoot();
       }
@@ -3896,9 +3892,6 @@ import {
     }
     state.lastRenderedHeadingCount = headings.length;
     updateActiveMarker();
-    if (performance.now() < state.markerListScrollUntil) {
-      persistActiveMarkerListScroll();
-    }
   }
 
   function scheduleRender({ suppressMarkerMotion = false } = {}) {
@@ -3918,6 +3911,7 @@ import {
     markerMotionSuppressor.reset();
     markerRenderStateMachine.reset();
     markerListReconciler.reset();
+    markerListScrollPersistence.reset();
     window.clearTimeout(state.markerNoticeTimer);
     state.markerNoticeTimer = 0;
     window.cancelAnimationFrame(state.markerListScrollAnimation);
@@ -3944,7 +3938,6 @@ import {
     state.activeExplosionSectionIndex = 0;
     state.lastExplosionRenderSignature = "";
     state.lastRenderedHeadingCount = 0;
-    state.markerListScrollUntil = 0;
     state.markerSearchQuery = "";
     state.chatGPTConversation = null;
     state.chatGPTAssistantUserMessageIds.clear();
@@ -4310,6 +4303,7 @@ import {
     }
 
     const { list, maxScrollTop } = target;
+    markerListScrollPersistence.cancel();
     if (event.target instanceof Node && list.contains(event.target)) {
       return;
     }
@@ -4420,6 +4414,9 @@ import {
       drag.root.classList.add("is-dragging");
       drag.root.classList.add("has-custom-control-position");
       document.documentElement.classList.add("gpt-paragraph-nav--dragging");
+      if (drag.kind === "list") {
+        markerListScrollPersistence.cancel();
+      }
     }
 
     if (drag.kind === "controls") {

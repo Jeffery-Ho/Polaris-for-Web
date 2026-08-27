@@ -25,7 +25,7 @@ Polaris for Web automatically detects headings and list titles in AI responses a
 
 ## Features
 
-- Progressive Maker rendering begins during streaming output as soon as the first non-empty supported marker is available; fixed 120ms snapshots reuse existing Maker nodes and update only changed items, preserving list scrolling, focus, hover, and manual collapse state.
+- Progressive Maker rendering begins during streaming output as soon as the first non-empty supported marker is available; fixed 120ms snapshots reuse existing Maker nodes and update only changed items, preserving list scrolling, focus, hover, and manual collapse state. Wheel, trackpad, or list-drag input immediately takes control from temporary Active Maker positioning, so any Maker can remain outside the list viewport while streaming continues.
 - Click-to-jump navigation, active-section highlighting, and a scrollable marker queue.
 - Visible titles inside AI markers, user groups, and the floating active marker are left-aligned; user group capsules remain on the queue's right edge while AI markers and folded stacks remain on the left.
 - Platform-specific marker filters for H1, H2, H3, H4, and unordered lists.
@@ -73,7 +73,7 @@ Polaris for Web processes AI response content locally in your browser and does n
 
 ## Version
 
-Current version: `0.37.1(155)`
+Current version: `0.37.2(156)`
 
 ## License
 
