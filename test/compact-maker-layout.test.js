@@ -52,3 +52,14 @@ test("Maker 正文默认左对齐且不改变 AI 与用户分组的队列位置"
     /\.gpt-paragraph-nav__marker-row--ai \{\n  justify-content: flex-start;\n\}[\s\S]*?\.gpt-paragraph-nav__marker-row--user \{\n  justify-content: flex-end;\n\}/
   );
 });
+
+test("搜索栏默认沿用主导航背景，悬停时显示输入背景", () => {
+  assert.match(
+    styles,
+    /\.gpt-paragraph-nav__search-input \{[\s\S]*?background: var\(--gpt-glass-dark-button-bg\);/
+  );
+  assert.match(
+    styles,
+    /\.gpt-paragraph-nav__search-input:hover \{\n  background: var\(--gpt-glass-input-bg\);\n\}/
+  );
+});

@@ -109,10 +109,14 @@
   padding: 0 12px;
   border: 0;
   border-radius: 999px;
-  background: var(--gpt-glass-input-bg);
+  background: var(--gpt-glass-dark-button-bg);
   color: var(--gpt-arco-text-1);
   font: 500 12px/1 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   outline: none;
+}
+
+.gpt-paragraph-nav__search-input:hover {
+  background: var(--gpt-glass-input-bg);
 }
 
 .gpt-paragraph-nav__search-input::placeholder {
