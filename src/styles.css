@@ -53,7 +53,7 @@
   align-items: flex-end;
   gap: 8pt;
   width: calc(100% + var(--gpt-marker-shadow-buffer));
-  max-height: min(calc(var(--queue-visible-count, 30) * 44px + var(--gpt-marker-shadow-buffer) * 2), max(0px, calc(100% - 52px + var(--gpt-marker-shadow-buffer) * 2)));
+  max-height: calc(var(--queue-visible-count, 30) * 44px + var(--gpt-marker-shadow-buffer) * 2);
   margin: calc(var(--gpt-marker-shadow-buffer) * -1) calc(var(--gpt-marker-shadow-buffer) * -1) calc(var(--gpt-marker-shadow-buffer) * -1) 0;
   overflow-y: auto;
   overflow-anchor: none;

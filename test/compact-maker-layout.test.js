@@ -9,6 +9,11 @@ test("Maker 队列为 tips 阴影保留完整缓冲区", () => {
   assert.match(styles, /--gpt-marker-shadow-buffer: 32px;/);
   assert.match(
     styles,
+    /max-height: calc\(var\(--queue-visible-count, 30\) \* 44px \+ var\(--gpt-marker-shadow-buffer\) \* 2\);/
+  );
+  assert.doesNotMatch(styles, /max\(0px, calc\(100% - 52px/);
+  assert.match(
+    styles,
     /\.gpt-paragraph-nav__list \{[\s\S]*?padding: var\(--gpt-marker-shadow-buffer\) var\(--gpt-marker-shadow-buffer\) var\(--gpt-marker-shadow-buffer\) 0;/
   );
 });
