@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 154
+
+- Date: 2026-08-27
+- Version: 0.37.0
+- Summary: Keeps the Maker list stable and interactive while AI replies stream.
+- Notes: A route-scoped keyed reconciler now reuses existing Maker rows, patches growing titles in place, and performs DOM operations only for real additions, removals, or ordering changes. Streaming snapshots no longer clear the list or cancel its scroll animation; a visual anchor preserves the user's current position and adjusts active animation targets and drag baselines by the same delta. Manual collapse state remains authoritative, and collapsed navigation applies the latest snapshot once reopened. Run `pnpm test`, `pnpm check`, then `pnpm build`; confirm `dist/manifest.json` is `0.37.0(154)` and its description remains unchanged.
+
 ## 153
 
 - Date: 2026-08-26

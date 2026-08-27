@@ -1,5 +1,16 @@
 const RELEASE_NOTES = Object.freeze([
   {
+    version: "0.37.0",
+    en: {
+      title: "Stable Maker lists while streaming",
+      changes: ["Existing Makers now stay stable while responses stream, so you can keep scrolling and collapse the list without flicker or forced repositioning."]
+    },
+    zh: {
+      title: "Maker 列表流式稳定化",
+      changes: ["回答流式生成时复用已有 Maker，列表可持续滚动与折叠，不再闪烁或被强制改变位置。"]
+    }
+  },
+  {
     version: "0.36.0",
     en: {
       title: "Progressive Maker rendering",

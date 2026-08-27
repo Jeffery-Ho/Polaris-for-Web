@@ -83,11 +83,19 @@ test("Maker 流式渐进渲染功能提供内置更新说明", () => {
   assert.match(note.zh.changes[0], /流式输出/);
 });
 
+test("Maker 列表流式稳定化功能提供内置更新说明", () => {
+  const note = releaseNotesForUpdate("0.36.6", "0.37.0")[0];
+  assert.equal(note.version, "0.37");
+  assert.equal(note.isFallback, undefined);
+  assert.match(note.zh.changes[0], /滚动/);
+  assert.match(note.zh.changes[0], /折叠/);
+});
+
 test("缺失当前功能版本说明时按 0.xx 粒度安全降级", () => {
-  const note = releaseNotesForUpdate("0.36.0", "0.37.2")
+  const note = releaseNotesForUpdate("0.37.0", "0.38.2")
     .find((candidate) => candidate.isFallback);
   assert.ok(note);
-  assert.equal(note.version, "0.37");
+  assert.equal(note.version, "0.38");
   assert.equal(note.isFallback, true);
   assert.match(note.zh.title, /更新说明/);
 });

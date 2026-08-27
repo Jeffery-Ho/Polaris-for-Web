@@ -8,7 +8,11 @@ import { doubaoMessageRoleFromClassNames } from "./doubao-message-role.js";
 import { pageThemeFromColors } from "./page-theme.js";
 import { releaseNotesForUpdate } from "./release-notes.js";
 import { nextControlTabIndex } from "./control-tab-keyboard.js";
-import { shouldStartMarkerListPointerDrag } from "./marker-list-drag.js";
+import {
+  preserveMarkerListDragPosition,
+  shouldStartMarkerListPointerDrag
+} from "./marker-list-drag.js";
+import { createMarkerListReconciler } from "./marker-list-reconciler.js";
 import { createMarkerMotionSuppressor } from "./marker-motion-suppression.js";
 import { createMarkerRenderStateMachine } from "./marker-render-state-machine.js";
 import {
@@ -295,6 +299,10 @@ import {
       document.getElementById(ROOT_ID)?.classList.toggle(MARKER_MOTION_SUPPRESSION_CLASS, isSuppressed);
     }
   });
+  const markerListReconciler = createMarkerListReconciler({
+    createRow: createMarkerRenderRow,
+    updateRow: updateMarkerRenderRow
+  });
   const markerRenderStateMachine = createMarkerRenderStateMachine({
     readSnapshot: collectMarkerRenderSnapshot,
     hasStartPoint: (snapshot) => snapshot.headings.length > 0,
@@ -342,6 +350,7 @@ import {
     state.scheduledRenderSuppressesMarkerMotion = false;
     markerMotionSuppressor.reset();
     markerRenderStateMachine.reset();
+    markerListReconciler.reset();
     window.clearTimeout(state.markerNoticeTimer);
     window.cancelAnimationFrame(state.markerListScrollAnimation);
     state.markerListScrollAnimation = 0;
@@ -402,6 +411,7 @@ import {
       list.className = "gpt-paragraph-nav__list";
       list.setAttribute("role", "tabpanel");
       list.setAttribute("aria-labelledby", "gpt-paragraph-nav-tab-navigation");
+      list.addEventListener("click", handleMarkerListClick);
       list.addEventListener("scroll", () => {
         if (!state.markerListScrollAnimation) {
           state.markerListScrollTarget = list.scrollTop;
@@ -3427,87 +3437,45 @@ import {
     });
   }
 
-  function appendFoldControl(list, headings, foldKey) {
+  function markerRenderSignature(values) {
+    return JSON.stringify(values);
+  }
+
+  function aiMarkerRenderItem(heading) {
+    const markerKey = markerKeyFor(heading.element);
+    const title = heading.title;
+    return {
+      key: `ai:${markerKey}`,
+      type: "ai",
+      markerKey,
+      level: heading.level,
+      title,
+      preview: markerPreviewFor(title),
+      width: markerWidthFor(title),
+      signature: markerRenderSignature(["ai", heading.level, title])
+    };
+  }
+
+  function foldMarkerRenderItem(headings, foldKey) {
     const first = headings[0];
     const remainingCount = headings.length - 1;
     const isExpanded = state.expandedFoldGroups.has(foldKey);
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "gpt-paragraph-nav__fold";
-    button.classList.toggle("is-expanded", isExpanded);
-    button.setAttribute("aria-expanded", String(isExpanded));
-    button.setAttribute("aria-label", isExpanded
+    const ariaLabel = isExpanded
       ? t("fold.collapseAria", { title: first.title, count: remainingCount })
-      : t("fold.expandAria", { title: first.title, count: remainingCount }));
-    button.title = first.title;
-
-    const countBadge = document.createElement("span");
-    countBadge.className = "gpt-paragraph-nav__fold-count";
-    countBadge.textContent = String(headings.length);
-    button.appendChild(countBadge);
-
-    const label = document.createElement("span");
-    label.className = "gpt-paragraph-nav__fold-label";
-    label.textContent = markerPreviewFor(first.title);
-    button.appendChild(label);
-
-    const remainder = document.createElement("span");
-    remainder.className = "gpt-paragraph-nav__fold-remainder";
-    remainder.textContent = t("fold.remainder", { count: remainingCount });
-    button.appendChild(remainder);
-
-    const chevron = document.createElement("span");
-    chevron.className = "gpt-paragraph-nav__fold-chevron";
-    chevron.setAttribute("aria-hidden", "true");
-    button.appendChild(chevron);
-
-    button.addEventListener("click", () => {
-      if (state.expandedFoldGroups.has(foldKey)) {
-        state.expandedFoldGroups.delete(foldKey);
-      } else {
-        state.expandedFoldGroups.add(foldKey);
-      }
-      render();
-    });
-    appendMarkerRow(list, "ai", button);
-  }
-
-  function appendMarkerRow(list, kind, marker) {
-    const row = document.createElement("div");
-    row.className = `gpt-paragraph-nav__marker-row gpt-paragraph-nav__marker-row--${kind}`;
-    row.appendChild(marker);
-    list.appendChild(row);
-  }
-
-  function appendMarker(list, heading) {
-    const markerKey = markerKeyFor(heading.element);
-    const marker = document.createElement("button");
-    marker.type = "button";
-    marker.className = `gpt-paragraph-nav__marker gpt-paragraph-nav__marker--ai level-${heading.level}`;
-    marker.style.setProperty("--marker-width", `${markerWidthFor(heading.title)}px`);
-    marker.setAttribute("aria-label", heading.title);
-    marker.dataset.markerKey = markerKey;
-
-    const preview = document.createElement("span");
-    preview.className = "gpt-paragraph-nav__preview";
-    preview.textContent = markerPreviewFor(heading.title);
-    marker.appendChild(preview);
-
-    const label = document.createElement("span");
-    label.className = "gpt-paragraph-nav__label";
-    label.textContent = heading.title;
-    marker.appendChild(label);
-
-    marker.addEventListener("click", () => {
-      if (!jumpToHeading(heading)) {
-        return;
-      }
-      state.activeMarkerKey = markerKey;
-      syncActiveMarker(state.activeMarkerKey);
-      requestActiveMarkerListScrollPersistence();
-      updateFloatingActiveMarker();
-    });
-    appendMarkerRow(list, "ai", marker);
+      : t("fold.expandAria", { title: first.title, count: remainingCount });
+    const remainder = t("fold.remainder", { count: remainingCount });
+    return {
+      key: `fold:${foldKey}`,
+      type: "fold",
+      foldKey,
+      isExpanded,
+      ariaLabel,
+      title: first.title,
+      preview: markerPreviewFor(first.title),
+      count: headings.length,
+      remainder,
+      signature: markerRenderSignature(["fold", isExpanded, ariaLabel, first.title, headings.length, remainder])
+    };
   }
 
   function showMarkerNotice(message) {
@@ -3527,81 +3495,202 @@ import {
     }, 2200);
   }
 
-  function appendUserMarker(list, group) {
+  function userMarkerRenderItem(group) {
     const { user } = group;
     const isExpanded = state.expandedUserMarkerKeys.has(group.key);
-    const marker = document.createElement("button");
-    marker.type = "button";
-    marker.className = "gpt-paragraph-nav__marker gpt-paragraph-nav__marker--user";
-    marker.style.setProperty("--marker-width", `${markerWidthFor(user.previewTitle)}px`);
-    marker.setAttribute("aria-expanded", String(isExpanded));
-    marker.setAttribute("aria-label", isExpanded
+    const ariaLabel = isExpanded
       ? t("userMarker.collapseAria", { title: user.title })
-      : t("userMarker.expandAria", { title: user.title }));
-    marker.dataset.userMarkerKey = group.key;
-
-    const preview = document.createElement("span");
-    preview.className = "gpt-paragraph-nav__preview";
-    preview.textContent = markerPreviewFor(user.previewTitle);
-    marker.appendChild(preview);
-
-    const chevron = document.createElement("span");
-    chevron.className = "gpt-paragraph-nav__user-chevron";
-    chevron.setAttribute("aria-hidden", "true");
-    marker.appendChild(chevron);
-
-    const label = document.createElement("span");
-    label.className = "gpt-paragraph-nav__label";
-    label.textContent = user.title;
-    marker.appendChild(label);
-
-    marker.addEventListener("click", () => {
-      if (shouldShowUserMarkerNotLoadedNotice({
-        isChatGPT: isChatGPTPage(),
-        hasAssistantMessage: group.hasAssistantMessage,
-        groupKey: group.key,
-        latestGroupKey: state.latestUserMarkerKey
-      })) {
-        showMarkerNotice(t("userMarker.replyNotLoaded"));
-        return;
-      }
-      if (state.expandedUserMarkerKeys.has(group.key)) {
-        state.expandedUserMarkerKeys.delete(group.key);
-      } else {
-        state.expandedUserMarkerKeys.add(group.key);
-      }
-      render();
-    });
-    appendMarkerRow(list, "user", marker);
+      : t("userMarker.expandAria", { title: user.title });
+    const preview = markerPreviewFor(user.previewTitle);
+    return {
+      key: `user:${group.key}`,
+      type: "user",
+      groupKey: group.key,
+      isExpanded,
+      ariaLabel,
+      title: user.title,
+      preview,
+      width: markerWidthFor(user.previewTitle),
+      signature: markerRenderSignature(["user", isExpanded, ariaLabel, user.title, preview])
+    };
   }
 
-  function appendEarlierUserGroupsControl(list, count) {
+  function earlierUserGroupsRenderItem(count) {
     const isExpanded = state.areEarlierUserGroupsExpanded;
     const label = t("userMarker.earlierGroups", { count });
+    const ariaLabel = isExpanded
+      ? t("userMarker.collapseEarlierAria", { count })
+      : t("userMarker.expandEarlierAria", { count });
+    return {
+      key: "earlier-user-groups",
+      type: "earlier",
+      isExpanded,
+      ariaLabel,
+      preview: label,
+      width: markerWidthFor(label),
+      signature: markerRenderSignature(["earlier", isExpanded, ariaLabel, label])
+    };
+  }
+
+  function createMarkerRenderRow(item) {
+    if (item.type === "empty") {
+      const empty = document.createElement("div");
+      empty.className = "gpt-paragraph-nav__search-empty";
+      empty.dataset.markerRenderKey = item.key;
+      empty.textContent = item.message;
+      return empty;
+    }
+
+    const row = document.createElement("div");
     const marker = document.createElement("button");
     marker.type = "button";
-    marker.className = "gpt-paragraph-nav__marker gpt-paragraph-nav__marker--user";
-    marker.style.setProperty("--marker-width", `${markerWidthFor(label)}px`);
-    marker.setAttribute("aria-expanded", String(isExpanded));
-    marker.setAttribute("aria-label", isExpanded
-      ? t("userMarker.collapseEarlierAria", { count })
-      : t("userMarker.expandEarlierAria", { count }));
+    marker.dataset.markerItemType = item.type;
+    row.appendChild(marker);
 
-    const preview = document.createElement("span");
-    preview.className = "gpt-paragraph-nav__preview";
-    preview.textContent = label;
-    marker.appendChild(preview);
+    if (item.type === "fold") {
+      const countBadge = document.createElement("span");
+      countBadge.className = "gpt-paragraph-nav__fold-count";
+      marker.appendChild(countBadge);
 
-    const chevron = document.createElement("span");
-    chevron.className = "gpt-paragraph-nav__user-chevron";
-    chevron.setAttribute("aria-hidden", "true");
-    marker.appendChild(chevron);
+      const label = document.createElement("span");
+      label.className = "gpt-paragraph-nav__fold-label";
+      marker.appendChild(label);
 
-    marker.addEventListener("click", () => {
+      const remainder = document.createElement("span");
+      remainder.className = "gpt-paragraph-nav__fold-remainder";
+      marker.appendChild(remainder);
+
+      const chevron = document.createElement("span");
+      chevron.className = "gpt-paragraph-nav__fold-chevron";
+      chevron.setAttribute("aria-hidden", "true");
+      marker.appendChild(chevron);
+    } else {
+      const preview = document.createElement("span");
+      preview.className = "gpt-paragraph-nav__preview";
+      marker.appendChild(preview);
+
+      if (item.type === "user" || item.type === "earlier") {
+        const chevron = document.createElement("span");
+        chevron.className = "gpt-paragraph-nav__user-chevron";
+        chevron.setAttribute("aria-hidden", "true");
+        marker.appendChild(chevron);
+      }
+
+      if (item.type !== "earlier") {
+        const label = document.createElement("span");
+        label.className = "gpt-paragraph-nav__label";
+        marker.appendChild(label);
+      }
+    }
+
+    updateMarkerRenderRow(row, item);
+    return row;
+  }
+
+  function updateMarkerRenderRow(row, item) {
+    if (item.type === "empty") {
+      row.textContent = item.message;
+      return;
+    }
+
+    row.className = `gpt-paragraph-nav__marker-row gpt-paragraph-nav__marker-row--${item.type === "user" || item.type === "earlier" ? "user" : "ai"}`;
+    row.dataset.markerRenderKey = item.key;
+    const marker = row.firstElementChild;
+    marker.dataset.markerItemType = item.type;
+
+    if (item.type === "fold") {
+      marker.className = "gpt-paragraph-nav__fold";
+      marker.classList.toggle("is-expanded", item.isExpanded);
+      marker.dataset.foldKey = item.foldKey;
+      marker.setAttribute("aria-expanded", String(item.isExpanded));
+      marker.setAttribute("aria-label", item.ariaLabel);
+      marker.title = item.title;
+      marker.querySelector(".gpt-paragraph-nav__fold-count").textContent = String(item.count);
+      marker.querySelector(".gpt-paragraph-nav__fold-label").textContent = item.preview;
+      marker.querySelector(".gpt-paragraph-nav__fold-remainder").textContent = item.remainder;
+      return;
+    }
+
+    marker.className = item.type === "ai"
+      ? `gpt-paragraph-nav__marker gpt-paragraph-nav__marker--ai level-${item.level}`
+      : "gpt-paragraph-nav__marker gpt-paragraph-nav__marker--user";
+    marker.style.setProperty("--marker-width", `${item.width}px`);
+    marker.setAttribute("aria-label", item.ariaLabel || item.title);
+    marker.querySelector(".gpt-paragraph-nav__preview").textContent = item.preview;
+
+    if (item.type === "ai") {
+      marker.dataset.markerKey = item.markerKey;
+      marker.querySelector(".gpt-paragraph-nav__label").textContent = item.title;
+      return;
+    }
+
+    marker.setAttribute("aria-expanded", String(item.isExpanded));
+    if (item.type === "user") {
+      marker.dataset.userMarkerKey = item.groupKey;
+      marker.querySelector(".gpt-paragraph-nav__label").textContent = item.title;
+    }
+  }
+
+  function handleMarkerListClick(event) {
+    if (!(event.target instanceof Element)) {
+      return;
+    }
+    const marker = event.target.closest("[data-marker-item-type]");
+    const list = event.currentTarget;
+    if (!(marker instanceof HTMLButtonElement) || !(list instanceof HTMLElement) || !list.contains(marker)) {
+      return;
+    }
+
+    if (marker.dataset.markerItemType === "ai") {
+      const markerKey = marker.dataset.markerKey || "";
+      const heading = state.headings.find((item) => markerKeyFor(item.element) === markerKey);
+      if (!heading || !jumpToHeading(heading)) {
+        return;
+      }
+      state.activeMarkerKey = markerKey;
+      syncActiveMarker(state.activeMarkerKey);
+      requestActiveMarkerListScrollPersistence();
+      updateFloatingActiveMarker();
+      return;
+    }
+
+    if (marker.dataset.markerItemType === "fold") {
+      const foldKey = marker.dataset.foldKey || "";
+      if (state.expandedFoldGroups.has(foldKey)) {
+        state.expandedFoldGroups.delete(foldKey);
+      } else {
+        state.expandedFoldGroups.add(foldKey);
+      }
+      render();
+      return;
+    }
+
+    if (marker.dataset.markerItemType === "earlier") {
       state.areEarlierUserGroupsExpanded = !state.areEarlierUserGroupsExpanded;
       render();
-    });
-    appendMarkerRow(list, "user", marker);
+      return;
+    }
+
+    const groupKey = marker.dataset.userMarkerKey || "";
+    const group = state.markerGroups.find((item) => item.key === groupKey);
+    if (!group) {
+      return;
+    }
+    if (shouldShowUserMarkerNotLoadedNotice({
+      isChatGPT: isChatGPTPage(),
+      hasAssistantMessage: group.hasAssistantMessage,
+      groupKey,
+      latestGroupKey: state.latestUserMarkerKey
+    })) {
+      showMarkerNotice(t("userMarker.replyNotLoaded"));
+      return;
+    }
+    if (state.expandedUserMarkerKeys.has(groupKey)) {
+      state.expandedUserMarkerKeys.delete(groupKey);
+    } else {
+      state.expandedUserMarkerKeys.add(groupKey);
+    }
+    render();
   }
 
   function displayedHeadingCount(group, headings) {
@@ -3619,12 +3708,13 @@ import {
     ), trailing.length);
   }
 
-  function appendMarkerGroup(list, group) {
+  function markerRenderItemsForGroup(group) {
     const isSearchActive = Boolean(normalizeSearchQuery(state.markerSearchQuery));
     const isExpanded = !group.user || isSearchActive || state.expandedUserMarkerKeys.has(group.key);
+    const items = [];
 
     if (group.user) {
-      appendUserMarker(list, group);
+      items.push(userMarkerRenderItem(group));
     }
 
     if (isExpanded && group.visibleHeadings.length) {
@@ -3633,13 +3723,40 @@ import {
       const trailing = foldEnabled ? trailingHeadings(group.visibleHeadings) : group.visibleHeadings;
       groups.forEach(({ group: foldedHeadings, index }) => {
         const foldKey = foldKeyFor(group, index);
-        appendFoldControl(list, foldedHeadings, foldKey);
+        items.push(foldMarkerRenderItem(foldedHeadings, foldKey));
         if (state.expandedFoldGroups.has(foldKey)) {
-          foldedHeadings.forEach((heading) => appendMarker(list, heading));
+          foldedHeadings.forEach((heading) => items.push(aiMarkerRenderItem(heading)));
         }
       });
-      trailing.forEach((heading) => appendMarker(list, heading));
+      trailing.forEach((heading) => items.push(aiMarkerRenderItem(heading)));
     }
+    return items;
+  }
+
+  function markerRenderItems(visibleGroups, earlierUserGroupCount) {
+    if (!visibleGroups.length && state.markerSearchQuery) {
+      const message = t("search.empty");
+      return [{
+        key: "search-empty",
+        type: "empty",
+        message,
+        signature: markerRenderSignature(["empty", message])
+      }];
+    }
+
+    const items = [];
+    let isEarlierUserGroupsControlAppended = false;
+    visibleGroups.forEach((group) => {
+      if (earlierUserGroupCount && !isEarlierUserGroupsControlAppended && group.user) {
+        items.push(earlierUserGroupsRenderItem(earlierUserGroupCount));
+        isEarlierUserGroupsControlAppended = true;
+      }
+      items.push(...markerRenderItemsForGroup(group));
+    });
+    if (earlierUserGroupCount && !isEarlierUserGroupsControlAppended) {
+      items.push(earlierUserGroupsRenderItem(earlierUserGroupCount));
+    }
+    return items;
   }
 
   function collectMarkerRenderSnapshot() {
@@ -3677,6 +3794,7 @@ import {
 
     if (!isSupportedRoute()) {
       closeExplosionOverlay();
+      markerListReconciler.reset();
       removeNavigationRoot();
       return;
     }
@@ -3688,6 +3806,7 @@ import {
 
     if (!renderSnapshot.hasConversation) {
       closeExplosionOverlay();
+      markerListReconciler.reset();
       if (!state.isReleaseNoticeOpen) {
         removeNavigationRoot();
       }
@@ -3705,7 +3824,6 @@ import {
     }
     applyConfig(root);
     const list = getList(root);
-    stopMarkerListScrollAnimation(list);
     getMarkerSearchInput(root);
     const searchInput = root.querySelector(".gpt-paragraph-nav__search-input");
     const searchWrapper = searchInput instanceof HTMLElement
@@ -3739,11 +3857,6 @@ import {
     root.classList.toggle("is-collapsed", state.isCollapsed && hasMarkers);
     list.style.height = state.isCollapsed && state.collapsedListHeight > 0 ? `${state.collapsedListHeight}px` : "";
     list.setAttribute("aria-hidden", String(state.isCollapsed));
-    if (suppressMarkerMotion) {
-      markerMotionSuppressor.suppress();
-    }
-    list.textContent = "";
-    syncLiquidGlassElements(root);
 
     if (state.isCollapsed) {
       updateFloatingActiveMarker(null);
@@ -3751,30 +3864,35 @@ import {
       return;
     }
 
-    if (!visibleGroups.length && state.markerSearchQuery) {
-      const empty = document.createElement("div");
-      empty.className = "gpt-paragraph-nav__search-empty";
-      empty.textContent = t("search.empty");
-      list.appendChild(empty);
+    const {
+      changed: didChangeMarkerList,
+      scrollDelta: markerListScrollDelta
+    } = markerListReconciler.reconcile(
+      list,
+      markerRenderItems(visibleGroups, earlierUserGroupCount)
+    );
+    if (state.markerListScrollAnimation) {
+      state.markerListScrollTarget += markerListScrollDelta;
     }
-
-    let isEarlierUserGroupsControlAppended = false;
-    visibleGroups.forEach((group) => {
-      if (earlierUserGroupCount && !isEarlierUserGroupsControlAppended && group.user) {
-        appendEarlierUserGroupsControl(list, earlierUserGroupCount);
-        isEarlierUserGroupsControlAppended = true;
-      }
-      appendMarkerGroup(list, group);
-    });
-    if (earlierUserGroupCount && !isEarlierUserGroupsControlAppended) {
-      appendEarlierUserGroupsControl(list, earlierUserGroupCount);
+    if (didChangeMarkerList) {
+      preserveMarkerListDragPosition({
+        drag: state.pointerDrag,
+        list,
+        maxScrollTop: markerListMaxScrollTop(list),
+        scrollDelta: markerListScrollDelta
+      });
+    }
+    if (didChangeMarkerList && suppressMarkerMotion) {
+      markerMotionSuppressor.suppress();
     }
     syncMarkerListScrollTarget(list);
     syncLiquidGlassElements(root);
 
-    requestAnimationFrame(() => {
-      state.collapsedListHeight = list.offsetHeight;
-    });
+    if (didChangeMarkerList || snapshot === null) {
+      requestAnimationFrame(() => {
+        state.collapsedListHeight = list.offsetHeight;
+      });
+    }
     state.lastRenderedHeadingCount = headings.length;
     updateActiveMarker();
     if (performance.now() < state.markerListScrollUntil) {
@@ -3798,6 +3916,7 @@ import {
     state.scheduledRenderSuppressesMarkerMotion = false;
     markerMotionSuppressor.reset();
     markerRenderStateMachine.reset();
+    markerListReconciler.reset();
     window.clearTimeout(state.markerNoticeTimer);
     state.markerNoticeTimer = 0;
     window.cancelAnimationFrame(state.markerListScrollAnimation);
@@ -4102,12 +4221,6 @@ import {
       return;
     }
     state.markerListScrollTarget = clampMarkerListScrollTop(list.scrollTop, maxScrollTop);
-  }
-
-  function stopMarkerListScrollAnimation(list) {
-    window.cancelAnimationFrame(state.markerListScrollAnimation);
-    state.markerListScrollAnimation = 0;
-    state.markerListScrollTarget = list.scrollTop;
   }
 
   function animateMarkerListScroll(list) {
