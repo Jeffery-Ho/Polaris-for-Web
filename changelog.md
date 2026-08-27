@@ -2,6 +2,9 @@
 
 ## 2026-08-27
 
+- 发布：赞赏页迁移至独立的 `polaris-landing` GitHub Pages 仓库，正式地址改为 `https://jeffery-ho.github.io/polaris-landing/`。
+- 版本：修订更新到 `0.38.7(168)`。
+
 - 设计：赞赏页视频窗口最大宽度限制为 `960px`，使桌面首屏更容易露出 PayPal CTA。
 - 版本：修订更新到 `0.38.6(167)`。
 

@@ -73,11 +73,11 @@ Polaris for Web processes AI response content locally in your browser and does n
 
 ## Support
 
-Visit the [Polaris support page](https://jeffery-ho.github.io/Polaris-for-Web/support.html) for the extension, issue tracker, and optional PayPal support link.
+Visit the [Polaris support page](https://jeffery-ho.github.io/polaris-landing/) for the extension, issue tracker, and optional PayPal support link.
 
 ## Version
 
-Current version: `0.38.6(167)`
+Current version: `0.38.7(168)`
 
 ## License
 
