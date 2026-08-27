@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Support the continued development of Polaris for Web.">
+    <title>Support Polaris — Polaris for Web</title>
+    <style>
+      :root {
+        color: #081b43;
+        background: #f8f8fb;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        font-synthesis: none;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        min-width: 320px;
+        margin: 0;
+        background: #f8f8fb;
+      }
+
+      a {
+        color: inherit;
+      }
+
+      .page-shell {
+        width: min(1440px, calc(100% - 48px));
+        min-height: 100svh;
+        margin: 0 auto;
+        padding: 22px 0 30px;
+      }
+
+      .site-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 32px;
+        min-height: 88px;
+        padding: 16px 26px;
+        border: 1px solid rgba(255, 255, 255, 0.84);
+        border-radius: 24px;
+        background: rgba(255, 255, 255, 0.6);
+        box-shadow: 0 16px 36px rgba(38, 51, 88, 0.08), inset 0 1px rgba(255, 255, 255, 0.88);
+        -webkit-backdrop-filter: blur(22px) saturate(130%);
+        backdrop-filter: blur(22px) saturate(130%);
+      }
+
+      .brand,
+      .header-links,
+      .header-link,
+      .support-button,
+      .footer-copy {
+        display: flex;
+        align-items: center;
+      }
+
+      .brand {
+        min-width: 0;
+        gap: 14px;
+        font-size: 22px;
+        font-weight: 750;
+        letter-spacing: -0.045em;
+        text-decoration: none;
+        white-space: nowrap;
+      }
+
+      .brand-icon {
+        width: 46px;
+        height: 46px;
+        flex: none;
+      }
+
+      .header-links {
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 28px;
+      }
+
+      .header-link {
+        gap: 9px;
+        font-size: 16px;
+        font-weight: 650;
+        letter-spacing: -0.025em;
+        text-decoration: none;
+      }
+
+      .header-link:hover,
+      .header-link:focus-visible,
+      .creator-link:hover,
+      .creator-link:focus-visible {
+        color: #2450c7;
+      }
+
+      .external-icon {
+        width: 24px;
+        height: 24px;
+        flex: none;
+      }
+
+      main {
+        width: min(1248px, 100%);
+        margin: 0 auto;
+        padding: clamp(56px, 8vw, 108px) 0 22px;
+        text-align: center;
+      }
+
+      .eyebrow {
+        margin: 0 0 18px;
+        color: #416bf0;
+        font-size: 13px;
+        font-weight: 750;
+        letter-spacing: 0.18em;
+      }
+
+      h1 {
+        max-width: 980px;
+        margin: 0 auto;
+        color: #06183d;
+        font-size: clamp(44px, 5.4vw, 78px);
+        font-weight: 780;
+        letter-spacing: -0.065em;
+        line-height: 0.98;
+      }
+
+      .intro {
+        max-width: 680px;
+        margin: 24px auto 0;
+        color: #486083;
+        font-size: clamp(18px, 2.1vw, 24px);
+        font-weight: 480;
+        letter-spacing: -0.035em;
+        line-height: 1.35;
+      }
+
+      .video-frame {
+        position: relative;
+        aspect-ratio: 16 / 9;
+        margin: clamp(40px, 5vw, 66px) auto 0;
+        overflow: hidden;
+        border: 1px solid rgba(255, 255, 255, 0.88);
+        border-radius: clamp(24px, 3vw, 34px);
+        background: #eceef8;
+        box-shadow: 0 24px 48px rgba(32, 53, 104, 0.11), inset 0 1px rgba(255, 255, 255, 0.9);
+      }
+
+      .support-video,
+      .video-placeholder {
+        width: 100%;
+        height: 100%;
+      }
+
+      .support-video {
+        display: block;
+        object-fit: cover;
+      }
+
+      .video-placeholder {
+        background: #edf0fb;
+      }
+
+      .support-button {
+        justify-content: center;
+        width: fit-content;
+        min-width: min(100%, 320px);
+        min-height: 64px;
+        margin: 28px auto 0;
+        padding: 14px 30px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 20px;
+        background: #071a40;
+        box-shadow: 0 16px 28px rgba(7, 26, 64, 0.26), inset 0 1px rgba(255, 255, 255, 0.15);
+        color: #ffffff;
+        font-size: 20px;
+        font-weight: 750;
+        letter-spacing: -0.04em;
+        text-decoration: none;
+        transition: transform 160ms ease, background 160ms ease;
+      }
+
+      .support-button:hover,
+      .support-button:focus-visible {
+        background: #102b62;
+        transform: translateY(-2px);
+      }
+
+      .support-button[aria-disabled="true"] {
+        cursor: not-allowed;
+        opacity: 0.48;
+        pointer-events: none;
+      }
+
+      .site-footer {
+        padding-top: clamp(54px, 7vw, 88px);
+        text-align: center;
+      }
+
+      .footer-copy {
+        justify-content: center;
+        gap: 5px;
+        margin: 0;
+        color: #4d5e7e;
+        font-size: 16px;
+        letter-spacing: -0.025em;
+      }
+
+      .heart {
+        color: #e3414f;
+      }
+
+      .creator-link {
+        color: #152b58;
+        font-weight: 760;
+        text-decoration: underline;
+        text-decoration-color: rgba(21, 43, 88, 0.3);
+        text-underline-offset: 3px;
+      }
+
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+      }
+
+      :focus-visible {
+        outline: 3px solid #416bf0;
+        outline-offset: 4px;
+      }
+
+      @media (max-width: 720px) {
+        .page-shell {
+          width: min(100% - 28px, 1440px);
+          padding-top: 14px;
+        }
+
+        .site-header {
+          align-items: flex-start;
+          flex-direction: column;
+          gap: 18px;
+          min-height: 0;
+          padding: 18px;
+          border-radius: 22px;
+        }
+
+        .header-links {
+          justify-content: flex-start;
+          gap: 18px;
+        }
+
+        .header-link {
+          font-size: 14px;
+        }
+
+        .external-icon {
+          width: 20px;
+          height: 20px;
+        }
+
+        main {
+          padding-top: 62px;
+        }
+
+        .eyebrow {
+          margin-bottom: 15px;
+          font-size: 11px;
+        }
+
+        .intro {
+          margin-top: 18px;
+        }
+
+        .video-frame {
+          margin-top: 38px;
+        }
+
+        .support-button {
+          width: 100%;
+          font-size: 18px;
+        }
+
+        .footer-copy {
+          font-size: 14px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="site-header">
+        <a class="brand" href="./" aria-label="Polaris for Web home">
+          <img class="brand-icon" src="icons/gpt-voyager-icon-96.png" alt="">
+          <span>Polaris for Web</span>
+        </a>
+        <nav class="header-links" aria-label="Polaris links">
+          <a class="header-link" href="https://chromewebstore.google.com/detail/polaris-ai-chat-navigator/lkdbbnpcfkjdfnopecpbdaeegncdmajb" target="_blank" rel="noreferrer">
+            <img class="external-icon" src="https://cdn.simpleicons.org/googlechrome/081b43" alt="">
+            <span>Chrome Web Store</span>
+          </a>
+          <a class="header-link" href="https://github.com/Jeffery-Ho/Polaris-for-Web/issues" target="_blank" rel="noreferrer">
+            <img class="external-icon" src="https://cdn.simpleicons.org/github/081b43" alt="">
+            <span>GitHub Issues</span>
+          </a>
+        </nav>
+      </header>
+
+      <main>
+        <p class="eyebrow">FOR LONG AI CONVERSATIONS</p>
+        <h1>Thank you for installing Polaris!</h1>
+        <p class="intro">Your long AI conversations just got easier to navigate.</p>
+
+        <section class="video-frame" aria-label="Polaris introduction video">
+          <video class="support-video" data-support-video autoplay muted loop playsinline preload="metadata" hidden></video>
+          <div class="video-placeholder" data-video-placeholder aria-hidden="true"></div>
+          <span class="sr-only" data-video-status>Polaris introduction video will be available soon.</span>
+        </section>
+
+        <a class="support-button" data-paypal-link aria-disabled="true" aria-label="Support Polaris on PayPal">Support on PayPal</a>
+      </main>
+
+      <footer class="site-footer">
+        <p class="footer-copy">Made with <span class="heart" aria-label="love">❤️</span> by <a class="creator-link" href="https://x.com/JefferyHo_" target="_blank" rel="noreferrer">JEFFERY HO</a></p>
+      </footer>
+    </div>
+
+    <script type="module">
+      import { supportConfig } from "./support-config.js";
+
+      const video = document.querySelector("[data-support-video]");
+      const placeholder = document.querySelector("[data-video-placeholder]");
+      const videoStatus = document.querySelector("[data-video-status]");
+      const paypalLink = document.querySelector("[data-paypal-link]");
+
+      if (supportConfig.videoSource) {
+        video.src = supportConfig.videoSource;
+        video.hidden = false;
+        placeholder.hidden = true;
+        videoStatus.textContent = "Polaris introduction video.";
+      }
+
+      if (supportConfig.paypalUrl) {
+        paypalLink.href = supportConfig.paypalUrl;
+        paypalLink.target = "_blank";
+        paypalLink.rel = "noreferrer";
+        paypalLink.removeAttribute("aria-disabled");
+      }
+    </script>
+  </body>
+</html>

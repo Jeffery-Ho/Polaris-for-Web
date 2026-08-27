@@ -91,11 +91,17 @@ test("Maker 列表流式稳定化功能提供内置更新说明", () => {
   assert.match(note.zh.changes[0], /折叠/);
 });
 
+test("赞赏页功能提供内置更新说明", () => {
+  const note = releaseNotesForUpdate("0.37.6", "0.38.0")[0];
+  assert.equal(note.version, "0.38");
+  assert.match(note.zh.changes[0], /赞赏页/);
+});
+
 test("缺失当前功能版本说明时按 0.xx 粒度安全降级", () => {
-  const note = releaseNotesForUpdate("0.37.0", "0.38.2")
+  const note = releaseNotesForUpdate("0.38.0", "0.39.2")
     .find((candidate) => candidate.isFallback);
   assert.ok(note);
-  assert.equal(note.version, "0.38");
+  assert.equal(note.version, "0.39");
   assert.equal(note.isFallback, true);
   assert.match(note.zh.title, /更新说明/);
 });

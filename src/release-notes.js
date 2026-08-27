@@ -1,5 +1,16 @@
 const RELEASE_NOTES = Object.freeze([
   {
+    version: "0.38.0",
+    en: {
+      title: "A new Polaris support page",
+      changes: ["The Polaris website now includes a focused support page with the extension link, issue tracker, introduction video area, and a direct PayPal option."]
+    },
+    zh: {
+      title: "新增 Polaris 赞赏页",
+      changes: ["Polaris 网站新增独立赞赏页，集中提供扩展入口、问题反馈、介绍视频区域和 PayPal 直达入口。"]
+    }
+  },
+  {
     version: "0.37.0",
     en: {
       title: "Stable Maker lists while streaming",

@@ -71,9 +71,13 @@ Preferences are saved to `chrome.storage.sync`.
 
 Polaris for Web processes AI response content locally in your browser and does not transmit it to the developer or third-party servers. See the [Privacy Policy](https://jeffery-ho.github.io/Polaris-for-Web/privacy-policy.html) for details.
 
+## Support
+
+Visit the [Polaris support page](https://jeffery-ho.github.io/Polaris-for-Web/support.html) for the extension, issue tracker, and optional PayPal support link.
+
 ## Version
 
-Current version: `0.37.6(160)`
+Current version: `0.38.0(161)`
 
 ## License
 
