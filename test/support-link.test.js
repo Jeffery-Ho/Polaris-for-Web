@@ -8,7 +8,7 @@ const settingsStyles = await readFile(new URL("../src/settings-panel.css", impor
 
 test("赞赏入口仅显示在设置面板 Header 右侧", () => {
   assert.match(contentSource, /supportLabel: t\("support\.aria"\)/);
-  assert.match(contentSource, /supportUrl: "https:\/\/jeffery-ho\.github\.io\/polaris-landing\/"/);
+  assert.match(contentSource, /supportUrl: "https:\/\/jeffery-ho\.github\.io\/polaris-landing\/\?utm_source=polaris_extension&utm_medium=support_entry&utm_campaign=polaris_support"/);
   assert.doesNotMatch(contentSource, /getSupportLink\(/);
   assert.doesNotMatch(contentSource, /SUPPORT_LINK_CLASS/);
   assert.match(settingsPanelSource, /const support = createElement\("a", "polaris-settings-support-link"\)/);

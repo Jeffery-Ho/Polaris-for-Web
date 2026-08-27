@@ -37,7 +37,7 @@ Polaris for Web automatically detects headings and list titles in AI responses a
 - User maker groups show the latest 20 groups by default, with earlier groups available on demand and search covering every group. Each newly observed latest group opens even before its AI markers are ready; a directly preceding group that arrives late with a loaded reply opens once, while later streaming updates preserve manual collapse state. ChatGPT keeps already loaded markers with their stable user group when message metadata briefly lags behind the DOM.
 - ChatGPT user maker groups read the active conversation branch, so long virtualized conversations retain their historical user groups.
 - **Chapter View**, which organizes AI response content by marker section for convenient reading and copying on every supported platform.
-- A heart-shaped support entry at the right edge of the About & Settings header, opening the [Polaris support page](https://jeffery-ho.github.io/polaris-landing/) in a new tab.
+- A heart-shaped support entry at the right edge of the About & Settings header, opening the [Polaris support page](https://jeffery-ho.github.io/polaris-landing/) in a new tab with a fixed Polaris source tag. The landing page loads optional GA4 support-interaction analytics only after the visitor explicitly consents.
 - While Chapter View is open, its modal blocks arrow, Home, and End keys from changing the underlying main tab; `Shift + ← / →` continues to switch chapters outside editable fields.
 - Chapter View safely preserves rendered Markdown structure, including headings, nested and task lists, quotes, code, links, images, and wide tables.
 - Complete raw Markdown pipe tables are also formatted in Chapter View when a source page leaves them unrendered.
@@ -70,7 +70,7 @@ Preferences are saved to `chrome.storage.sync`.
 
 ## Privacy
 
-Polaris for Web processes AI response content locally in your browser and does not transmit it to the developer or third-party servers. See the [Privacy Policy](https://jeffery-ho.github.io/Polaris-for-Web/privacy-policy.html) for details.
+Polaris for Web processes AI response content locally in your browser and does not transmit it to the developer or third-party servers. The separate support page only loads optional Google Analytics after the visitor explicitly consents, and never sends AI conversation content or extension settings. See the [Privacy Policy](https://jeffery-ho.github.io/Polaris-for-Web/privacy-policy.html) for details.
 
 ## Support
 
@@ -78,7 +78,7 @@ Visit the [Polaris support page](https://jeffery-ho.github.io/polaris-landing/) 
 
 ## Version
 
-Current version: `0.39.1(171)`
+Current version: `0.40.0(172)`
 
 ## License
 

@@ -1,5 +1,16 @@
 const RELEASE_NOTES = Object.freeze([
   {
+    version: "0.40.0",
+    en: {
+      title: "Optional support-page analytics",
+      changes: ["The support link now identifies Polaris as its source. The separate support page measures that arrival and its video loading play control only after you allow analytics."]
+    },
+    zh: {
+      title: "可选的赞赏页分析",
+      changes: ["赞赏入口会标记 Polaris 来源；独立赞赏页仅在你同意分析后记录该到访和视频加载播放按钮点击。"]
+    }
+  },
+  {
     version: "0.39.0",
     en: {
       title: "A support entry in settings",

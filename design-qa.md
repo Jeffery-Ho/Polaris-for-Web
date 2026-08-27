@@ -49,4 +49,10 @@
 - The legacy project-page URL immediately redirects to the standalone landing page.
 - The About & Settings header has a right-aligned heart control that opens the support page in a new tab; the draggable navigation capsule has no support control.
 
+## Follow-up verification — 0.40.0(172)
+
+- The extension support entry uses a fixed Polaris UTM source tag and continues to open the standalone landing page in a new tab.
+- The extension itself adds no analytics network permission and does not emit a telemetry request. Landing-page GA4 remains gated behind the visitor’s explicit consent.
+- While the landing video is still buffering, the centered play control announces “Video is loading. Please wait…”. The corresponding GA4 event is sent only after consent; automatic GA4 page views are disabled, and withdrawing consent stops subsequent custom events.
+
 final result: passed

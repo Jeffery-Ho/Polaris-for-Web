@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 172
+
+- Date: 2026-08-27
+- Version: 0.40.0
+- Summary: Adds consent-based attribution for the Polaris support entry.
+- Notes: The extension adds fixed `utm_source=polaris_extension`, `utm_medium=support_entry`, and `utm_campaign=polaris_support` parameters to its settings-header support link. The separate landing page loads GA4 only after an explicit visitor choice and then measures that arrival plus the video-loading play button. The extension sends no telemetry and adds no analytics host permission. Run `pnpm test`, `pnpm check`, then run `pnpm build` exactly once; confirm `dist/manifest.json` is `0.40.0(172)` and its description remains unchanged. Update the Chrome Web Store privacy disclosure before publishing this version.
+
 ## 171
 
 - Date: 2026-08-27

@@ -1475,7 +1475,7 @@ import {
       settingsTitle: t("settings.title"),
       showRating: state.ratingDismissedUntil <= Date.now(),
       supportLabel: t("support.aria"),
-      supportUrl: "https://jeffery-ho.github.io/polaris-landing/",
+      supportUrl: "https://jeffery-ho.github.io/polaris-landing/?utm_source=polaris_extension&utm_medium=support_entry&utm_campaign=polaris_support",
       supportedPlatformsLabel: t("settings.supportedPlatforms"),
       unorderedList: {
         isSelected: enabledUnorderedListForPlatform(platformKey),
