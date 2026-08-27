@@ -5,6 +5,14 @@ import { readFileSync } from "node:fs";
 const styles = readFileSync(new URL("../src/styles.css", import.meta.url), "utf8");
 const contentSource = readFileSync(new URL("../src/content.js", import.meta.url), "utf8");
 
+test("Maker 队列为 tips 阴影保留完整缓冲区", () => {
+  assert.match(styles, /--gpt-marker-shadow-buffer: 32px;/);
+  assert.match(
+    styles,
+    /\.gpt-paragraph-nav__list \{[\s\S]*?padding: var\(--gpt-marker-shadow-buffer\) var\(--gpt-marker-shadow-buffer\) var\(--gpt-marker-shadow-buffer\) 0;/
+  );
+});
+
 test("缩小模式为用户 Maker 的标题、内边距和折叠箭头分别预留宽度", () => {
   assert.match(
     styles,

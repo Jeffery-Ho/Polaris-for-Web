@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 160
+
+- Date: 2026-08-27
+- Version: 0.37.6
+- Summary: Preserves the full hover-tip shadow around the Maker queue.
+- Notes: The scrollable Maker queue expands its shared shadow buffer from 18px to 32px, allowing the 12px-offset, 32px-blur tip shadow to render without lower-edge clipping. The existing shadow, tooltip width, scroll behavior, and four-sided safe padding remain unchanged. Run `pnpm test`, `pnpm check`, then run `pnpm build` exactly once; confirm `dist/manifest.json` is `0.37.6(160)` and its description remains unchanged.
+
 ## 159
 
 - Date: 2026-08-27

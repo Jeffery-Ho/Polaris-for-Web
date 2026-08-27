@@ -28,7 +28,7 @@
   --gpt-arco-border: rgba(255, 255, 255, 0.12);
   --gpt-arco-fill-2: rgba(255, 255, 255, 0.08);
   --gpt-arco-fill-3: rgba(255, 255, 255, 0.14);
-  --gpt-marker-shadow-buffer: 18px;
+  --gpt-marker-shadow-buffer: 32px;
   width: var(--gpt-nav-width, calc(100vw - 28px));
   display: flex;
   flex-direction: column;
