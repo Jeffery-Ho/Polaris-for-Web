@@ -71,7 +71,7 @@
     <main>
       <p class="product">Polaris for Web</p>
       <h1>Privacy Policy</h1>
-      <p class="effective-date">Effective date: August 27, 2026</p>
+      <p class="effective-date">Effective date: August 28, 2026</p>
 
       <p>
         Polaris for Web is a browser extension that adds section navigation markers to
@@ -110,6 +110,20 @@
         synchronized settings.
       </p>
 
+      <h3>Temporary ChatGPT Maker Snapshots</h3>
+      <p>
+        To keep navigation available when ChatGPT removes older message elements from the page,
+        Polaris for Web stores a temporary local snapshot containing user-message first-line
+        previews, Maker titles, heading levels, stable identifiers, and positioning metadata.
+        It does not store full AI responses or full user prompts in this snapshot.
+      </p>
+      <p>
+        Maker snapshots use the Chrome Storage Local API, remain only on the current device,
+        are not synchronized, and are not transmitted to the developer or any third party.
+        Snapshots expire after seven days and are also limited to the 20 most recently used
+        conversations or 2 MB in total, whichever limit is reached first.
+      </p>
+
       <h3>Clipboard</h3>
       <p>
         When the user explicitly selects text and activates the copy function, Polaris for Web
@@ -140,7 +154,8 @@
       </p>
       <p>
         The only external processing performed by the extension is the optional synchronization
-        of non-personal extension settings through Chrome Storage Sync. This service is provided
+        of non-personal extension settings through Chrome Storage Sync. Temporary Maker snapshots
+        are excluded from synchronization. The settings synchronization service is provided
         and controlled by Google. The extension does not include third-party analytics, telemetry,
         or advertising services.
       </p>
@@ -154,8 +169,9 @@
 
       <h2>4. Data Retention</h2>
       <p>
-        Website content is processed temporarily in the browser while the relevant webpage is
-        open. Polaris for Web does not create a persistent copy of AI responses or browsing content.
+        Polaris for Web does not create a persistent copy of full AI responses. Temporary ChatGPT
+        Maker snapshots retain only the limited navigation fields described above for up to seven
+        days, subject to the 20-conversation and 2 MB local limits.
       </p>
       <p>
         Extension settings remain in Chrome storage until they are reset or removed by the user
@@ -165,7 +181,7 @@
 
       <h2>5. Browser Permissions</h2>
       <ul>
-        <li><strong>Storage permission:</strong> used only to save and synchronize extension preferences.</li>
+        <li><strong>Storage permission:</strong> used to save and synchronize extension preferences and to keep temporary ChatGPT Maker snapshots locally on the current device.</li>
         <li><strong>Host permissions:</strong> used to run the extension on supported AI chat websites and locally inspect AI response content required for navigation features.</li>
       </ul>
       <p>The extension requests only the permissions needed to provide its disclosed functionality.</p>
@@ -175,7 +191,8 @@
         Because website content is processed locally and is not transmitted to the developer,
         Polaris for Web does not maintain external databases containing user content. Any
         synchronization of extension settings is handled through Chrome's Storage Sync service
-        and its associated security mechanisms.
+        and its associated security mechanisms. Temporary Maker snapshots remain in Chrome's
+        local extension storage and are never added to the synchronized settings payload.
       </p>
 
       <h2>7. Chrome Web Store Limited Use Compliance</h2>

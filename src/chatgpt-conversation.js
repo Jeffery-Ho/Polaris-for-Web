@@ -20,7 +20,7 @@ export function parseChatGPTConversation(conversation) {
   const mapping = conversation && typeof conversation === "object" ? conversation.mapping : null;
   const currentNodeId = conversation && typeof conversation.current_node === "string" ? conversation.current_node : "";
   if (!mapping || typeof mapping !== "object" || !currentNodeId) {
-    return { assistantToUserMessageId: {}, userMessages: [] };
+    return { activeAssistantMessageIds: [], assistantToUserMessageId: {}, userMessages: [] };
   }
 
   const activeMessages = [];
@@ -45,6 +45,7 @@ export function parseChatGPTConversation(conversation) {
   }
 
   const assistantToUserMessageId = {};
+  const activeAssistantMessageIds = [];
   const userMessages = [];
   let currentUserMessage = null;
   activeMessages.forEach((message) => {
@@ -63,9 +64,10 @@ export function parseChatGPTConversation(conversation) {
     }
     if (currentUserMessage) {
       assistantToUserMessageId[message.id] = currentUserMessage.id;
+      activeAssistantMessageIds.push(message.id);
       currentUserMessage.hasAssistantMessage = true;
     }
   });
 
-  return { assistantToUserMessageId, userMessages };
+  return { activeAssistantMessageIds, assistantToUserMessageId, userMessages };
 }

@@ -39,6 +39,7 @@ test("reads only the current ChatGPT branch and maps assistants to their user tu
     "assistant-current": "user-first",
     "assistant-second": "user-second"
   });
+  assert.deepEqual(result.activeAssistantMessageIds, ["assistant-current", "assistant-second"]);
 });
 
 test("reads a project conversation ID from the current route", () => {
@@ -48,6 +49,7 @@ test("reads a project conversation ID from the current route", () => {
 
 test("falls back to an empty structure when the conversation payload is unavailable", () => {
   assert.deepEqual(parseChatGPTConversation(null), {
+    activeAssistantMessageIds: [],
     assistantToUserMessageId: {},
     userMessages: []
   });

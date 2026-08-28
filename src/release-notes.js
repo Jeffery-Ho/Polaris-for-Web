@@ -1,5 +1,16 @@
 const RELEASE_NOTES = Object.freeze([
   {
+    version: "0.41.0",
+    en: {
+      title: "Resilient ChatGPT Maker snapshots",
+      changes: ["ChatGPT Makers now keep a seven-day local snapshot with stable keys, so DOM recycling no longer removes navigation history and missing targets can be remapped before jumping."]
+    },
+    zh: {
+      title: "ChatGPT Maker 本地快照",
+      changes: ["ChatGPT Maker 现使用保留七天的本地快照和稳定 Key；DOM 回收后仍保留导航记录，并会在跳转前尝试重新映射目标。"]
+    }
+  },
+  {
     version: "0.40.0",
     en: {
       title: "Optional support-page analytics",

@@ -1,9 +1,10 @@
 import { mountSettingsPanel } from "./settings-panel.jsx";
 import { chatGPTConversationIdFromPath, parseChatGPTConversation } from "./chatgpt-conversation.js";
 import {
-  recoverChatGPTMarkerGroups,
-  resolveChatGPTUserMessageId
-} from "./chatgpt-marker-groups.js";
+  createChromeStorageAdapter,
+  createMakerSnapshotModel
+} from "./maker-snapshot-model.js";
+import { recoverMakerElement } from "./maker-jump-recovery.js";
 import { doubaoMessageRoleFromClassNames } from "./doubao-message-role.js";
 import { pageThemeFromColors } from "./page-theme.js";
 import { releaseNotesForUpdate } from "./release-notes.js";
@@ -37,6 +38,7 @@ import {
 (() => {
   const { locale, t } = globalThis.PolarisI18n;
   const ROOT_ID = "gpt-paragraph-nav";
+  const MAX_USER_PREVIEW_LENGTH = 160;
   const MARKER_MOTION_SUPPRESSION_CLASS = "is-marker-motion-suppressed";
   const DEBUG_ATTR = "data-gpt-paragraph-nav";
   const HEADING_SELECTOR = "h1, h2, h3, h4";
@@ -266,9 +268,10 @@ import {
     lastRenderedHeadingCount: 0,
     markerSearchQuery: "",
     chatGPTConversation: null,
-    chatGPTAssistantUserMessageIds: new Map(),
+    chatGPTMakerSnapshotView: null,
     chatGPTConversationRefreshTimer: 0,
     chatGPTConversationRequestId: 0,
+    pendingMakerJumps: new Set(),
     explosionSearchQuery: "",
     expandedFoldGroups: new Set(),
     expandedUserMarkerKeys: new Set(),
@@ -293,6 +296,12 @@ import {
     routeKey: "",
     isExtensionContextInvalidated: false
   };
+  const chatGPTMakerSnapshotModel = createMakerSnapshotModel({
+    storage: createChromeStorageAdapter(chrome.storage.local),
+    onError(error) {
+      console.warn("[Polaris for Web] Maker snapshot storage unavailable", error);
+    }
+  });
   const markerMotionSuppressor = createMarkerMotionSuppressor({
     setSuppressed: (isSuppressed) => {
       document.getElementById(ROOT_ID)?.classList.toggle(MARKER_MOTION_SUPPRESSION_CLASS, isSuppressed);
@@ -371,7 +380,8 @@ import {
     state.markerListScrollAnimation = 0;
     state.observer?.disconnect();
     state.liquidGlassObserver?.disconnect();
-    state.chatGPTAssistantUserMessageIds.clear();
+    chatGPTMakerSnapshotModel.close();
+    state.chatGPTMakerSnapshotView = null;
     closeExplosionOverlay();
     state.isReleaseNoticeOpen = false;
     unlockPageScroll();
@@ -1752,20 +1762,26 @@ import {
   }
 
   function collectExplosionSections(headings = state.headings, containers = getAssistantContainers()) {
-    if (!headings.length) {
+    const boundHeadings = headings
+      .map((heading) => {
+        const element = currentElementForHeading(heading);
+        return element ? { ...heading, element } : null;
+      })
+      .filter(Boolean);
+    if (!boundHeadings.length) {
       return [fallbackExplosionSection()];
     }
 
-    const headingToContainer = containerForHeading(headings, containers);
+    const headingToContainer = containerForHeading(boundHeadings, containers);
 
-    return headings.map((heading) => {
+    return boundHeadings.map((heading) => {
       const container = headingToContainer.get(heading.element);
-      const nextHeading = nextHeadingItemInContainer(headings, heading, headingToContainer);
+      const nextHeading = nextHeadingItemInContainer(boundHeadings, heading, headingToContainer);
       const blocks = container ? sectionBlocksFromHeading(container, heading.element, nextHeading?.element || null) : [];
       return {
         id: heading.id,
         title: heading.title,
-        markerKey: markerKeyFor(heading.element),
+        markerKey: markerKeyForHeading(heading),
         startElement: heading.element,
         endElement: nextHeading?.element || null,
         blocks,
@@ -2498,9 +2514,10 @@ import {
   }
 
   function firstLineMarkerTitle(text) {
-    return text.split(/\r?\n/)
+    const firstLine = text.split(/\r?\n/)
       .map((line) => normalizeTitle(line))
       .find(Boolean) || "";
+    return firstLine.slice(0, MAX_USER_PREVIEW_LENGTH);
   }
 
   function compareDocumentOrder(left, right) {
@@ -2553,50 +2570,102 @@ import {
     return matchedContainer;
   }
 
+  function canonicalKindForHeading(heading) {
+    if (heading.sourceType === "table") {
+      return "table";
+    }
+    if (heading.sourceType === "unordered-list") {
+      return "list";
+    }
+    if (heading.sourceType === "video") {
+      return "video";
+    }
+    return "text";
+  }
+
+  function lastKnownScrollRatioForElement(element) {
+    const scrollContainer = nearestVerticalScrollContainer(element);
+    if (scrollContainer) {
+      const maxScrollTop = scrollContainer.scrollHeight - scrollContainer.clientHeight;
+      if (maxScrollTop <= 0) {
+        return 0;
+      }
+      const containerRect = scrollContainer.getBoundingClientRect();
+      const elementRect = element.getBoundingClientRect();
+      const elementScrollTop = scrollContainer.scrollTop + elementRect.top - containerRect.top;
+      return Math.min(1, Math.max(0, elementScrollTop / maxScrollTop));
+    }
+    const maxScrollTop = document.documentElement.scrollHeight - window.innerHeight;
+    if (maxScrollTop <= 0) {
+      return 0;
+    }
+    return Math.min(1, Math.max(0, (element.getBoundingClientRect().top + window.scrollY) / maxScrollTop));
+  }
+
   function collectChatGPTMarkerGroups(conversation, assistantContainers, headings) {
-    const groupsByMessageId = new Map(conversation.userMessages.map((message) => {
+    const groups = conversation.userMessages.map((message) => {
       const title = normalizeTitle(message.text);
-      const user = {
-        element: null,
-        markerKey: `chatgpt-user-${message.id}`,
+      return {
+        groupKey: `chatgpt-user-${message.id}`,
+        userMessageId: message.id,
         previewTitle: firstLineMarkerTitle(message.text) || title,
         title,
-        order: message.order
-      };
-      return [message.id, {
-        key: user.markerKey,
-        user,
-        headings: [],
+        order: message.order,
         hasAssistantMessage: message.hasAssistantMessage
-      }];
-    }));
-    const orphanGroup = { key: "orphan", user: null, headings: [] };
+      };
+    });
+    const activeAssistantMessageIds = new Set(conversation.activeAssistantMessageIds || []);
+    const ordinalByAssistantAndKind = new Map();
+    const makers = [];
 
-    headings.forEach((heading) => {
+    headings.forEach((heading, order) => {
       const assistantContainer = assistantContainerForHeading(heading, assistantContainers);
-      const assistantMessageId = chatGPTMessageIdForContainer(assistantContainer);
-      const userMessageId = resolveChatGPTUserMessageId({
+      const observedAssistantMessageId = chatGPTMessageIdForContainer(assistantContainer);
+      if (observedAssistantMessageId && !activeAssistantMessageIds.has(observedAssistantMessageId)) {
+        return;
+      }
+      const assistantMessageId = activeAssistantMessageIds.has(observedAssistantMessageId)
+        ? observedAssistantMessageId
+        : "";
+      const userMessageId = conversation.assistantToUserMessageId[observedAssistantMessageId] || "";
+      const canonicalKind = canonicalKindForHeading(heading);
+      const ordinalKey = `${assistantMessageId}:${canonicalKind}`;
+      const ordinalWithinKind = ordinalByAssistantAndKind.get(ordinalKey) || 0;
+      ordinalByAssistantAndKind.set(ordinalKey, ordinalWithinKind + 1);
+      makers.push({
         assistantMessageId,
-        currentAssignments: conversation.assistantToUserMessageId,
-        rememberedAssignments: state.chatGPTAssistantUserMessageIds
+        groupKey: userMessageId ? `chatgpt-user-${userMessageId}` : "orphan",
+        canonicalKind,
+        ordinalWithinKind,
+        titleFingerprint: normalizeTitle(heading.title),
+        title: heading.title,
+        level: heading.level,
+        sourceType: heading.sourceType,
+        order,
+        lastKnownScrollRatio: lastKnownScrollRatioForElement(heading.element),
+        element: heading.element
       });
-      const group = groupsByMessageId.get(userMessageId) || orphanGroup;
-      group.headings.push(heading);
     });
 
-    const groups = [...groupsByMessageId.values(), orphanGroup]
-      .filter((group) => group.user || group.headings.length)
-      .sort((left, right) => (left.user ? left.user.order : Number.MAX_SAFE_INTEGER) - (right.user ? right.user.order : Number.MAX_SAFE_INTEGER));
-    return recoverChatGPTMarkerGroups({
+    state.chatGPTMakerSnapshotView = chatGPTMakerSnapshotModel.reconcile({
+      activeAssistantMessageIds: conversation.activeAssistantMessageIds || [],
       groups,
-      previousGroups: state.markerGroups,
-      headings
+      mountedAssistantMessageIds: assistantContainers
+        .map((container) => chatGPTMessageIdForContainer(container))
+        .filter(Boolean),
+      makers
     });
+    return state.chatGPTMakerSnapshotView.groups;
   }
 
   function collectMarkerGroups(userContainers, assistantContainers, headings) {
-    if (isChatGPTPage() && state.chatGPTConversation) {
-      return collectChatGPTMarkerGroups(state.chatGPTConversation, assistantContainers, headings);
+    if (isChatGPTPage()) {
+      if (state.chatGPTConversation) {
+        return collectChatGPTMarkerGroups(state.chatGPTConversation, assistantContainers, headings);
+      }
+      if (state.chatGPTMakerSnapshotView?.groups.length) {
+        return state.chatGPTMakerSnapshotView.groups;
+      }
     }
     const userItems = userContainers
       .map((element) => makeUserMarkerItem(element))
@@ -2915,7 +2984,8 @@ import {
         element: title.element,
         level: 2,
         title: title.title,
-        id: title.element.id || `gpt-paragraph-heading-${headings.length + 1}`
+        id: title.element.id || `gpt-paragraph-heading-${headings.length + 1}`,
+        sourceType: "video"
       });
     });
   }
@@ -2947,12 +3017,13 @@ import {
         element: titleElement,
         level: 2,
         title,
-        id: titleElement.id || `gpt-paragraph-heading-${headings.length + 1}`
+        id: titleElement.id || `gpt-paragraph-heading-${headings.length + 1}`,
+        sourceType: "video"
       });
     });
   }
 
-  function collectHeadings(containers = getAssistantContainers()) {
+  function collectHeadings(containers = getAssistantContainers(), { applyConfig = true } = {}) {
     const seen = new Set();
     const headings = [];
 
@@ -3031,6 +3102,9 @@ import {
       if (item.title.length <= 0) {
         return false;
       }
+      if (!applyConfig) {
+        return item.level <= maxHeadingLevel;
+      }
       if (item.sourceType === "unordered-list") {
         return unorderedListEnabled;
       }
@@ -3067,7 +3141,7 @@ import {
 
   function ensureHeadingIds(headings) {
     headings.forEach((item) => {
-      if (!item.element.id) {
+      if (item.element instanceof HTMLElement && !item.element.id) {
         item.element.id = item.id;
       }
     });
@@ -3139,6 +3213,15 @@ import {
     return false;
   }
 
+  function isHeadingEnabledForCurrentConfig(heading) {
+    const platformKey = currentPlatformKey();
+    if (heading.sourceType === "unordered-list") {
+      return enabledUnorderedListForPlatform(platformKey);
+    }
+    return heading.level <= maxHeadingLevelForPlatform(platformKey)
+      && enabledLevelsForCurrentPlatform().includes(heading.level);
+  }
+
   function filteredHeadings(headings = state.headings) {
     if (!normalizeSearchQuery(state.markerSearchQuery)) {
       return headings;
@@ -3149,15 +3232,19 @@ import {
   function filteredMarkerGroups(groups = state.markerGroups) {
     const hasQuery = Boolean(normalizeSearchQuery(state.markerSearchQuery));
     if (!hasQuery) {
-      return groups.map((group) => ({ ...group, visibleHeadings: group.headings }));
+      return groups.map((group) => ({
+        ...group,
+        visibleHeadings: group.headings.filter(isHeadingEnabledForCurrentConfig)
+      }));
     }
 
     return groups
       .map((group) => {
         const userMatches = group.user && matchesSearch(state.markerSearchQuery, group.user.title);
+        const enabledHeadings = group.headings.filter(isHeadingEnabledForCurrentConfig);
         const visibleHeadings = userMatches
-          ? group.headings
-          : group.headings.filter((heading) => matchesSearch(state.markerSearchQuery, heading.title));
+          ? enabledHeadings
+          : enabledHeadings.filter((heading) => matchesSearch(state.markerSearchQuery, heading.title));
         return { ...group, visibleHeadings, userMatches };
       })
       .filter((group) => group.userMatches || group.visibleHeadings.length > 0);
@@ -3235,6 +3322,10 @@ import {
     return key;
   }
 
+  function markerKeyForHeading(heading) {
+    return heading.markerKey || markerKeyFor(heading.element);
+  }
+
   function nearestVerticalScrollContainer(element) {
     for (let parent = element.parentElement; parent instanceof HTMLElement; parent = parent.parentElement) {
       const overflowY = window.getComputedStyle(parent).overflowY;
@@ -3256,6 +3347,12 @@ import {
   }
 
   function currentElementForHeading(heading) {
+    if (isChatGPTPage() && heading.markerKey) {
+      const mappedElement = chatGPTMakerSnapshotModel.resolveElement(heading.markerKey);
+      if (mappedElement instanceof HTMLElement) {
+        return mappedElement;
+      }
+    }
     if (heading.element instanceof HTMLElement && heading.element.isConnected) {
       return heading.element;
     }
@@ -3289,6 +3386,40 @@ import {
     }
     window.history.replaceState(null, "", `#${encodeURIComponent(element.id)}`);
     return true;
+  }
+
+  function conversationScrollContainer() {
+    const mountedConversationElement = [...getAssistantContainers(), ...getUserContainers()][0];
+    return mountedConversationElement
+      ? nearestVerticalScrollContainer(mountedConversationElement) || document.scrollingElement
+      : document.scrollingElement;
+  }
+
+  async function jumpToHeadingWithRecovery(heading) {
+    if (jumpToHeading(heading)) {
+      return true;
+    }
+    const makerKey = heading.markerKey || "";
+    if (!isChatGPTPage() || !makerKey || state.pendingMakerJumps.has(makerKey)) {
+      return false;
+    }
+    const scrollContainer = conversationScrollContainer();
+    if (!(scrollContainer instanceof HTMLElement)) {
+      return false;
+    }
+
+    state.pendingMakerJumps.add(makerKey);
+    const recoveredElement = await recoverMakerElement({
+      makerKey,
+      scrollContainer,
+      scrollRatio: heading.lastKnownScrollRatio,
+      resolveElement: (key) => chatGPTMakerSnapshotModel.resolveElement(key)
+    });
+    state.pendingMakerJumps.delete(makerKey);
+    if (recoveredElement instanceof HTMLElement && jumpToHeading(heading)) {
+      return true;
+    }
+    return false;
   }
 
   function scrollMarkerIntoListView(marker) {
@@ -3438,7 +3569,7 @@ import {
   }
 
   function aiMarkerRenderItem(heading) {
-    const markerKey = markerKeyFor(heading.element);
+    const markerKey = markerKeyForHeading(heading);
     const title = heading.title;
     return {
       key: `ai:${markerKey}`,
@@ -3621,7 +3752,7 @@ import {
     }
   }
 
-  function handleMarkerListClick(event) {
+  async function handleMarkerListClick(event) {
     if (!(event.target instanceof Element)) {
       return;
     }
@@ -3633,8 +3764,11 @@ import {
 
     if (marker.dataset.markerItemType === "ai") {
       const markerKey = marker.dataset.markerKey || "";
-      const heading = state.headings.find((item) => markerKeyFor(item.element) === markerKey);
-      if (!heading || !jumpToHeading(heading)) {
+      const heading = state.headings.find((item) => markerKeyForHeading(item) === markerKey);
+      if (!heading || !await jumpToHeadingWithRecovery(heading)) {
+        if (heading && isChatGPTPage()) {
+          showMarkerNotice(t("userMarker.replyNotLoaded"));
+        }
         return;
       }
       state.activeMarkerKey = markerKey;
@@ -3754,7 +3888,11 @@ import {
     const assistantContainers = getAssistantContainers();
     const userContainers = getUserContainers();
     const hasChatGPTConversation = isChatGPTPage() && Boolean(state.chatGPTConversation?.userMessages.length);
-    const hasConversation = assistantContainers.length > 0 || userContainers.length > 0 || hasChatGPTConversation;
+    const hasChatGPTSnapshot = isChatGPTPage() && Boolean(state.chatGPTMakerSnapshotView?.groups.length);
+    const hasConversation = assistantContainers.length > 0
+      || userContainers.length > 0
+      || hasChatGPTConversation
+      || hasChatGPTSnapshot;
     if (!hasConversation) {
       return {
         assistantContainers,
@@ -3766,13 +3904,17 @@ import {
       };
     }
 
-    const headings = collectHeadings(assistantContainers);
+    const headings = collectHeadings(assistantContainers, { applyConfig: !isChatGPTPage() });
+    const markerGroups = collectMarkerGroups(userContainers, assistantContainers, headings);
+    const renderHeadings = isChatGPTPage()
+      ? markerGroups.flatMap((group) => group.headings).filter(isHeadingEnabledForCurrentConfig)
+      : headings;
     return {
       assistantContainers,
       userContainers,
       hasConversation,
-      headings,
-      markerGroups: collectMarkerGroups(userContainers, assistantContainers, headings),
+      headings: renderHeadings,
+      markerGroups,
       metrics: getConversationMetrics([...assistantContainers, ...userContainers])
     };
   }
@@ -3936,7 +4078,9 @@ import {
     state.lastRenderedHeadingCount = 0;
     state.markerSearchQuery = "";
     state.chatGPTConversation = null;
-    state.chatGPTAssistantUserMessageIds.clear();
+    chatGPTMakerSnapshotModel.close();
+    state.chatGPTMakerSnapshotView = null;
+    state.pendingMakerJumps.clear();
     window.clearTimeout(state.chatGPTConversationRefreshTimer);
     state.chatGPTConversationRefreshTimer = 0;
     state.explosionSearchQuery = "";
@@ -3961,6 +4105,30 @@ import {
     document.documentElement.removeAttribute(DEBUG_ATTR);
   }
 
+  function currentChatGPTConversationScope() {
+    if (!isChatGPTPage()) {
+      return "";
+    }
+    const conversationId = chatGPTConversationIdFromPath(window.location.pathname);
+    return conversationId ? `chatgpt:${window.location.origin}:${conversationId}` : "";
+  }
+
+  async function openCurrentChatGPTMakerSnapshot() {
+    const routeKey = currentRouteKey();
+    const conversationScope = currentChatGPTConversationScope();
+    if (!conversationScope) {
+      chatGPTMakerSnapshotModel.close();
+      state.chatGPTMakerSnapshotView = null;
+      return;
+    }
+    const snapshotView = await chatGPTMakerSnapshotModel.open(conversationScope);
+    if (routeKey !== currentRouteKey() || conversationScope !== currentChatGPTConversationScope()) {
+      return;
+    }
+    state.chatGPTMakerSnapshotView = snapshotView;
+    scheduleRender({ suppressMarkerMotion: true });
+  }
+
   function handleRouteChange() {
     const nextRouteKey = currentRouteKey();
     if (nextRouteKey === state.routeKey) {
@@ -3974,6 +4142,7 @@ import {
       removeNavigationRoot();
       return;
     }
+    void openCurrentChatGPTMakerSnapshot();
     scheduleChatGPTConversationRefresh();
     scheduleRender();
   }
@@ -4061,7 +4230,8 @@ import {
     if (!state.activeMarkerKey) {
       return null;
     }
-    return state.headings.find((heading) => markerKeyFor(heading.element) === state.activeMarkerKey) || null;
+    const heading = state.headings.find((item) => markerKeyForHeading(item) === state.activeMarkerKey) || null;
+    return heading && currentElementForHeading(heading) ? heading : null;
   }
 
   function getActiveMarker() {
@@ -4108,14 +4278,14 @@ import {
     }
 
     const group = state.markerGroups.find((candidate) => candidate.headings
-      .some((heading) => markerKeyFor(heading.element) === state.activeMarkerKey));
+      .some((heading) => markerKeyForHeading(heading) === state.activeMarkerKey));
     const visibleHeadings = group
       ? (normalizeSearchQuery(state.markerSearchQuery)
         ? group.headings.filter((heading) => matchesSearch(state.markerSearchQuery, heading.title))
         : group.headings)
       : filteredHeadings(state.headings);
     if (group && foldEnabledFor(visibleHeadings)) {
-      const markerIndex = visibleHeadings.findIndex((heading) => markerKeyFor(heading.element) === state.activeMarkerKey);
+      const markerIndex = visibleHeadings.findIndex((heading) => markerKeyForHeading(heading) === state.activeMarkerKey);
       const size = state.config.foldThreshold;
       const fullGroupCount = Math.floor(visibleHeadings.length / size);
       if (markerIndex >= 0 && markerIndex < fullGroupCount * size) {
@@ -4129,8 +4299,8 @@ import {
       }
     }
 
-    state.activeHeading = active ? active.element : null;
-    updateFloatingActiveMarker(syncActiveMarker(markerKeyFor(active.element)));
+    state.activeHeading = currentElementForHeading(active);
+    updateFloatingActiveMarker(syncActiveMarker(markerKeyForHeading(active)));
   }
 
   function isMarkerVisibleInViewport(marker) {
@@ -4606,6 +4776,7 @@ import {
     }
     watchConfigChanges();
     state.routeKey = currentRouteKey();
+    await openCurrentChatGPTMakerSnapshot();
     watchRouteChanges();
     window.addEventListener("message", handleChatGPTConversationMessage);
     render();

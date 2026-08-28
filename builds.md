@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 173
+
+- Date: 2026-08-28
+- Version: 0.41.0
+- Summary: Adds resilient local snapshots for ChatGPT Makers.
+- Notes: ChatGPT Makers now use stable keys and seven-day `chrome.storage.local` snapshots containing only user first-line previews, Maker titles, and positioning metadata. Snapshots keep at most 20 conversations or 2 MB, are not synchronized, and fall back to the in-memory model when storage is unavailable. Cached Makers attempt a two-second DOM remap before restoring the previous scroll position and showing the not-loaded notice. `pnpm test` passed 113/113, `pnpm check` passed, and the single `pnpm build` completed successfully; `dist/manifest.json` is `0.41.0(173)`.
+
 ## 172
 
 - Date: 2026-08-27

@@ -25,6 +25,7 @@ Polaris for Web automatically detects headings and list titles in AI responses a
 
 ## Features
 
+- ChatGPT Maker navigation uses stable per-Maker keys and a seven-day `chrome.storage.local` snapshot. When ChatGPT recycles old message DOM, cached Makers remain visible and Polaris attempts to remount the target before jumping. Snapshots keep only user first-line previews, Maker titles, and positioning metadata; they are limited to 20 conversations or 2 MB.
 - Progressive Maker rendering begins during streaming output as soon as the first non-empty supported marker is available; fixed 120ms snapshots reuse existing Maker nodes and update only changed items, preserving list scrolling, focus, hover, and manual collapse state. Wheel, trackpad, or list-drag input immediately takes control from temporary Active Maker positioning, so any Maker can remain outside the list viewport while streaming continues.
 - Click-to-jump navigation, active-section highlighting, and a scrollable marker queue.
 - Visible titles inside AI markers, user groups, and the floating active marker are left-aligned; user group capsules remain on the queue's right edge while AI markers and folded stacks remain on the left.
@@ -70,7 +71,7 @@ Preferences are saved to `chrome.storage.sync`.
 
 ## Privacy
 
-Polaris for Web processes AI response content locally in your browser and does not transmit it to the developer or third-party servers. The separate support page only loads optional Google Analytics after the visitor explicitly consents, and never sends AI conversation content or extension settings. See the [Privacy Policy](https://jeffery-ho.github.io/Polaris-for-Web/privacy-policy.html) for details.
+Polaris for Web processes AI response content locally in your browser and does not transmit it to the developer or third-party servers. ChatGPT Maker snapshots are stored only on the current device for up to seven days and are not synchronized. The separate support page only loads optional Google Analytics after the visitor explicitly consents, and never sends AI conversation content or extension settings. See the [Privacy Policy](https://jeffery-ho.github.io/Polaris-for-Web/privacy-policy.html) for details.
 
 ## Support
 
@@ -78,7 +79,7 @@ Visit the [Polaris support page](https://jeffery-ho.github.io/polaris-landing/) 
 
 ## Version
 
-Current version: `0.40.0(172)`
+Current version: `0.41.0(173)`
 
 ## License
 
