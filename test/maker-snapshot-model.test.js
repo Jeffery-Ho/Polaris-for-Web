@@ -653,6 +653,181 @@ test("v2 partial observation 保留未挂载消息，complete observation 删除
   assert.deepEqual(model.reconcile(complete).groups, []);
 });
 
+test("partial DOM 从后段开始时保留缓存历史顺序并把新分组追加到锚点后", async () => {
+  const storage = createMemoryStorage();
+  let nextKey = 1;
+  const model = createMakerSnapshotModel({
+    storage,
+    createKey: () => `maker-order-${nextKey++}`,
+    now: () => 105_000
+  });
+  await model.open({ platformKey: "kimi", conversationKey: "https://www.kimi.com:ordered", persistence: true });
+
+  const group = (key, order) => ({
+    groupKey: `kimi:user:${key}`,
+    userMessageKey: `kimi:user:${key}`,
+    previewTitle: key,
+    title: key,
+    order,
+    hasAssistantMessage: true
+  });
+  const maker = (key, order) => ({
+    sourceMessageKey: `kimi:assistant-derived:${key}:0`,
+    sourceMessageAliases: [],
+    groupKey: `kimi:user:${key}`,
+    canonicalKind: "text",
+    ordinalWithinKind: 0,
+    titleFingerprint: key,
+    title: key,
+    level: 2,
+    sourceType: "heading",
+    order,
+    lastKnownScrollRatio: order / 4,
+    element: { isConnected: true }
+  });
+  model.reconcile({
+    coverage: "partial",
+    authoritativeMessageKeys: null,
+    groups: [group("a", 0), group("b", 1), group("c", 2)],
+    mountedMessageKeys: ["a", "b", "c"].map((key) => `kimi:assistant-derived:${key}:0`),
+    makers: [maker("a", 0), maker("b", 1), maker("c", 2)]
+  });
+
+  const refreshed = model.reconcile({
+    coverage: "partial",
+    authoritativeMessageKeys: null,
+    groups: [group("c", 0), group("d", 1)],
+    mountedMessageKeys: ["c", "d"].map((key) => `kimi:assistant-derived:${key}:0`),
+    makers: [maker("c", 0), maker("d", 1)]
+  });
+
+  assert.deepEqual(refreshed.groups.map((item) => item.key), [
+    "kimi:user:a",
+    "kimi:user:b",
+    "kimi:user:c",
+    "kimi:user:d"
+  ]);
+  assert.deepEqual(refreshed.groups.map((item) => item.headings[0].makerKey), [
+    "maker-order-1",
+    "maker-order-2",
+    "maker-order-3",
+    "maker-order-4"
+  ]);
+});
+
+test("partial DOM 只挂载同组后段回复时保留 Maker 顺序与原 key", async () => {
+  const storage = createMemoryStorage();
+  let nextKey = 1;
+  const model = createMakerSnapshotModel({
+    storage,
+    createKey: () => `maker-reply-order-${nextKey++}`,
+    now: () => 107_000
+  });
+  await model.open({ platformKey: "yuanbao", conversationKey: "https://yuanbao.tencent.com:ordered", persistence: true });
+
+  const group = {
+    groupKey: "yuanbao:user:question",
+    userMessageKey: "yuanbao:user:question",
+    previewTitle: "question",
+    title: "question",
+    order: 0,
+    hasAssistantMessage: true
+  };
+  const maker = (key, order) => ({
+    sourceMessageKey: `yuanbao:assistant-derived:question:${key}`,
+    sourceMessageAliases: [],
+    groupKey: group.groupKey,
+    canonicalKind: "text",
+    ordinalWithinKind: 0,
+    titleFingerprint: key,
+    title: key,
+    level: 2,
+    sourceType: "heading",
+    order,
+    lastKnownScrollRatio: order / 4,
+    element: { isConnected: true }
+  });
+  model.reconcile({
+    coverage: "partial",
+    authoritativeMessageKeys: null,
+    groups: [group],
+    mountedMessageKeys: ["a", "b", "c"].map((key) => `yuanbao:assistant-derived:question:${key}`),
+    makers: [maker("a", 0), maker("b", 1), maker("c", 2)]
+  });
+
+  const refreshed = model.reconcile({
+    coverage: "partial",
+    authoritativeMessageKeys: null,
+    groups: [group],
+    mountedMessageKeys: ["c", "d"].map((key) => `yuanbao:assistant-derived:question:${key}`),
+    makers: [maker("c", 0), maker("d", 1)]
+  });
+
+  assert.deepEqual(refreshed.groups[0].headings.map((heading) => heading.title), ["a", "b", "c", "d"]);
+  assert.deepEqual(refreshed.groups[0].headings.map((heading) => heading.makerKey), [
+    "maker-reply-order-1",
+    "maker-reply-order-2",
+    "maker-reply-order-3",
+    "maker-reply-order-4"
+  ]);
+});
+
+test("partial DOM 中无持久身份且没有锚点的 Maker 追加在缓存历史之后", async () => {
+  const storage = createMemoryStorage();
+  let nextKey = 1;
+  const model = createMakerSnapshotModel({
+    storage,
+    createKey: () => `maker-pending-order-${nextKey++}`,
+    now: () => 108_000
+  });
+  await model.open({ platformKey: "qianwen", conversationKey: "https://www.qianwen.com:ordered", persistence: true });
+
+  const group = (key, order) => ({
+    groupKey: `qianwen:user:${key}`,
+    userMessageKey: `qianwen:user:${key}`,
+    previewTitle: key,
+    title: key,
+    order,
+    hasAssistantMessage: true
+  });
+  const maker = (key, order, sourceMessageKey = `qianwen:assistant-derived:${key}:0`) => ({
+    sourceMessageKey,
+    sourceMessageAliases: [],
+    groupKey: `qianwen:user:${key}`,
+    canonicalKind: "text",
+    ordinalWithinKind: 0,
+    titleFingerprint: key,
+    title: key,
+    level: 2,
+    sourceType: "heading",
+    order,
+    lastKnownScrollRatio: order / 4,
+    element: { isConnected: true }
+  });
+  model.reconcile({
+    coverage: "partial",
+    authoritativeMessageKeys: null,
+    groups: [group("a", 0), group("b", 1), group("c", 2)],
+    mountedMessageKeys: ["a", "b", "c"].map((key) => `qianwen:assistant-derived:${key}:0`),
+    makers: [maker("a", 0), maker("b", 1), maker("c", 2)]
+  });
+
+  const refreshed = model.reconcile({
+    coverage: "partial",
+    authoritativeMessageKeys: null,
+    groups: [group("d", 0)],
+    mountedMessageKeys: [],
+    makers: [maker("d", 0, "")]
+  });
+
+  assert.deepEqual(refreshed.groups.flatMap((item) => item.headings.map((heading) => heading.title)), [
+    "a",
+    "b",
+    "c",
+    "d"
+  ]);
+});
+
 test("v2 为每个平台维护独立索引和 LRU", async () => {
   const storage = createMemoryStorage();
   let timestamp = 110_000;

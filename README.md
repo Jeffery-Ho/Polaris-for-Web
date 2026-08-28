@@ -35,9 +35,9 @@ Polaris for Web automatically detects headings and list titles in AI responses a
 - Native browser scrolling on Maker, user-group, and fold cards, without custom wheel animation or a transparent extended hit area.
 - Fuzzy title search for both the navigation marker queue and Chapter View, with `Cmd/Ctrl+F` focusing the current search box.
 - Long marker queues are grouped into stacks of `N` markers (default 20); each full group collapses into a stack card showing its first title followed by the remaining count, without a leading total-count badge.
-- User maker groups show the latest 20 groups by default, with earlier groups available on demand and search covering every group. Each newly observed latest group opens even before its AI markers are ready; a directly preceding group that arrives late with a loaded reply opens once, while later streaming updates preserve manual collapse state. ChatGPT keeps already loaded markers with their stable user group when message metadata briefly lags behind the DOM.
+- User maker groups show the latest 20 groups by default, with earlier groups available on demand and search covering every group. Every group starts collapsed, including the latest, previous, and newly streamed groups; only an explicit click or active search expands its contents. ChatGPT keeps already loaded markers with their stable user group when message metadata briefly lags behind the DOM.
 - An active Maker does not lock its stack or user group open. Manual collapse keeps the Maker selected, and dragging more than 4px from any Maker or group card scrolls the list without triggering that card's click action.
-- ChatGPT user maker groups read the active conversation branch, so long virtualized conversations retain their historical user groups. Existing real-ID snapshots migrate in place to stable group-scoped response identities without changing `makerKey`, allowing refreshed or remounted DOM nodes to recover their original navigation target.
+- ChatGPT user maker groups read the active conversation branch from its first message, so long virtualized conversations retain their historical order. Existing real-ID snapshots migrate in place to stable group-scoped response identities without changing `makerKey`; other platforms replay cached history before merging partial mounted DOM, preventing a refreshed tail segment from moving ahead of earlier Makers.
 - **Chapter View**, which organizes AI response content by marker section for convenient reading and copying on every supported platform.
 - A heart-shaped support entry at the right edge of the About & Settings header, opening the [Polaris support page](https://jeffery-ho.github.io/polaris-landing/) in a new tab with a fixed Polaris source tag. The landing page loads optional GA4 support-interaction analytics only after the visitor explicitly consents.
 - While Chapter View is open, its modal blocks arrow, Home, and End keys from changing the underlying main tab; `Shift + ← / →` continues to switch chapters outside editable fields.
@@ -80,7 +80,7 @@ Visit the [Polaris support page](https://jeffery-ho.github.io/polaris-landing/) 
 
 ## Version
 
-Current version: `0.42.3(178)`
+Current version: `0.42.4(179)`
 
 ## License
 

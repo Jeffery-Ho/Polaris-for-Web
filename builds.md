@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 179
+
+- Date: 2026-08-28
+- Version: 0.42.4
+- Summary: Keeps every user Maker group collapsed by default and rebuilds runtime Maker ordering on refresh.
+- Notes: Latest, previous, and newly streamed user groups now remain collapsed until the user expands them or search temporarily reveals a match. Refresh and route activation restart the page-memory `marker-N` sequence while snapshots retain stable `makerKey` values. ChatGPT rebuilds from the full active branch; partial observations on other platforms preserve cached group and Maker order, insert identified records by nearby anchors, and append unanchored memory-only Makers after cached history. `pnpm test` passed 174/174, `pnpm check` passed, and the single `pnpm build` completed successfully; `dist/manifest.json` is `0.42.4(179)`. Live unpacked-extension refresh and route-switch validation remains pending because it was not available in this automated run.
+
 ## 178
 
 - Date: 2026-08-28

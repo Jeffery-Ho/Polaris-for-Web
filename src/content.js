@@ -28,13 +28,15 @@ import { createMarkerListScrollPersistence } from "./marker-list-scroll-persiste
 import { limitMarkerGroups } from "./marker-group-limit.js";
 import { createMarkerMotionSuppressor } from "./marker-motion-suppression.js";
 import { createMarkerRenderStateMachine } from "./marker-render-state-machine.js";
+import { createRuntimeMarkerKeySequence } from "./runtime-marker-key-sequence.js";
 import {
   shouldAutoExpandActiveFoldGroup,
   toggleFoldGroupExpansion
 } from "./marker-group-expansion.js";
 import {
+  isUserMarkerExpanded,
+  latestUserMarkerKey,
   shouldShowUserMarkerNotLoadedNotice,
-  syncLatestUserMarkerExpansion
 } from "./user-marker-expansion.js";
 import {
   scrollMarkerIntoView,
@@ -246,7 +248,6 @@ import {
     enabledLevelsByPlatform: DEFAULT_ENABLED_LEVELS_BY_PLATFORM,
     enabledUnorderedListByPlatform: DEFAULT_UNORDERED_LIST_BY_PLATFORM
   });
-  const markerKeys = new WeakMap();
   const liquidGlassSignatures = new WeakMap();
   const settingsPanelControllers = new WeakMap();
   const extensionMetadata = {
@@ -255,7 +256,7 @@ import {
     releaseVersion: "",
     version: ""
   };
-  let nextMarkerKey = 1;
+  const runtimeMarkerKeySequence = createRuntimeMarkerKeySequence();
 
   const state = {
     headings: [],
@@ -287,7 +288,6 @@ import {
     expandedFoldGroups: new Set(),
     manuallyCollapsedFoldGroups: new Set(),
     expandedUserMarkerKeys: new Set(),
-    seenUserMarkerKeys: new Set(),
     latestUserMarkerKey: "",
     areEarlierUserGroupsExpanded: false,
     isCollapsed: false,
@@ -2871,11 +2871,7 @@ import {
   }
 
   function syncUserMarkerExpansion(groups) {
-    state.latestUserMarkerKey = syncLatestUserMarkerExpansion({
-      groups,
-      expandedKeys: state.expandedUserMarkerKeys,
-      seenKeys: state.seenUserMarkerKeys
-    });
+    state.latestUserMarkerKey = latestUserMarkerKey(groups);
   }
 
   function clampLevel(level) {
@@ -3447,13 +3443,7 @@ import {
   }
 
   function markerKeyFor(element) {
-    let key = markerKeys.get(element);
-    if (!key) {
-      key = `marker-${nextMarkerKey}`;
-      nextMarkerKey += 1;
-      markerKeys.set(element, key);
-    }
-    return key;
+    return runtimeMarkerKeySequence.keyFor(element);
   }
 
   function markerKeyForHeading(heading) {
@@ -3760,9 +3750,8 @@ import {
     }, 2200);
   }
 
-  function userMarkerRenderItem(group) {
+  function userMarkerRenderItem(group, isExpanded) {
     const { user } = group;
-    const isExpanded = state.expandedUserMarkerKeys.has(group.key);
     const ariaLabel = isExpanded
       ? t("userMarker.collapseAria", { title: user.title })
       : t("userMarker.expandAria", { title: user.title });
@@ -3976,11 +3965,16 @@ import {
 
   function markerRenderItemsForGroup(group) {
     const isSearchActive = Boolean(normalizeSearchQuery(state.markerSearchQuery));
-    const isExpanded = !group.user || isSearchActive || state.expandedUserMarkerKeys.has(group.key);
+    const isExpanded = isUserMarkerExpanded({
+      groupKey: group.key,
+      hasUser: Boolean(group.user),
+      isSearchActive,
+      expandedKeys: state.expandedUserMarkerKeys
+    });
     const items = [];
 
     if (group.user) {
-      items.push(userMarkerRenderItem(group));
+      items.push(userMarkerRenderItem(group, isExpanded));
     }
 
     if (isExpanded && group.visibleHeadings.length) {
@@ -4126,7 +4120,12 @@ import {
     document.documentElement.setAttribute(DEBUG_ATTR, `loaded:${headings.length}:${Math.round(metrics.length)}`);
     const displayedCount = visibleGroups.reduce((count, group) => {
       const isSearchActive = Boolean(normalizeSearchQuery(state.markerSearchQuery));
-      const isExpanded = !group.user || isSearchActive || state.expandedUserMarkerKeys.has(group.key);
+      const isExpanded = isUserMarkerExpanded({
+        groupKey: group.key,
+        hasUser: Boolean(group.user),
+        isSearchActive,
+        expandedKeys: state.expandedUserMarkerKeys
+      });
       return count + (group.user ? 1 : 0) + (isExpanded ? displayedHeadingCount(group, group.visibleHeadings) : 0);
     }, earlierUserGroupCount ? 1 : 0);
     const hasMarkers = markerGroups.length > 0;
@@ -4190,6 +4189,7 @@ import {
     markerListReconciler.reset();
     markerListActiveTracker.reset();
     markerListScrollPersistence.reset();
+    runtimeMarkerKeySequence.reset();
     window.clearTimeout(state.markerNoticeTimer);
     state.markerNoticeTimer = 0;
     if (state.pointerDrag) {
@@ -4224,7 +4224,6 @@ import {
     state.explosionSearchQuery = "";
     resetFoldGroupExpansion();
     state.expandedUserMarkerKeys.clear();
-    state.seenUserMarkerKeys.clear();
     state.latestUserMarkerKey = "";
     state.areEarlierUserGroupsExpanded = false;
   }
@@ -4428,7 +4427,12 @@ import {
       .some((heading) => markerKeyForHeading(heading) === state.activeMarkerKey));
     const isSearchActive = Boolean(normalizeSearchQuery(state.markerSearchQuery));
     const isParentGroupExpanded = Boolean(group
-      && (!group.user || isSearchActive || state.expandedUserMarkerKeys.has(group.key)));
+      && isUserMarkerExpanded({
+        groupKey: group.key,
+        hasUser: Boolean(group.user),
+        isSearchActive,
+        expandedKeys: state.expandedUserMarkerKeys
+      }));
     const visibleHeadings = group
       ? (isSearchActive
         ? group.headings.filter((heading) => matchesSearch(state.markerSearchQuery, heading.title))

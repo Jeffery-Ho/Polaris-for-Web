@@ -2,55 +2,38 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  shouldShowUserMarkerNotLoadedNotice,
-  syncLatestUserMarkerExpansion
+  isUserMarkerExpanded,
+  latestUserMarkerKey,
+  shouldShowUserMarkerNotLoadedNotice
 } from "../src/user-marker-expansion.js";
 
 function userGroup(key, headings = [], hasAssistantMessage = false) {
   return { key, user: { markerKey: key }, headings, hasAssistantMessage };
 }
 
-test("流式新增的最新用户分组未 ready 也默认展开且后续尊重手动折叠", () => {
+test("最新组、上一组和流式新增组都不会被自动展开", () => {
   const expandedKeys = new Set();
-  const seenKeys = new Set();
+  const isExpanded = (groupKey) => isUserMarkerExpanded({
+    groupKey,
+    hasUser: true,
+    isSearchActive: false,
+    expandedKeys
+  });
+  assert.equal(latestUserMarkerKey([
+    userGroup("first"),
+    userGroup("previous", ["已有 Maker"], true),
+    userGroup("latest")
+  ]), "latest");
+  assert.equal(isExpanded("previous"), false);
+  assert.equal(isExpanded("latest"), false);
 
-  let latestKey = syncLatestUserMarkerExpansion({
-    groups: [userGroup("first"), userGroup("second", ["已有 Maker"])],
-    expandedKeys,
-    seenKeys
-  });
-  assert.equal(latestKey, "second");
-  assert.deepEqual([...expandedKeys], ["second"]);
-  assert.deepEqual([...seenKeys], ["first", "second"]);
-
-  latestKey = syncLatestUserMarkerExpansion({
-    groups: [userGroup("first"), userGroup("second"), userGroup("streaming")],
-    expandedKeys,
-    seenKeys
-  });
-  assert.equal(latestKey, "streaming");
-  assert.deepEqual([...expandedKeys], ["second", "streaming"]);
-
-  expandedKeys.delete("streaming");
-  syncLatestUserMarkerExpansion({
-    groups: [userGroup("first"), userGroup("second"), userGroup("streaming")],
-    expandedKeys,
-    seenKeys
-  });
-  assert.equal(expandedKeys.has("streaming"), false);
-
-  syncLatestUserMarkerExpansion({
-    groups: [userGroup("first"), userGroup("second")],
-    expandedKeys,
-    seenKeys
-  });
-  latestKey = syncLatestUserMarkerExpansion({
-    groups: [userGroup("first"), userGroup("second"), userGroup("streaming")],
-    expandedKeys,
-    seenKeys
-  });
-  assert.equal(latestKey, "streaming");
-  assert.equal(expandedKeys.has("streaming"), false);
+  assert.equal(latestUserMarkerKey([
+    userGroup("first"),
+    userGroup("previous", ["已有 Maker"], true),
+    userGroup("latest"),
+    userGroup("streaming")
+  ]), "streaming");
+  assert.equal(isExpanded("streaming"), false);
 });
 
 test("历史空分组仅在没有 AI 消息时提示未加载", () => {
@@ -90,34 +73,28 @@ test("历史分组已有 Maker 时即使消息元数据滞后也允许折叠", (
   }), false);
 });
 
-test("较晚出现且已有 AI 消息的直接上一组只自动展开一次", () => {
-  const expandedKeys = new Set();
-  const seenKeys = new Set();
+test("没有用户分组时不存在最新分组 key", () => {
+  assert.equal(latestUserMarkerKey([]), "");
+});
 
-  syncLatestUserMarkerExpansion({
-    groups: [userGroup("latest")],
-    expandedKeys,
-    seenKeys
-  });
-  syncLatestUserMarkerExpansion({
-    groups: [userGroup("previous", [], true), userGroup("latest")],
-    expandedKeys,
-    seenKeys
-  });
-
-  assert.deepEqual([...expandedKeys], ["latest", "previous"]);
-
-  expandedKeys.delete("previous");
-  syncLatestUserMarkerExpansion({
-    groups: [userGroup("latest")],
-    expandedKeys,
-    seenKeys
-  });
-  syncLatestUserMarkerExpansion({
-    groups: [userGroup("previous", [], true), userGroup("latest")],
-    expandedKeys,
-    seenKeys
-  });
-
-  assert.equal(expandedKeys.has("previous"), false);
+test("用户分组只在手动展开或搜索时展开", () => {
+  const expandedKeys = new Set(["manual"]);
+  assert.equal(isUserMarkerExpanded({
+    groupKey: "latest",
+    hasUser: true,
+    isSearchActive: false,
+    expandedKeys
+  }), false);
+  assert.equal(isUserMarkerExpanded({
+    groupKey: "manual",
+    hasUser: true,
+    isSearchActive: false,
+    expandedKeys
+  }), true);
+  assert.equal(isUserMarkerExpanded({
+    groupKey: "history",
+    hasUser: true,
+    isSearchActive: true,
+    expandedKeys
+  }), true);
 });

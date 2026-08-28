@@ -27,12 +27,15 @@ Maker matching first uses the canonical `sourceMessageKey`, canonical kind, titl
 
 - `coverage: complete` replaces the observed group set. ChatGPT supplies its active API branch as the authoritative message set.
 - `coverage: partial` merges observed groups and preserves unmounted cached groups.
+- A partial observation keeps the cached group and Maker order as its historical baseline. Known records retain their position; new records are inserted beside the nearest observed cached anchor, or appended when no anchor exists, before order values are normalized again.
 - Mounted messages always replace their own cached Maker set, including replacement with an empty set.
 - When `authoritativeMessageKeys` is `null`, unobserved messages are not deleted.
 
 Every scan rebuilds only the runtime `makerKey -> HTMLElement` map. Active-section detection and Chapter View require a current DOM binding, so cached Makers never create empty Chapter sections.
 
-The list continues to show at most the configured number of recent user groups, 20 by default. A restored history with additional groups exposes the existing earlier-question control; expanding it or searching operates on the full snapshot rather than only the mounted DOM.
+The list continues to show at most the configured number of recent user groups, 20 by default. Every user group starts collapsed after page refresh, route activation, or streaming insertion. A restored history with additional groups exposes the existing earlier-question control; expanding it or searching operates on the full snapshot rather than only the mounted DOM.
+
+The page-memory `marker-N` fallback sequence restarts at `marker-1` whenever a conversation scope is activated. It is independent from persistent `makerKey` values: refreshing rebuilds runtime DOM mappings from the beginning without re-keying saved Makers.
 
 ## Storage lifecycle
 

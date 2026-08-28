@@ -180,6 +180,39 @@ function normalizedObservation(observation) {
   };
 }
 
+function mergePartialRecords(cachedRecords, observedRecords, keyFor) {
+  const recordByKey = new Map(cachedRecords.map((record) => [keyFor(record), record]));
+  observedRecords.forEach((record) => recordByKey.set(keyFor(record), record));
+  const orderedKeys = cachedRecords.map(keyFor);
+
+  observedRecords.forEach((record, observedIndex) => {
+    const recordKey = keyFor(record);
+    if (orderedKeys.includes(recordKey)) {
+      return;
+    }
+    let insertionIndex = -1;
+    for (let index = observedIndex - 1; index >= 0; index -= 1) {
+      const previousIndex = orderedKeys.indexOf(keyFor(observedRecords[index]));
+      if (previousIndex >= 0) {
+        insertionIndex = previousIndex + 1;
+        break;
+      }
+    }
+    if (insertionIndex < 0) {
+      for (let index = observedIndex + 1; index < observedRecords.length; index += 1) {
+        const nextIndex = orderedKeys.indexOf(keyFor(observedRecords[index]));
+        if (nextIndex >= 0) {
+          insertionIndex = nextIndex;
+          break;
+        }
+      }
+    }
+    orderedKeys.splice(insertionIndex < 0 ? orderedKeys.length : insertionIndex, 0, recordKey);
+  });
+
+  return orderedKeys.map((recordKey, order) => ({ ...recordByKey.get(recordKey), order }));
+}
+
 export function createChromeStorageAdapter(storageArea) {
   return {
     get(keys) {
@@ -212,6 +245,7 @@ export function createMakerSnapshotModel({
   let bindings = new Map();
   let runtimeGroupTitles = new Map();
   let pendingMakers = [];
+  let runtimeMakerOrders = new Map();
   let writeTimer = 0;
   let persistQueue = Promise.resolve();
   let hasPersistedMaker = false;
@@ -248,6 +282,7 @@ export function createMakerSnapshotModel({
       const headings = makersByGroup.get(maker.groupKey) || [];
       headings.push({
         ...maker,
+        order: runtimeMakerOrders.get(maker.makerKey) ?? maker.order,
         element: bindings.get(maker.makerKey) || null,
         id: `polaris-${maker.makerKey}`
       });
@@ -434,6 +469,7 @@ export function createMakerSnapshotModel({
     bindings = new Map();
     runtimeGroupTitles = new Map();
     pendingMakers = [];
+    runtimeMakerOrders = new Map();
     activeScope = normalizeScope(scopeValue);
     const openedScope = activeScope;
     snapshot = emptySnapshot(openedScope);
@@ -499,11 +535,13 @@ export function createMakerSnapshotModel({
         ? { ...maker, sourceMessageKey: migratedSourceMessageKey }
         : maker;
     });
+    const cachedMakers = snapshot.makers;
     const reusableMakers = [...snapshot.makers, ...pendingMakers];
     const claimedKeys = new Set();
     const nextBindings = new Map();
     const nextPendingMakers = [];
     const observedPersistentMakers = [];
+    const observedRuntimeMakers = [];
 
     runtimeGroupTitles = new Map(observation.groups.map((group) => [group.groupKey, group.title]));
     const observedGroups = observation.groups.map((group) => ({
@@ -514,11 +552,13 @@ export function createMakerSnapshotModel({
       hasAssistantMessage: Boolean(group.hasAssistantMessage)
     }));
     if (observation.coverage === "complete") {
-      snapshot.groups = observedGroups;
+      snapshot.groups = observedGroups.map((group, order) => ({ ...group, order }));
     } else {
-      const groupsByKey = new Map(snapshot.groups.map((group) => [group.groupKey, group]));
-      observedGroups.forEach((group) => groupsByKey.set(group.groupKey, group));
-      snapshot.groups = [...groupsByKey.values()].sort((left, right) => left.order - right.order);
+      snapshot.groups = mergePartialRecords(
+        snapshot.groups,
+        observedGroups,
+        (group) => group.groupKey
+      );
     }
 
     observation.makers.forEach((maker) => {
@@ -551,6 +591,7 @@ export function createMakerSnapshotModel({
       } else {
         nextPendingMakers.push(nextMaker);
       }
+      observedRuntimeMakers.push(nextMaker);
     });
 
     let retainedMakers = snapshot.makers;
@@ -559,13 +600,29 @@ export function createMakerSnapshotModel({
     } else if (observation.coverage === "complete") {
       retainedMakers = retainedMakers.filter((maker) => observedSourceKeys.has(maker.sourceMessageKey));
     }
-    snapshot.makers = [
+    const nextPersistentMakers = [
       ...retainedMakers.filter((maker) => (
         !claimedKeys.has(maker.makerKey)
         && !mountedMessageKeys.has(maker.sourceMessageKey)
       )),
       ...observedPersistentMakers
     ];
+    if (observation.coverage === "partial") {
+      const nextMakerKeys = new Set(nextPersistentMakers.map((maker) => maker.makerKey));
+      snapshot.makers = mergePartialRecords(
+        cachedMakers.filter((maker) => nextMakerKeys.has(maker.makerKey)),
+        observedPersistentMakers,
+        (maker) => maker.makerKey
+      );
+    } else {
+      snapshot.makers = nextPersistentMakers;
+    }
+    const runtimeMakers = observation.coverage === "partial"
+      ? mergePartialRecords(snapshot.makers, observedRuntimeMakers, (maker) => maker.makerKey)
+      : [...snapshot.makers, ...nextPendingMakers]
+        .sort((left, right) => left.order - right.order)
+        .map((maker, order) => ({ ...maker, order }));
+    runtimeMakerOrders = new Map(runtimeMakers.map((maker) => [maker.makerKey, maker.order]));
     snapshot.updatedAt = timestamp;
     snapshot.expiresAt = timestamp + ttlMs;
     bindings = nextBindings;
@@ -588,6 +645,7 @@ export function createMakerSnapshotModel({
     bindings = new Map();
     runtimeGroupTitles = new Map();
     pendingMakers = [];
+    runtimeMakerOrders = new Map();
   }
 
   return { open, reconcile, resolveElement, close };

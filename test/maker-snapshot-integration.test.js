@@ -57,3 +57,20 @@ test("路由打开统一平台 scope 并使用异步激活校验", () => {
   assert.match(open, /makerSnapshotModel\.open\(conversationScope\)/);
   assert.match(open, /makerConversationScopesEqual/);
 });
+
+test("路由重置会重启页面内存 Marker 序列但继续由快照解析持久 Maker", () => {
+  const reset = functionSource("resetRouteState", "removeNavigationRoot");
+  const markerKey = functionSource("markerKeyFor", "markerKeyForHeading");
+  assert.match(reset, /runtimeMarkerKeySequence\.reset\(\)/);
+  assert.match(markerKey, /runtimeMarkerKeySequence\.keyFor\(element\)/);
+  assert.match(contentSource, /makerSnapshotModel\.resolveElement/);
+});
+
+test("用户分组渲染统一使用手动或搜索展开状态", () => {
+  const items = functionSource("markerRenderItemsForGroup", "markerRenderItems");
+  const userItem = functionSource("userMarkerRenderItem", "earlierUserGroupsRenderItem");
+  assert.match(items, /isUserMarkerExpanded/);
+  assert.match(items, /userMarkerRenderItem\(group, isExpanded\)/);
+  assert.match(userItem, /function userMarkerRenderItem\(group, isExpanded\)/);
+  assert.match(userItem, /isExpanded/);
+});
