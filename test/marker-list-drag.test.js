@@ -2,20 +2,15 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  preserveMarkerListDragPosition,
-  shouldStartMarkerListPointerDrag
+  hasExceededMarkerListDragThreshold,
+  preserveMarkerListDragPosition
 } from "../src/marker-list-drag.js";
 
-test("Maker 按钮不会启动列表拖拽", () => {
-  const marker = {};
-  const target = { closest: (selector) => selector === ".gpt-paragraph-nav__marker" ? marker : null };
-
-  assert.equal(shouldStartMarkerListPointerDrag(target), false);
-});
-
-test("列表空白区域仍可启动拖拽", () => {
-  assert.equal(shouldStartMarkerListPointerDrag({ closest: () => null }), true);
-  assert.equal(shouldStartMarkerListPointerDrag(null), true);
+test("移动必须超过 4px 才进入拖动", () => {
+  assert.equal(hasExceededMarkerListDragThreshold({ deltaX: 4, deltaY: 0, threshold: 4 }), false);
+  assert.equal(hasExceededMarkerListDragThreshold({ deltaX: 0, deltaY: -4, threshold: 4 }), false);
+  assert.equal(hasExceededMarkerListDragThreshold({ deltaX: 4.01, deltaY: 0, threshold: 4 }), true);
+  assert.equal(hasExceededMarkerListDragThreshold({ deltaX: 0, deltaY: -5, threshold: 4 }), true);
 });
 
 test("流式插入 Maker 后同步拖拽起点和最新滚动范围", () => {

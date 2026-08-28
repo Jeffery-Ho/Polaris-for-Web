@@ -1,4 +1,6 @@
-const MARKER_SELECTOR = ".gpt-paragraph-nav__marker";
+export function hasExceededMarkerListDragThreshold({ deltaX, deltaY, threshold }) {
+  return Math.max(Math.abs(deltaX), Math.abs(deltaY)) > threshold;
+}
 
 export function preserveMarkerListDragPosition({
   drag,
@@ -11,8 +13,4 @@ export function preserveMarkerListDragPosition({
   }
   drag.startScrollTop += scrollDelta;
   drag.maxScrollTop = maxScrollTop;
-}
-
-export function shouldStartMarkerListPointerDrag(target) {
-  return !(target && typeof target.closest === "function" && target.closest(MARKER_SELECTOR));
 }

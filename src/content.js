@@ -10,13 +10,17 @@ import { pageThemeFromColors } from "./page-theme.js";
 import { releaseNotesForUpdate } from "./release-notes.js";
 import { nextControlTabIndex } from "./control-tab-keyboard.js";
 import {
-  preserveMarkerListDragPosition,
-  shouldStartMarkerListPointerDrag
+  hasExceededMarkerListDragThreshold,
+  preserveMarkerListDragPosition
 } from "./marker-list-drag.js";
 import { createMarkerListReconciler } from "./marker-list-reconciler.js";
 import { createMarkerListScrollPersistence } from "./marker-list-scroll-persistence.js";
 import { createMarkerMotionSuppressor } from "./marker-motion-suppression.js";
 import { createMarkerRenderStateMachine } from "./marker-render-state-machine.js";
+import {
+  shouldAutoExpandActiveFoldGroup,
+  toggleFoldGroupExpansion
+} from "./marker-group-expansion.js";
 import {
   shouldShowUserMarkerNotLoadedNotice,
   syncLatestUserMarkerExpansion
@@ -274,6 +278,7 @@ import {
     pendingMakerJumps: new Set(),
     explosionSearchQuery: "",
     expandedFoldGroups: new Set(),
+    manuallyCollapsedFoldGroups: new Set(),
     expandedUserMarkerKeys: new Set(),
     seenUserMarkerKeys: new Set(),
     latestUserMarkerKey: "",
@@ -1367,6 +1372,11 @@ import {
     writeSyncConfig(config);
   }
 
+  function resetFoldGroupExpansion() {
+    state.expandedFoldGroups.clear();
+    state.manuallyCollapsedFoldGroups.clear();
+  }
+
   function watchConfigChanges() {
     if (!hasSyncStorage() || !chrome.storage.onChanged) {
       return;
@@ -1383,9 +1393,13 @@ import {
       }
 
       const userGroupLimitChanged = state.config.maxVisibleUserGroups !== nextConfig.maxVisibleUserGroups;
+      const foldThresholdChanged = state.config.foldThreshold !== nextConfig.foldThreshold;
       state.config = nextConfig;
       if (userGroupLimitChanged) {
         state.areEarlierUserGroupsExpanded = false;
+      }
+      if (foldThresholdChanged) {
+        resetFoldGroupExpansion();
       }
       render();
     });
@@ -1436,9 +1450,13 @@ import {
         })),
       markerTypesLabel: t("settings.markerTypes"),
       onConfigChange(key, value) {
+        const previousFoldThreshold = state.config.foldThreshold;
         state.config = normalizeConfig({ ...state.config, [key]: value });
         if (key === "maxVisibleUserGroups") {
           state.areEarlierUserGroupsExpanded = false;
+        }
+        if (key === "foldThreshold" && previousFoldThreshold !== state.config.foldThreshold) {
+          resetFoldGroupExpansion();
         }
       },
       onConfigCommit() {
@@ -1467,6 +1485,7 @@ import {
       onReset() {
         state.config = normalizeConfig(DEFAULT_CONFIG);
         state.areEarlierUserGroupsExpanded = false;
+        resetFoldGroupExpansion();
         saveConfig(state.config);
         render();
       },
@@ -3780,11 +3799,11 @@ import {
 
     if (marker.dataset.markerItemType === "fold") {
       const foldKey = marker.dataset.foldKey || "";
-      if (state.expandedFoldGroups.has(foldKey)) {
-        state.expandedFoldGroups.delete(foldKey);
-      } else {
-        state.expandedFoldGroups.add(foldKey);
-      }
+      toggleFoldGroupExpansion({
+        foldKey,
+        expandedKeys: state.expandedFoldGroups,
+        manuallyCollapsedKeys: state.manuallyCollapsedFoldGroups
+      });
       render();
       return;
     }
@@ -4084,7 +4103,7 @@ import {
     window.clearTimeout(state.chatGPTConversationRefreshTimer);
     state.chatGPTConversationRefreshTimer = 0;
     state.explosionSearchQuery = "";
-    state.expandedFoldGroups.clear();
+    resetFoldGroupExpansion();
     state.expandedUserMarkerKeys.clear();
     state.seenUserMarkerKeys.clear();
     state.latestUserMarkerKey = "";
@@ -4226,11 +4245,15 @@ import {
     markerRenderStateMachine.request();
   }
 
-  function getActiveHeading() {
+  function getSelectedHeading() {
     if (!state.activeMarkerKey) {
       return null;
     }
-    const heading = state.headings.find((item) => markerKeyForHeading(item) === state.activeMarkerKey) || null;
+    return state.headings.find((item) => markerKeyForHeading(item) === state.activeMarkerKey) || null;
+  }
+
+  function getActiveHeading() {
+    const heading = getSelectedHeading();
     return heading && currentElementForHeading(heading) ? heading : null;
   }
 
@@ -4266,21 +4289,31 @@ import {
   }
 
   function updateActiveMarker() {
-    if (!state.headings.length || !state.activeMarkerKey) {
+    if (!state.activeMarkerKey) {
       clearActiveMarker();
       return;
     }
 
-    const active = getActiveHeading();
-    if (!active) {
+    const selected = getSelectedHeading();
+    if (!selected) {
       clearActiveMarker();
+      return;
+    }
+
+    const activeElement = currentElementForHeading(selected);
+    if (!activeElement) {
+      state.activeHeading = null;
+      updateFloatingActiveMarker(syncActiveMarker(markerKeyForHeading(selected)));
       return;
     }
 
     const group = state.markerGroups.find((candidate) => candidate.headings
       .some((heading) => markerKeyForHeading(heading) === state.activeMarkerKey));
+    const isSearchActive = Boolean(normalizeSearchQuery(state.markerSearchQuery));
+    const isParentGroupExpanded = Boolean(group
+      && (!group.user || isSearchActive || state.expandedUserMarkerKeys.has(group.key)));
     const visibleHeadings = group
-      ? (normalizeSearchQuery(state.markerSearchQuery)
+      ? (isSearchActive
         ? group.headings.filter((heading) => matchesSearch(state.markerSearchQuery, heading.title))
         : group.headings)
       : filteredHeadings(state.headings);
@@ -4291,7 +4324,11 @@ import {
       if (markerIndex >= 0 && markerIndex < fullGroupCount * size) {
         const groupIndex = Math.floor(markerIndex / size);
         const foldKey = foldKeyFor(group, groupIndex);
-        if (!state.expandedFoldGroups.has(foldKey)) {
+        if (!state.expandedFoldGroups.has(foldKey) && shouldAutoExpandActiveFoldGroup({
+          foldKey,
+          isParentExpanded: isParentGroupExpanded,
+          manuallyCollapsedKeys: state.manuallyCollapsedFoldGroups
+        })) {
           state.expandedFoldGroups.add(foldKey);
           scheduleRender();
           return;
@@ -4299,8 +4336,8 @@ import {
       }
     }
 
-    state.activeHeading = currentElementForHeading(active);
-    updateFloatingActiveMarker(syncActiveMarker(markerKeyForHeading(active)));
+    state.activeHeading = activeElement;
+    updateFloatingActiveMarker(syncActiveMarker(markerKeyForHeading(selected)));
   }
 
   function isMarkerVisibleInViewport(marker) {
@@ -4506,9 +4543,6 @@ import {
     state.suppressNextClick = false;
     window.clearTimeout(state.suppressNextClickTimer);
     state.suppressNextClickTimer = 0;
-    if (!shouldStartMarkerListPointerDrag(event.target)) {
-      return;
-    }
     event.preventDefault();
     event.stopImmediatePropagation();
   }
@@ -4547,10 +4581,6 @@ import {
       return;
     }
 
-    if (!shouldStartMarkerListPointerDrag(event.target)) {
-      return;
-    }
-
     state.pointerDrag = {
       kind: "list",
       pointerId: event.pointerId,
@@ -4572,7 +4602,11 @@ import {
 
     const deltaX = event.clientX - drag.startX;
     const deltaY = event.clientY - drag.startY;
-    if (!drag.didDrag && Math.max(Math.abs(deltaX), Math.abs(deltaY)) < POINTER_DRAG_THRESHOLD) {
+    if (!drag.didDrag && !hasExceededMarkerListDragThreshold({
+      deltaX,
+      deltaY,
+      threshold: POINTER_DRAG_THRESHOLD
+    })) {
       return;
     }
 

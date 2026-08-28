@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 174
+
+- Date: 2026-08-28
+- Version: 0.41.1
+- Summary: Lets manual Maker grouping and scrolling override the active item.
+- Notes: Stack and user groups can remain collapsed while one of their Makers stays selected. Dragging more than 4 px from any Maker or group card scrolls the queue and suppresses the click, while a light click keeps the existing jump or collapse action. Wheel, trackpad, and drag input continue to cancel temporary Active Maker positioning. `pnpm test` passed 118/118, `pnpm check` passed, and the single `pnpm build` completed successfully; `dist/manifest.json` is `0.41.1(174)`. Live unpacked-extension validation remains pending because no controllable Chrome session was available.
+
 ## 173
 
 - Date: 2026-08-28
