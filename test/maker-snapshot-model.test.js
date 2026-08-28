@@ -187,6 +187,187 @@ test("页面刷新后从本地快照恢复相同 Maker key", async () => {
   assert.equal(restoredView.groups[0].user.title, "请总结");
 });
 
+test("真实消息 ID 快照通过派生身份别名就地迁移并重新绑定原 Maker key", async () => {
+  const storage = createMemoryStorage();
+  const firstModel = createMakerSnapshotModel({
+    storage,
+    createKey: () => "maker-alias-migrated",
+    now: () => 5_500
+  });
+  await firstModel.open(chatGPTScope("chatgpt:conversation-alias"));
+  firstModel.reconcile(observation({ isConnected: true }));
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
+  const replacementElement = { isConnected: true };
+  const restoredModel = createMakerSnapshotModel({
+    storage,
+    now: () => 6_000,
+    setTimer: (callback) => setTimeout(callback, 0),
+    clearTimer: (timer) => clearTimeout(timer)
+  });
+  await restoredModel.open(chatGPTScope("chatgpt:conversation-alias"));
+  const derivedObservation = observation(replacementElement);
+  derivedObservation.authoritativeMessageKeys = ["chatgpt:assistant-derived:user-1:0"];
+  derivedObservation.mountedMessageKeys = ["chatgpt:assistant-derived:user-1:0"];
+  derivedObservation.makers[0].sourceMessageKey = "chatgpt:assistant-derived:user-1:0";
+  derivedObservation.makers[0].sourceMessageAliases = ["assistant-1"];
+
+  const migrated = restoredModel.reconcile(derivedObservation).groups[0].headings[0];
+  assert.equal(migrated.makerKey, "maker-alias-migrated");
+  assert.equal(restoredModel.resolveElement("maker-alias-migrated"), replacementElement);
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  const snapshot = Object.values(storage.values)
+    .find((value) => value?.conversationKey === "chatgpt:conversation-alias");
+  assert.deepEqual(snapshot.makers.map((maker) => maker.sourceMessageKey), [
+    "chatgpt:assistant-derived:user-1:0"
+  ]);
+  assert.equal("sourceMessageAliases" in snapshot.makers[0], false);
+});
+
+test("未挂载的活跃消息也通过 observation 别名迁移并保留缓存 Maker", async () => {
+  const storage = createMemoryStorage();
+  const firstModel = createMakerSnapshotModel({
+    storage,
+    createKey: () => "maker-unmounted-alias",
+    now: () => 6_250
+  });
+  await firstModel.open(chatGPTScope("chatgpt:conversation-unmounted-alias"));
+  firstModel.reconcile(observation({ isConnected: true }));
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
+  const restoredModel = createMakerSnapshotModel({ storage, now: () => 6_300 });
+  await restoredModel.open(chatGPTScope("chatgpt:conversation-unmounted-alias"));
+  const unmounted = observation(null);
+  unmounted.authoritativeMessageKeys = ["chatgpt:assistant-derived:user-1:0"];
+  unmounted.sourceMessageAliases = {
+    "chatgpt:assistant-derived:user-1:0": ["assistant-1"]
+  };
+  unmounted.mountedMessageKeys = [];
+  unmounted.makers = [];
+
+  const cached = restoredModel.reconcile(unmounted).groups[0].headings[0];
+  assert.equal(cached.makerKey, "maker-unmounted-alias");
+  assert.equal(cached.sourceMessageKey, "chatgpt:assistant-derived:user-1:0");
+  assert.equal(restoredModel.resolveElement("maker-unmounted-alias"), null);
+});
+
+test("25 个稳定用户分组在无 assistant ID 时仍持久化并恢复原 Maker key", async () => {
+  const storage = createMemoryStorage();
+  let nextKey = 1;
+  const firstModel = createMakerSnapshotModel({
+    storage,
+    createKey: () => `maker-history-${nextKey++}`,
+    now: () => 6_500
+  });
+  const scope = { platformKey: "kimi", conversationKey: "https://www.kimi.com:history-25", persistence: true };
+  await firstModel.open(scope);
+  const groups = Array.from({ length: 25 }, (_, index) => ({
+    groupKey: `kimi:user:user-${index}`,
+    userMessageKey: `kimi:user:user-${index}`,
+    previewTitle: `问题 ${index}`,
+    title: `问题 ${index}`,
+    order: index,
+    hasAssistantMessage: true
+  }));
+  const makers = groups.map((group, index) => ({
+    sourceMessageKey: `kimi:assistant-derived:user-${index}:0`,
+    sourceMessageAliases: [],
+    groupKey: group.groupKey,
+    canonicalKind: "text",
+    ordinalWithinKind: 0,
+    titleFingerprint: `回答 ${index}`,
+    title: `回答 ${index}`,
+    level: 2,
+    sourceType: "heading",
+    order: index,
+    lastKnownScrollRatio: index / 25,
+    element: { isConnected: true }
+  }));
+  firstModel.reconcile({
+    coverage: "partial",
+    authoritativeMessageKeys: null,
+    groups,
+    mountedMessageKeys: makers.map((maker) => maker.sourceMessageKey),
+    makers
+  });
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
+  const restoredModel = createMakerSnapshotModel({ storage, now: () => 7_000 });
+  const restored = await restoredModel.open(scope);
+  assert.equal(restored.groups.length, 25);
+  assert.deepEqual(
+    restored.groups.map((group) => group.headings[0].makerKey),
+    Array.from({ length: 25 }, (_, index) => `maker-history-${index + 1}`)
+  );
+});
+
+test("同一真实 ID 别名同时指向多个观察结果时不误复用缓存 key", async () => {
+  const storage = createMemoryStorage();
+  let nextKey = 1;
+  const model = createMakerSnapshotModel({
+    storage,
+    createKey: () => `maker-conflict-${nextKey++}`,
+    now: () => 7_500
+  });
+  await model.open(chatGPTScope("chatgpt:conversation-alias-conflict"));
+  model.reconcile(observation({ isConnected: true }));
+
+  const conflicting = observation({ isConnected: true });
+  conflicting.authoritativeMessageKeys = ["derived-1", "derived-2"];
+  conflicting.mountedMessageKeys = ["derived-1", "derived-2"];
+  conflicting.makers = [
+    {
+      ...conflicting.makers[0],
+      sourceMessageKey: "derived-1",
+      sourceMessageAliases: ["assistant-1"]
+    },
+    {
+      ...conflicting.makers[0],
+      sourceMessageKey: "derived-2",
+      sourceMessageAliases: ["assistant-1"],
+      element: { isConnected: true }
+    }
+  ];
+  const result = model.reconcile(conflicting).groups[0].headings;
+
+  assert.deepEqual(result.map((maker) => maker.makerKey), ["maker-conflict-2", "maker-conflict-3"]);
+});
+
+test("同一消息的多个 Maker 可共享真实 ID 别名并分别迁移原 key", async () => {
+  const storage = createMemoryStorage();
+  let nextKey = 1;
+  const model = createMakerSnapshotModel({
+    storage,
+    createKey: () => `maker-shared-alias-${nextKey++}`,
+    now: () => 8_000
+  });
+  await model.open(chatGPTScope("chatgpt:conversation-shared-alias"));
+  const original = observation({ isConnected: true });
+  original.makers.push({
+    ...original.makers[0],
+    ordinalWithinKind: 1,
+    order: 1,
+    element: { isConnected: true }
+  });
+  model.reconcile(original);
+
+  const migrated = structuredClone(original);
+  migrated.authoritativeMessageKeys = ["derived-1"];
+  migrated.mountedMessageKeys = ["derived-1"];
+  migrated.makers = original.makers.map((maker) => ({
+    ...maker,
+    sourceMessageKey: "derived-1",
+    sourceMessageAliases: ["assistant-1"],
+    element: { isConnected: true }
+  }));
+  const result = model.reconcile(migrated).groups[0].headings;
+
+  assert.deepEqual(result.map((maker) => maker.makerKey), [
+    "maker-shared-alias-1",
+    "maker-shared-alias-2"
+  ]);
+});
+
 test("七天过期快照不会恢复", async () => {
   const storage = createMemoryStorage();
   let timestamp = 0;

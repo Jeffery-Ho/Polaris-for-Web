@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 178
+
+- Date: 2026-08-28
+- Version: 0.42.3
+- Summary: Restores historical Maker snapshots and DOM mappings when assistant IDs are temporarily unavailable.
+- Notes: Stable conversations now identify responses by platform, stable user group, and assistant ordinal; real assistant IDs are runtime aliases that migrate existing v2 records without changing `makerKey`. ChatGPT uses its active branch plus confirmed DOM group order, and ambiguous partial multi-reply DOM remains memory-only; other platforms derive identities only for verified user groups and otherwise remain memory-only. Restored 21, 25, or 80-group histories keep the 20-group default and expose the earlier-question entry. `pnpm test` passed 167/167, `pnpm check` passed, and the final `pnpm build` completed successfully; `dist/manifest.json` is `0.42.3(178)`. The build was regenerated after review found and fixed the ambiguous ChatGPT fallback. Live unpacked-extension refresh and remapping validation on ChatGPT and another signed-in platform remains pending because the controllable browser had no open signed-in extension session.
+
 ## 177
 
 - Date: 2026-08-28

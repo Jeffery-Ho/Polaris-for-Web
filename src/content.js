@@ -1,6 +1,10 @@
 import { mountSettingsPanel } from "./settings-panel.jsx";
 import { chatGPTConversationIdFromPath, parseChatGPTConversation } from "./chatgpt-conversation.js";
 import {
+  assignChatGPTAssistantIdentities,
+  createChatGPTSourceIdentityIndex
+} from "./chatgpt-marker-groups.js";
+import {
   createChromeStorageAdapter,
   createMakerSnapshotModel
 } from "./maker-snapshot-model.js";
@@ -21,6 +25,7 @@ import {
 } from "./marker-list-native-scroll.js";
 import { createMarkerListReconciler } from "./marker-list-reconciler.js";
 import { createMarkerListScrollPersistence } from "./marker-list-scroll-persistence.js";
+import { limitMarkerGroups } from "./marker-group-limit.js";
 import { createMarkerMotionSuppressor } from "./marker-motion-suppression.js";
 import { createMarkerRenderStateMachine } from "./marker-render-state-machine.js";
 import {
@@ -2633,7 +2638,9 @@ import {
     return Math.min(1, Math.max(0, (element.getBoundingClientRect().top + window.scrollY) / maxScrollTop));
   }
 
-  function collectChatGPTMarkerGroups(conversation, assistantContainers, headings) {
+  function collectChatGPTMarkerGroups(conversation, userContainers, assistantContainers, headings) {
+    const adapter = currentMakerPlatformAdapter();
+    const sourceIdentityIndex = createChatGPTSourceIdentityIndex(conversation, adapter);
     const groups = conversation.userMessages.map((message) => {
       const title = normalizeTitle(message.text);
       return {
@@ -2645,26 +2652,37 @@ import {
         hasAssistantMessage: message.hasAssistantMessage
       };
     });
-    const activeAssistantMessageIds = new Set(conversation.activeAssistantMessageIds || []);
+    const conversationEntries = [
+      ...userContainers.map((element) => ({ type: "user", element })),
+      ...assistantContainers.map((element) => ({ type: "assistant", element }))
+    ].sort((left, right) => compareConversationPosition(left.element, right.element));
+    const assistantIdentityByElement = assignChatGPTAssistantIdentities({
+      entries: conversationEntries,
+      conversation,
+      sourceIdentityIndex,
+      messageIdForElement: chatGPTMessageIdForContainer
+    });
     const ordinalByAssistantAndKind = new Map();
     const makers = [];
 
     headings.forEach((heading, order) => {
       const assistantContainer = assistantContainerForHeading(heading, assistantContainers);
-      const observedAssistantMessageId = chatGPTMessageIdForContainer(assistantContainer);
-      if (observedAssistantMessageId && !activeAssistantMessageIds.has(observedAssistantMessageId)) {
+      const assistantIdentity = assistantIdentityByElement.get(assistantContainer) || {};
+      if (assistantIdentity.inactive) {
         return;
       }
-      const assistantMessageId = activeAssistantMessageIds.has(observedAssistantMessageId)
-        ? observedAssistantMessageId
-        : "";
-      const userMessageId = conversation.assistantToUserMessageId[observedAssistantMessageId] || "";
+      const sourceMessageKey = assistantIdentity.sourceMessageKey || "";
+      const userMessageId = assistantIdentity.userMessageId || "";
       const canonicalKind = canonicalKindForHeading(heading);
-      const ordinalKey = `${assistantMessageId}:${canonicalKind}`;
+      const assistantRuntimeKey = assistantContainer
+        ? assistantContainers.indexOf(assistantContainer)
+        : "orphan";
+      const ordinalKey = `${sourceMessageKey || `runtime:${assistantRuntimeKey}`}:${canonicalKind}`;
       const ordinalWithinKind = ordinalByAssistantAndKind.get(ordinalKey) || 0;
       ordinalByAssistantAndKind.set(ordinalKey, ordinalWithinKind + 1);
       makers.push({
-        sourceMessageKey: assistantMessageId,
+        sourceMessageKey,
+        sourceMessageAliases: assistantIdentity.sourceMessageAliases || [],
         groupKey: userMessageId ? `chatgpt-user-${userMessageId}` : "orphan",
         canonicalKind,
         ordinalWithinKind,
@@ -2680,11 +2698,12 @@ import {
 
     state.makerSnapshotView = makerSnapshotModel.reconcile({
       coverage: "complete",
-      authoritativeMessageKeys: conversation.activeAssistantMessageIds || [],
+      authoritativeMessageKeys: sourceIdentityIndex.authoritativeMessageKeys,
+      sourceMessageAliases: sourceIdentityIndex.sourceMessageAliases,
       groups,
-      mountedMessageKeys: assistantContainers
-        .map((container) => chatGPTMessageIdForContainer(container))
-        .filter(Boolean),
+      mountedMessageKeys: [...new Set(assistantContainers
+        .map((container) => assistantIdentityByElement.get(container)?.sourceMessageKey)
+        .filter(Boolean))],
       makers
     });
     return state.makerSnapshotView.groups;
@@ -2693,7 +2712,7 @@ import {
   function collectMarkerGroups(userContainers, assistantContainers, headings) {
     if (isChatGPTPage()) {
       if (state.chatGPTConversation) {
-        return collectChatGPTMarkerGroups(state.chatGPTConversation, assistantContainers, headings);
+        return collectChatGPTMarkerGroups(state.chatGPTConversation, userContainers, assistantContainers, headings);
       }
       if (state.makerSnapshotView?.groups.length) {
         return state.makerSnapshotView.groups;
@@ -2758,10 +2777,16 @@ import {
       const groupKey = currentUser?.markerKey || "orphan";
       const assistantOrdinal = assistantOrdinalByGroup.get(groupKey) || 0;
       assistantOrdinalByGroup.set(groupKey, assistantOrdinal + 1);
-      const sourceMessageKey = adapter.sourceIdentity(entry.element, groupKey, assistantOrdinal);
-      assistantIdentityByElement.set(entry.element, currentUser?.hasPersistentIdentity
-        ? sourceMessageKey
-        : "");
+      const sourceMessageKey = currentUser?.hasPersistentIdentity
+        ? adapter.sourceIdentity(entry.element, groupKey, assistantOrdinal, { allowDerived: true })
+        : "";
+      const sourceMessageAlias = currentUser?.hasPersistentIdentity
+        ? adapter.sourceIdentity(entry.element, groupKey, assistantOrdinal)
+        : "";
+      assistantIdentityByElement.set(entry.element, {
+        sourceMessageKey,
+        sourceMessageAliases: sourceMessageAlias ? [sourceMessageAlias] : []
+      });
       if (currentUser) {
         groupsByKey.get(currentUser.markerKey).hasAssistantMessage = true;
       }
@@ -2776,9 +2801,11 @@ import {
           .pop() || null;
       }
       const group = user ? groupsByKey.get(user.markerKey) : orphanGroup;
+      const assistantIdentity = assistantIdentityByElement.get(assistantContainer);
       group.headings.push({
         ...heading,
-        sourceMessageKey: assistantIdentityByElement.get(assistantContainer) || ""
+        sourceMessageKey: assistantIdentity?.sourceMessageKey || "",
+        sourceMessageAliases: assistantIdentity?.sourceMessageAliases || []
       });
     });
 
@@ -2811,6 +2838,7 @@ import {
         ordinalBySourceAndKind.set(ordinalKey, ordinalWithinKind + 1);
         return {
           sourceMessageKey: heading.sourceMessageKey,
+          sourceMessageAliases: heading.sourceMessageAliases || [],
           groupKey: group.key,
           canonicalKind,
           ordinalWithinKind,
@@ -2826,9 +2854,16 @@ import {
     state.makerSnapshotView = makerSnapshotModel.reconcile({
       coverage: adapter.coverage(),
       authoritativeMessageKeys: null,
+      sourceMessageAliases: Object.fromEntries(
+        [...assistantIdentityByElement.values()]
+          .filter((identity) => identity.sourceMessageKey && identity.sourceMessageAliases.length)
+          .map((identity) => [identity.sourceMessageKey, identity.sourceMessageAliases])
+      ),
       groups,
       mountedMessageKeys: [...new Set(
-        [...assistantIdentityByElement.values()].filter(Boolean)
+        [...assistantIdentityByElement.values()]
+          .map((identity) => identity.sourceMessageKey)
+          .filter(Boolean)
       )],
       makers
     });
@@ -3359,21 +3394,12 @@ import {
   }
 
   function limitedMarkerGroups(groups = state.markerGroups) {
-    if (normalizeSearchQuery(state.markerSearchQuery)) {
-      return { groups, earlierUserGroupCount: 0 };
-    }
-
-    const userGroups = groups.filter((group) => group.user);
-    const earlierUserGroupCount = Math.max(0, userGroups.length - state.config.maxVisibleUserGroups);
-    if (!earlierUserGroupCount || state.areEarlierUserGroupsExpanded) {
-      return { groups, earlierUserGroupCount };
-    }
-
-    const hiddenGroupKeys = new Set(userGroups.slice(0, earlierUserGroupCount).map((group) => group.key));
-    return {
-      groups: groups.filter((group) => !hiddenGroupKeys.has(group.key)),
-      earlierUserGroupCount
-    };
+    return limitMarkerGroups({
+      groups,
+      maxVisibleUserGroups: state.config.maxVisibleUserGroups,
+      areEarlierUserGroupsExpanded: state.areEarlierUserGroupsExpanded,
+      hasSearchQuery: Boolean(normalizeSearchQuery(state.markerSearchQuery))
+    });
   }
 
   function filteredExplosionSections(sections = state.explosionSections) {

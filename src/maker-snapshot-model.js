@@ -91,7 +91,8 @@ function byteLength(value) {
 
 function sameLocator(left, right) {
   return Boolean(left.sourceMessageKey)
-    && left.sourceMessageKey === right.sourceMessageKey
+    && (left.sourceMessageKey === right.sourceMessageKey
+      || right.sourceMessageAliases.includes(left.sourceMessageKey))
     && left.canonicalKind === right.canonicalKind
     && left.ordinalWithinKind === right.ordinalWithinKind;
 }
@@ -122,11 +123,48 @@ function persistedGroup(group) {
 }
 
 function serializableMaker(maker) {
-  const { element: _element, ...record } = maker;
+  const { element: _element, sourceMessageAliases: _sourceMessageAliases, ...record } = maker;
   return record;
 }
 
+function sourceAliasEntries(value) {
+  if (value instanceof Map) {
+    return [...value.entries()];
+  }
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return Object.entries(value);
+  }
+  return [];
+}
+
 function normalizedObservation(observation) {
+  const rawMakers = Array.isArray(observation.makers) ? observation.makers : [];
+  const sourceKeysByAlias = new Map();
+  const aliasesBySourceKey = new Map();
+  const registerAliases = (sourceMessageKey, aliases) => {
+    if (!sourceMessageKey || !Array.isArray(aliases)) {
+      return;
+    }
+    const sourceAliases = aliasesBySourceKey.get(sourceMessageKey) || new Set();
+    [...new Set(aliases)].filter(Boolean).forEach((alias) => {
+      sourceAliases.add(alias);
+      const sourceKeys = sourceKeysByAlias.get(alias) || new Set();
+      sourceKeys.add(sourceMessageKey);
+      sourceKeysByAlias.set(alias, sourceKeys);
+    });
+    aliasesBySourceKey.set(sourceMessageKey, sourceAliases);
+  };
+  sourceAliasEntries(observation.sourceMessageAliases)
+    .forEach(([sourceMessageKey, aliases]) => registerAliases(sourceMessageKey, aliases));
+  rawMakers.forEach((maker) => {
+    registerAliases(maker.sourceMessageKey, maker.sourceMessageAliases);
+  });
+  const unambiguousAliasesBySourceKey = new Map(
+    [...aliasesBySourceKey.entries()].map(([sourceMessageKey, aliases]) => [
+      sourceMessageKey,
+      [...aliases].filter((alias) => sourceKeysByAlias.get(alias)?.size === 1)
+    ])
+  );
   return {
     coverage: observation.coverage === "partial" ? "partial" : "complete",
     authoritativeMessageKeys: Array.isArray(observation.authoritativeMessageKeys)
@@ -134,7 +172,11 @@ function normalizedObservation(observation) {
       : null,
     mountedMessageKeys: observation.mountedMessageKeys || [],
     groups: observation.groups || [],
-    makers: observation.makers || []
+    sourceMessageAliases: unambiguousAliasesBySourceKey,
+    makers: rawMakers.map((maker) => ({
+      ...maker,
+      sourceMessageAliases: unambiguousAliasesBySourceKey.get(maker.sourceMessageKey) || []
+    }))
   };
 }
 
@@ -447,6 +489,16 @@ export function createMakerSnapshotModel({
     const authoritativeMessageKeys = observation.authoritativeMessageKeys === null
       ? null
       : new Set(observation.authoritativeMessageKeys);
+    const canonicalSourceKeyByAlias = new Map();
+    observation.sourceMessageAliases.forEach((aliases, sourceMessageKey) => {
+      aliases.forEach((alias) => canonicalSourceKeyByAlias.set(alias, sourceMessageKey));
+    });
+    snapshot.makers = snapshot.makers.map((maker) => {
+      const migratedSourceMessageKey = canonicalSourceKeyByAlias.get(maker.sourceMessageKey);
+      return migratedSourceMessageKey
+        ? { ...maker, sourceMessageKey: migratedSourceMessageKey }
+        : maker;
+    });
     const reusableMakers = [...snapshot.makers, ...pendingMakers];
     const claimedKeys = new Set();
     const nextBindings = new Map();
@@ -508,7 +560,10 @@ export function createMakerSnapshotModel({
       retainedMakers = retainedMakers.filter((maker) => observedSourceKeys.has(maker.sourceMessageKey));
     }
     snapshot.makers = [
-      ...retainedMakers.filter((maker) => !mountedMessageKeys.has(maker.sourceMessageKey)),
+      ...retainedMakers.filter((maker) => (
+        !claimedKeys.has(maker.makerKey)
+        && !mountedMessageKeys.has(maker.sourceMessageKey)
+      )),
       ...observedPersistentMakers
     ];
     snapshot.updatedAt = timestamp;

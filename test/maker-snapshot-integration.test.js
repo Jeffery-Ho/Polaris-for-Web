@@ -22,6 +22,16 @@ test("非 ChatGPT DOM 观察结果也进入统一 reconcile", () => {
   assert.match(collection, /coverage: adapter\.coverage\(\)/);
   assert.match(collection, /authoritativeMessageKeys: null/);
   assert.match(collection, /makerSnapshotModel\.reconcile/);
+  assert.match(collection, /allowDerived: true/);
+  assert.match(collection, /sourceMessageAliases/);
+});
+
+test("ChatGPT 活跃分支以派生身份协调并把真实 ID 作为运行时别名", () => {
+  const collection = functionSource("collectChatGPTMarkerGroups", "collectMarkerGroups");
+  assert.match(collection, /createChatGPTSourceIdentityIndex/);
+  assert.match(collection, /authoritativeMessageKeys: sourceIdentityIndex\.authoritativeMessageKeys/);
+  assert.match(collection, /sourceMessageAliases: sourceIdentityIndex\.sourceMessageAliases/);
+  assert.match(collection, /assignChatGPTAssistantIdentities/);
 });
 
 test("Maker DOM 映射与两秒恢复不再受 ChatGPT 平台限制", () => {

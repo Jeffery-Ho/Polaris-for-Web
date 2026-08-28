@@ -141,12 +141,12 @@ export function createMakerPlatformAdapter(platformKey) {
   }
 
   function sourceIdentity(element, groupKey, assistantIndex, { allowDerived = false } = {}) {
+    if (allowDerived && groupKey.startsWith(userPrefix)) {
+      return `${platformKey}:assistant-derived:${groupKey.slice(userPrefix.length)}:${assistantIndex}`;
+    }
     const messageId = messageIdentity(element);
     if (messageId) {
       return `${platformKey}:assistant:${messageId}`;
-    }
-    if (allowDerived && groupKey.startsWith(userPrefix)) {
-      return `${platformKey}:assistant-derived:${groupKey.slice(userPrefix.length)}:${assistantIndex}`;
     }
     return "";
   }

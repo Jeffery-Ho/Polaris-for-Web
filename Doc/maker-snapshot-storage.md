@@ -11,7 +11,7 @@ Each platform Adapter identifies the current conversation and converts its API o
 `MakerSnapshotModel` owns the lifecycle behind four operations:
 
 - `open({ platformKey, conversationKey, persistence })` restores one scope and performs expiration cleanup.
-- `reconcile({ coverage, authoritativeMessageKeys, mountedMessageKeys, groups, makers })` merges platform observations.
+- `reconcile({ coverage, authoritativeMessageKeys, mountedMessageKeys, sourceMessageAliases, groups, makers })` merges platform observations. `sourceMessageAliases` exists only for the current observation and is never persisted.
 - `resolveElement(makerKey)` returns the current runtime DOM binding, if available.
 - `close()` clears runtime bindings and pending writes without deleting a saved snapshot.
 
@@ -19,9 +19,11 @@ Persistent Maker records contain `makerKey`, `groupKey`, `sourceMessageKey`, can
 
 ## Identity and reconciliation
 
-Adapters prefer semantic conversation and message IDs. The shared Adapter contract supports a group-scoped response ordinal only when a platform integration explicitly proves that both the user group and response order are stable. None of the current partial-coverage integrations enables that derivation, so a missing assistant ID remains memory-only. If a stable group identity cannot be established, the group and its Makers use deterministic page-memory keys and are not persisted.
+Within a verified conversation, a response's canonical `sourceMessageKey` is derived from the platform, stable user-group identity, and response ordinal. This canonical key is independent of whether the currently mounted DOM exposes a real assistant message ID. A real ID is supplied through `sourceMessageAliases` so an existing v2 record can migrate in place to the derived key while retaining its original `makerKey`. The schema version and storage namespace remain v2 because the persisted record shape does not change.
 
-Maker matching first uses `sourceMessageKey`, canonical kind, title fingerprint, and within-kind ordinal. If a streaming title changes, message identity, kind, and ordinal provide the fallback. Pending memory-only Makers keep their key when a stable source identity later appears.
+ChatGPT builds the derived-key and real-ID alias index from its active API branch. When an assistant DOM node temporarily lacks its ID, Polaris uses only a confirmed user-message DOM identity and a provable response ordinal within that group. If a group has multiple active replies but only an unidentified subset is mounted, no ordinal is guessed; those nodes remain memory-only until the remaining API and DOM replies can be paired one-to-one. Doubao, Kimi, Qianwen, Yuanbao, and Xiaohongshu Diandian use the same derivation only after their Adapter confirms a stable user group. An unverified conversation, unstable group, ambiguous alias, or unprovable DOM ownership remains memory-only; titles are never used to guess a persistent identity.
+
+Maker matching first uses the canonical `sourceMessageKey`, canonical kind, title fingerprint, and within-kind ordinal. Runtime aliases migrate older real-ID records before active-branch retention is applied, including active messages that are not currently mounted. If a streaming title changes, message identity, kind, and ordinal provide the fallback. Pending memory-only Makers keep their key when a stable source identity later appears. An alias that points to more than one canonical message is discarded for that observation rather than risking a wrong mapping.
 
 - `coverage: complete` replaces the observed group set. ChatGPT supplies its active API branch as the authoritative message set.
 - `coverage: partial` merges observed groups and preserves unmounted cached groups.
@@ -29,6 +31,8 @@ Maker matching first uses `sourceMessageKey`, canonical kind, title fingerprint,
 - When `authoritativeMessageKeys` is `null`, unobserved messages are not deleted.
 
 Every scan rebuilds only the runtime `makerKey -> HTMLElement` map. Active-section detection and Chapter View require a current DOM binding, so cached Makers never create empty Chapter sections.
+
+The list continues to show at most the configured number of recent user groups, 20 by default. A restored history with additional groups exposes the existing earlier-question control; expanding it or searching operates on the full snapshot rather than only the mounted DOM.
 
 ## Storage lifecycle
 

@@ -137,6 +137,37 @@ test("缺少 assistant ID 时默认保持内存身份，仅经 Adapter 明确允
   assert.equal(adapter.sourceIdentity(element, "runtime-user-1", 1, { allowDerived: true }), "");
 });
 
+test("六个平台的稳定用户分组都以回复序号生成不受真实消息 ID 影响的派生身份", () => {
+  PLATFORM_URLS.forEach(([platformKey]) => {
+    const adapter = createMakerPlatformAdapter(platformKey);
+    const stableGroupKey = `${platformKey}:user:user-42`;
+    const identifiedElement = {
+      closest() {
+        return this;
+      },
+      querySelector() {
+        return null;
+      },
+      getAttribute(name) {
+        return name === "data-message-id" ? "assistant-real-42" : null;
+      }
+    };
+    const unidentifiedElement = {
+      closest() {
+        return null;
+      },
+      querySelector() {
+        return null;
+      }
+    };
+
+    const derived = `${platformKey}:assistant-derived:user-42:2`;
+    assert.equal(adapter.sourceIdentity(identifiedElement, stableGroupKey, 2, { allowDerived: true }), derived);
+    assert.equal(adapter.sourceIdentity(unidentifiedElement, stableGroupKey, 2, { allowDerived: true }), derived);
+    assert.equal(adapter.sourceIdentity(identifiedElement, stableGroupKey, 2), `${platformKey}:assistant:assistant-real-42`);
+  });
+});
+
 test("畸形的会话路径编码不会开启持久化", () => {
   const location = new URL("https://www.kimi.com/chat/%E0%A4%A");
   assert.equal(makerConversationScope({ platformKey: "kimi", location }).persistence, false);
