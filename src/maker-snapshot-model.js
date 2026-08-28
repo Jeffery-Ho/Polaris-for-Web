@@ -1,14 +1,39 @@
-const SNAPSHOT_SCHEMA_VERSION = 1;
-const SNAPSHOT_STORAGE_PREFIX = "polaris.makerSnapshot.v1:";
-const SNAPSHOT_INDEX_KEY = "polaris.makerSnapshotIndex.v1";
+const SNAPSHOT_SCHEMA_VERSION = 2;
+const SNAPSHOT_STORAGE_PREFIX = "polaris.makerSnapshot.v2:";
+const SNAPSHOT_INDEX_PREFIX = "polaris.makerSnapshotIndex.v2:";
+const LEGACY_SCHEMA_VERSION = 1;
+const LEGACY_STORAGE_PREFIX = "polaris.makerSnapshot.v1:";
+const LEGACY_INDEX_KEY = "polaris.makerSnapshotIndex.v1";
 const DEFAULT_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const DEFAULT_MAX_CONVERSATIONS = 20;
 const DEFAULT_MAX_BYTES = 2 * 1024 * 1024;
 const DEFAULT_WRITE_DELAY_MS = 1000;
 const MAX_USER_PREVIEW_LENGTH = 160;
 
-function storageKeyForConversation(conversationKey) {
-  return `${SNAPSHOT_STORAGE_PREFIX}${encodeURIComponent(conversationKey)}`;
+function storageKeyForConversation(platformKey, conversationKey) {
+  return `${SNAPSHOT_STORAGE_PREFIX}${encodeURIComponent(platformKey)}:${encodeURIComponent(conversationKey)}`;
+}
+
+function indexKeyForPlatform(platformKey) {
+  return `${SNAPSHOT_INDEX_PREFIX}${encodeURIComponent(platformKey)}`;
+}
+
+function legacyConversationKeyFor(scope) {
+  return scope.conversationKey.startsWith("chatgpt:")
+    ? scope.conversationKey
+    : `chatgpt:${scope.conversationKey}`;
+}
+
+function legacyStorageKeyForConversation(conversationKey) {
+  return `${LEGACY_STORAGE_PREFIX}${encodeURIComponent(conversationKey)}`;
+}
+
+function normalizeScope(value) {
+  return {
+    platformKey: typeof value?.platformKey === "string" ? value.platformKey : "",
+    conversationKey: typeof value?.conversationKey === "string" ? value.conversationKey : "",
+    persistence: Boolean(value?.persistence)
+  };
 }
 
 function normalizeIndex(value) {
@@ -22,26 +47,42 @@ function normalizeIndex(value) {
     : [];
 }
 
-function normalizeSnapshot(value, conversationKey, now) {
+function normalizeSnapshot(value, scope, timestamp) {
   if (!value
     || value.schemaVersion !== SNAPSHOT_SCHEMA_VERSION
-    || value.conversationKey !== conversationKey
+    || value.platformKey !== scope.platformKey
+    || value.conversationKey !== scope.conversationKey
     || !Number.isFinite(value.expiresAt)
-    || value.expiresAt <= now
+    || value.expiresAt <= timestamp
     || !Array.isArray(value.groups)
     || !Array.isArray(value.makers)) {
     return null;
   }
   return {
     schemaVersion: SNAPSHOT_SCHEMA_VERSION,
-    conversationKey,
-    updatedAt: Number(value.updatedAt) || now,
+    platformKey: scope.platformKey,
+    conversationKey: scope.conversationKey,
+    updatedAt: Number(value.updatedAt) || timestamp,
     expiresAt: value.expiresAt,
     groups: value.groups.filter((group) => group && typeof group.groupKey === "string"),
     makers: value.makers.filter((maker) => maker
       && typeof maker.makerKey === "string"
-      && typeof maker.assistantMessageId === "string")
+      && typeof maker.sourceMessageKey === "string"
+      && maker.sourceMessageKey)
   };
+}
+
+function normalizeLegacySnapshot(value, conversationKey, timestamp) {
+  if (!value
+    || value.schemaVersion !== LEGACY_SCHEMA_VERSION
+    || value.conversationKey !== conversationKey
+    || !Number.isFinite(value.expiresAt)
+    || value.expiresAt <= timestamp
+    || !Array.isArray(value.groups)
+    || !Array.isArray(value.makers)) {
+    return null;
+  }
+  return value;
 }
 
 function byteLength(value) {
@@ -49,8 +90,8 @@ function byteLength(value) {
 }
 
 function sameLocator(left, right) {
-  return Boolean(left.assistantMessageId)
-    && left.assistantMessageId === right.assistantMessageId
+  return Boolean(left.sourceMessageKey)
+    && left.sourceMessageKey === right.sourceMessageKey
     && left.canonicalKind === right.canonicalKind
     && left.ordinalWithinKind === right.ordinalWithinKind;
 }
@@ -60,7 +101,7 @@ function exactLocator(left, right) {
 }
 
 function pendingLocator(left, right) {
-  return !left.assistantMessageId
+  return !left.sourceMessageKey
     && left.groupKey === right.groupKey
     && left.canonicalKind === right.canonicalKind
     && left.ordinalWithinKind === right.ordinalWithinKind;
@@ -71,8 +112,9 @@ function exactPendingLocator(left, right) {
 }
 
 function persistedGroup(group) {
+  const { element: _element, title: _title, ...record } = group;
   return {
-    ...group,
+    ...record,
     previewTitle: typeof group.previewTitle === "string"
       ? group.previewTitle.slice(0, MAX_USER_PREVIEW_LENGTH)
       : ""
@@ -82,6 +124,18 @@ function persistedGroup(group) {
 function serializableMaker(maker) {
   const { element: _element, ...record } = maker;
   return record;
+}
+
+function normalizedObservation(observation) {
+  return {
+    coverage: observation.coverage === "partial" ? "partial" : "complete",
+    authoritativeMessageKeys: Array.isArray(observation.authoritativeMessageKeys)
+      ? observation.authoritativeMessageKeys
+      : null,
+    mountedMessageKeys: observation.mountedMessageKeys || [],
+    groups: observation.groups || [],
+    makers: observation.makers || []
+  };
 }
 
 export function createChromeStorageAdapter(storageArea) {
@@ -110,7 +164,7 @@ export function createMakerSnapshotModel({
   writeDelayMs = DEFAULT_WRITE_DELAY_MS,
   onError = () => {}
 }) {
-  let activeConversationKey = "";
+  let activeScope = { platformKey: "", conversationKey: "", persistence: false };
   let activationToken = 0;
   let snapshot = null;
   let bindings = new Map();
@@ -119,13 +173,23 @@ export function createMakerSnapshotModel({
   let writeTimer = 0;
   let persistQueue = Promise.resolve();
   let hasPersistedMaker = false;
-  let storageEnabled = Boolean(storage);
+  const disabledPlatforms = new Set();
 
-  function emptySnapshot(conversationKey) {
+  function storageEnabledFor(scope = activeScope) {
+    return Boolean(storage && scope.persistence && !disabledPlatforms.has(scope.platformKey));
+  }
+
+  function disablePlatform(platformKey, error) {
+    disabledPlatforms.add(platformKey);
+    onError(error);
+  }
+
+  function emptySnapshot(scope) {
     const timestamp = now();
     return {
       schemaVersion: SNAPSHOT_SCHEMA_VERSION,
-      conversationKey,
+      platformKey: scope.platformKey,
+      conversationKey: scope.conversationKey,
       updatedAt: timestamp,
       expiresAt: timestamp + ttlMs,
       groups: [],
@@ -135,7 +199,7 @@ export function createMakerSnapshotModel({
 
   function view() {
     if (!snapshot) {
-      return { conversationKey: activeConversationKey, groups: [] };
+      return { platformKey: activeScope.platformKey, conversationKey: activeScope.conversationKey, groups: [] };
     }
     const makersByGroup = new Map();
     [...snapshot.makers, ...pendingMakers].forEach((maker) => {
@@ -149,28 +213,31 @@ export function createMakerSnapshotModel({
     });
     makersByGroup.forEach((makers) => makers.sort((left, right) => left.order - right.order));
 
-    const groups = snapshot.groups.map((group) => ({
-      key: group.groupKey,
-      user: {
-        element: null,
-        markerKey: group.groupKey,
-        previewTitle: group.previewTitle,
-        title: runtimeGroupTitles.get(group.groupKey) || group.previewTitle,
-        order: group.order
-      },
-      headings: makersByGroup.get(group.groupKey) || [],
-      hasAssistantMessage: Boolean(group.hasAssistantMessage)
-    }));
+    const groups = snapshot.groups
+      .map((group) => ({
+        key: group.groupKey,
+        user: {
+          element: null,
+          markerKey: group.groupKey,
+          previewTitle: group.previewTitle,
+          title: runtimeGroupTitles.get(group.groupKey) || group.previewTitle,
+          order: group.order
+        },
+        headings: makersByGroup.get(group.groupKey) || [],
+        hasAssistantMessage: Boolean(group.hasAssistantMessage)
+      }))
+      .sort((left, right) => (left.user?.order || 0) - (right.user?.order || 0));
     const orphanHeadings = makersByGroup.get("orphan") || [];
     if (orphanHeadings.length) {
       groups.push({ key: "orphan", user: null, headings: orphanHeadings });
     }
-    return { conversationKey: snapshot.conversationKey, groups };
+    return { platformKey: snapshot.platformKey, conversationKey: snapshot.conversationKey, groups };
   }
 
-  async function readIndex() {
-    const result = await storage.get(SNAPSHOT_INDEX_KEY);
-    return normalizeIndex(result[SNAPSHOT_INDEX_KEY]);
+  async function readIndex(platformKey) {
+    const indexKey = indexKeyForPlatform(platformKey);
+    const result = await storage.get(indexKey);
+    return normalizeIndex(result[indexKey]);
   }
 
   async function pruneExpired(index, timestamp) {
@@ -196,23 +263,24 @@ export function createMakerSnapshotModel({
   }
 
   async function persist(savedSnapshot) {
-    if (!storageEnabled || !savedSnapshot) {
-      return;
+    if (!savedSnapshot || disabledPlatforms.has(savedSnapshot.platformKey)) {
+      return false;
     }
-    const savedConversationKey = savedSnapshot.conversationKey;
+    const { platformKey, conversationKey } = savedSnapshot;
     const timestamp = savedSnapshot.updatedAt;
-    const storageKey = storageKeyForConversation(savedConversationKey);
+    const storageKey = storageKeyForConversation(platformKey, conversationKey);
+    const indexKey = indexKeyForPlatform(platformKey);
     try {
-      let index = await pruneExpired(await readIndex(), timestamp);
+      let index = await pruneExpired(await readIndex(platformKey), timestamp);
       const entry = {
-        conversationKey: savedConversationKey,
+        conversationKey,
         storageKey,
         updatedAt: timestamp,
         lastAccessedAt: timestamp,
         expiresAt: savedSnapshot.expiresAt,
         bytes: byteLength(savedSnapshot)
       };
-      index = index.filter((item) => item.conversationKey !== savedConversationKey);
+      index = index.filter((item) => item.conversationKey !== conversationKey);
       if (savedSnapshot.makers.length) {
         index.push(entry);
       } else {
@@ -226,13 +294,15 @@ export function createMakerSnapshotModel({
           await storage.remove(removed.storageKey);
         }
       }
-      if (index.some((item) => item.conversationKey === savedConversationKey)) {
+      const isRetained = index.some((item) => item.conversationKey === conversationKey);
+      if (isRetained) {
         await storage.set({ [storageKey]: savedSnapshot });
       }
-      await storage.set({ [SNAPSHOT_INDEX_KEY]: index });
+      await storage.set({ [indexKey]: index });
+      return isRetained;
     } catch (error) {
-      storageEnabled = false;
-      onError(error);
+      disablePlatform(platformKey, error);
+      return false;
     }
   }
 
@@ -245,7 +315,7 @@ export function createMakerSnapshotModel({
   }
 
   function requestPersist() {
-    if (!storageEnabled || !snapshot) {
+    if (!storageEnabledFor() || !snapshot) {
       return;
     }
     if (!snapshot.makers.length) {
@@ -267,7 +337,54 @@ export function createMakerSnapshotModel({
     }, writeDelayMs);
   }
 
-  async function open(conversationKey) {
+  function migrateLegacySnapshot(legacySnapshot, scope, timestamp) {
+    return {
+      schemaVersion: SNAPSHOT_SCHEMA_VERSION,
+      platformKey: scope.platformKey,
+      conversationKey: scope.conversationKey,
+      updatedAt: Number(legacySnapshot.updatedAt) || timestamp,
+      expiresAt: legacySnapshot.expiresAt,
+      groups: legacySnapshot.groups,
+      makers: legacySnapshot.makers
+        .filter((maker) => maker && typeof maker.makerKey === "string" && typeof maker.assistantMessageId === "string")
+        .map(({ assistantMessageId, ...maker }) => ({ ...maker, sourceMessageKey: assistantMessageId }))
+    };
+  }
+
+  async function removeLegacyRecord(legacyConversationKey, legacyStorageKey) {
+    const result = await storage.get(LEGACY_INDEX_KEY);
+    const index = normalizeIndex(result[LEGACY_INDEX_KEY])
+      .filter((entry) => entry.conversationKey !== legacyConversationKey);
+    await storage.remove(legacyStorageKey);
+    await storage.set({ [LEGACY_INDEX_KEY]: index });
+  }
+
+  async function tryMigrateLegacy(scope, timestamp, currentActivationToken) {
+    if (scope.platformKey !== "chatgpt") {
+      return null;
+    }
+    const legacyConversationKey = legacyConversationKeyFor(scope);
+    const legacyStorageKey = legacyStorageKeyForConversation(legacyConversationKey);
+    const result = await storage.get(legacyStorageKey);
+    if (currentActivationToken !== activationToken) {
+      return null;
+    }
+    const legacySnapshot = normalizeLegacySnapshot(result[legacyStorageKey], legacyConversationKey, timestamp);
+    if (!legacySnapshot) {
+      if (result[legacyStorageKey]) {
+        await removeLegacyRecord(legacyConversationKey, legacyStorageKey);
+      }
+      return null;
+    }
+    const migrated = migrateLegacySnapshot(legacySnapshot, scope, timestamp);
+    if (await persist(migrated) && currentActivationToken === activationToken) {
+      await removeLegacyRecord(legacyConversationKey, legacyStorageKey);
+      return migrated;
+    }
+    return null;
+  }
+
+  async function open(scopeValue) {
     activationToken += 1;
     const currentActivationToken = activationToken;
     clearTimer(writeTimer);
@@ -275,64 +392,84 @@ export function createMakerSnapshotModel({
     bindings = new Map();
     runtimeGroupTitles = new Map();
     pendingMakers = [];
-    activeConversationKey = conversationKey;
-    snapshot = emptySnapshot(conversationKey);
+    activeScope = normalizeScope(scopeValue);
+    const openedScope = activeScope;
+    snapshot = emptySnapshot(openedScope);
     hasPersistedMaker = false;
-    if (!storageEnabled) {
+    if (!storageEnabledFor()) {
       return view();
     }
 
     const timestamp = now();
-    const storageKey = storageKeyForConversation(conversationKey);
+    const storageKey = storageKeyForConversation(openedScope.platformKey, openedScope.conversationKey);
+    const indexKey = indexKeyForPlatform(openedScope.platformKey);
     try {
-      let index = await pruneExpired(await readIndex(), timestamp);
+      let index = await pruneExpired(await readIndex(openedScope.platformKey), timestamp);
       const result = await storage.get(storageKey);
-      const restored = normalizeSnapshot(result[storageKey], conversationKey, timestamp);
-      if (currentActivationToken !== activationToken || activeConversationKey !== conversationKey) {
+      let restored = normalizeSnapshot(result[storageKey], openedScope, timestamp);
+      if (currentActivationToken !== activationToken) {
+        return view();
+      }
+      if (!restored && result[storageKey]) {
+        await storage.remove(storageKey);
+        index = index.filter((entry) => entry.conversationKey !== openedScope.conversationKey);
+      }
+      if (!restored) {
+        restored = await tryMigrateLegacy(openedScope, timestamp, currentActivationToken);
+      }
+      if (currentActivationToken !== activationToken) {
         return view();
       }
       if (restored) {
         snapshot = restored;
         hasPersistedMaker = snapshot.makers.length > 0;
-        index = index.map((entry) => entry.conversationKey === conversationKey
+        const storedIndex = await storage.get(indexKey);
+        index = normalizeIndex(storedIndex[indexKey]);
+        index = index.map((entry) => entry.conversationKey === openedScope.conversationKey
           ? { ...entry, lastAccessedAt: timestamp }
           : entry);
-      } else if (result[storageKey]) {
-        await storage.remove(storageKey);
-        index = index.filter((entry) => entry.conversationKey !== conversationKey);
       }
-      await storage.set({ [SNAPSHOT_INDEX_KEY]: index });
+      await storage.set({ [indexKey]: index });
     } catch (error) {
-      storageEnabled = false;
-      onError(error);
+      disablePlatform(openedScope.platformKey, error);
     }
     return view();
   }
 
-  function reconcile(observation) {
+  function reconcile(rawObservation) {
     if (!snapshot) {
       return view();
     }
+    const observation = normalizedObservation(rawObservation);
     const timestamp = now();
-    const activeAssistantIds = new Set(observation.activeAssistantMessageIds || []);
-    const mountedAssistantIds = new Set(observation.mountedAssistantMessageIds || []);
-    const previousMakers = snapshot.makers.filter((maker) => activeAssistantIds.has(maker.assistantMessageId));
-    const reusableMakers = [...previousMakers, ...pendingMakers];
+    const mountedMessageKeys = new Set(observation.mountedMessageKeys);
+    const observedSourceKeys = new Set(observation.makers.map((maker) => maker.sourceMessageKey).filter(Boolean));
+    const authoritativeMessageKeys = observation.authoritativeMessageKeys === null
+      ? null
+      : new Set(observation.authoritativeMessageKeys);
+    const reusableMakers = [...snapshot.makers, ...pendingMakers];
     const claimedKeys = new Set();
     const nextBindings = new Map();
     const nextPendingMakers = [];
     const observedPersistentMakers = [];
 
-    runtimeGroupTitles = new Map((observation.groups || []).map((group) => [group.groupKey, group.title]));
-    snapshot.groups = (observation.groups || []).map((group) => ({
+    runtimeGroupTitles = new Map(observation.groups.map((group) => [group.groupKey, group.title]));
+    const observedGroups = observation.groups.map((group) => ({
       groupKey: group.groupKey,
-      userMessageId: group.userMessageId,
+      userMessageKey: group.userMessageKey || group.userMessageId || "",
       previewTitle: group.previewTitle,
       order: group.order,
       hasAssistantMessage: Boolean(group.hasAssistantMessage)
     }));
+    if (observation.coverage === "complete") {
+      snapshot.groups = observedGroups;
+    } else {
+      const groupsByKey = new Map(snapshot.groups.map((group) => [group.groupKey, group]));
+      observedGroups.forEach((group) => groupsByKey.set(group.groupKey, group));
+      snapshot.groups = [...groupsByKey.values()].sort((left, right) => left.order - right.order);
+    }
 
-    (observation.makers || []).forEach((maker) => {
+    observation.makers.forEach((maker) => {
       const candidates = reusableMakers.filter((candidate) => !claimedKeys.has(candidate.makerKey));
       const matched = candidates.find((candidate) => exactLocator(candidate, maker))
         || candidates.find((candidate) => sameLocator(candidate, maker))
@@ -343,7 +480,7 @@ export function createMakerSnapshotModel({
       const nextMaker = {
         makerKey,
         groupKey: maker.groupKey || "orphan",
-        assistantMessageId: maker.assistantMessageId || "",
+        sourceMessageKey: maker.sourceMessageKey,
         canonicalKind: maker.canonicalKind,
         ordinalWithinKind: maker.ordinalWithinKind,
         titleFingerprint: maker.titleFingerprint,
@@ -357,15 +494,21 @@ export function createMakerSnapshotModel({
       if (maker.element) {
         nextBindings.set(makerKey, maker.element);
       }
-      if (maker.assistantMessageId) {
+      if (maker.sourceMessageKey) {
         observedPersistentMakers.push(nextMaker);
       } else {
         nextPendingMakers.push(nextMaker);
       }
     });
 
+    let retainedMakers = snapshot.makers;
+    if (authoritativeMessageKeys) {
+      retainedMakers = retainedMakers.filter((maker) => authoritativeMessageKeys.has(maker.sourceMessageKey));
+    } else if (observation.coverage === "complete") {
+      retainedMakers = retainedMakers.filter((maker) => observedSourceKeys.has(maker.sourceMessageKey));
+    }
     snapshot.makers = [
-      ...previousMakers.filter((maker) => !mountedAssistantIds.has(maker.assistantMessageId)),
+      ...retainedMakers.filter((maker) => !mountedMessageKeys.has(maker.sourceMessageKey)),
       ...observedPersistentMakers
     ];
     snapshot.updatedAt = timestamp;
@@ -385,7 +528,7 @@ export function createMakerSnapshotModel({
     activationToken += 1;
     clearTimer(writeTimer);
     writeTimer = 0;
-    activeConversationKey = "";
+    activeScope = { platformKey: "", conversationKey: "", persistence: false };
     snapshot = null;
     bindings = new Map();
     runtimeGroupTitles = new Map();

@@ -24,9 +24,14 @@ function createMemoryStorage() {
   };
 }
 
+function chatGPTScope(conversationKey) {
+  return { platformKey: "chatgpt", conversationKey, persistence: true };
+}
+
 function observation(element, title = "第一节") {
   return {
-    activeAssistantMessageIds: ["assistant-1"],
+    coverage: "complete",
+    authoritativeMessageKeys: ["assistant-1"],
     groups: [{
       groupKey: "chatgpt-user-user-1",
       userMessageId: "user-1",
@@ -35,9 +40,9 @@ function observation(element, title = "第一节") {
       order: 0,
       hasAssistantMessage: true
     }],
-    mountedAssistantMessageIds: ["assistant-1"],
+    mountedMessageKeys: ["assistant-1"],
     makers: [{
-      assistantMessageId: "assistant-1",
+      sourceMessageKey: "assistant-1",
       groupKey: "chatgpt-user-user-1",
       canonicalKind: "text",
       ordinalWithinKind: 0,
@@ -60,7 +65,7 @@ test("DOM 节点替换后沿用 Maker key 且持久快照不包含 DOM", async (
     createKey: () => `maker-${nextKey++}`,
     now: () => 1_000
   });
-  await model.open("chatgpt:conversation-1");
+  await model.open(chatGPTScope("chatgpt:conversation-1"));
 
   const firstElement = { isConnected: true };
   const firstView = model.reconcile(observation(firstElement));
@@ -92,12 +97,12 @@ test("流式 Maker 补齐 assistant ID 后沿用内存 key 并开始持久化", 
     createKey: () => `maker-${nextKey++}`,
     now: () => 2_000
   });
-  await model.open("chatgpt:conversation-2");
+  await model.open(chatGPTScope("chatgpt:conversation-2"));
 
   const pendingObservation = observation({ isConnected: true });
-  pendingObservation.activeAssistantMessageIds = [];
-  pendingObservation.mountedAssistantMessageIds = [];
-  pendingObservation.makers[0].assistantMessageId = "";
+  pendingObservation.authoritativeMessageKeys = [];
+  pendingObservation.mountedMessageKeys = [];
+  pendingObservation.makers[0].sourceMessageKey = "";
   const pendingMaker = model.reconcile(pendingObservation).groups[0].headings[0];
 
   await new Promise((resolve) => setTimeout(resolve, 0));
@@ -120,12 +125,12 @@ test("流式 Maker 不会跨用户分组复用 key", async () => {
     createKey: () => `maker-pending-${nextKey++}`,
     now: () => 2_500
   });
-  await model.open("chatgpt:conversation-pending-groups");
+  await model.open(chatGPTScope("chatgpt:conversation-pending-groups"));
 
   const firstPending = observation({ isConnected: true });
-  firstPending.activeAssistantMessageIds = [];
-  firstPending.mountedAssistantMessageIds = [];
-  firstPending.makers[0].assistantMessageId = "";
+  firstPending.authoritativeMessageKeys = [];
+  firstPending.mountedMessageKeys = [];
+  firstPending.makers[0].sourceMessageKey = "";
   const firstKey = model.reconcile(firstPending).groups[0].headings[0].makerKey;
 
   const secondPending = structuredClone(firstPending);
@@ -146,17 +151,17 @@ test("保留活跃分支中未挂载的 Maker 并删除已退出分支的 Maker"
     createKey: () => "maker-stable",
     now: () => 3_000
   });
-  await model.open("chatgpt:conversation-3");
+  await model.open(chatGPTScope("chatgpt:conversation-3"));
   model.reconcile(observation({ isConnected: true }));
 
   const unmounted = observation(null);
-  unmounted.mountedAssistantMessageIds = [];
+  unmounted.mountedMessageKeys = [];
   unmounted.makers = [];
   const cachedView = model.reconcile(unmounted);
   assert.equal(Reflect.get(cachedView.groups[0].headings[0], "makerKey"), "maker-stable");
   assert.equal(model.resolveElement("maker-stable"), null);
 
-  const inactive = { ...unmounted, activeAssistantMessageIds: [], groups: [] };
+  const inactive = { ...unmounted, authoritativeMessageKeys: [], groups: [] };
   assert.deepEqual(model.reconcile(inactive).groups, []);
   await new Promise((resolve) => setTimeout(resolve, 0));
   assert.equal(Object.values(storage.values).some((value) => value?.conversationKey === "chatgpt:conversation-3"), false);
@@ -169,12 +174,12 @@ test("页面刷新后从本地快照恢复相同 Maker key", async () => {
     createKey: () => "maker-restored",
     now: () => 4_000
   });
-  await firstModel.open("chatgpt:conversation-4");
+  await firstModel.open(chatGPTScope("chatgpt:conversation-4"));
   firstModel.reconcile(observation({ isConnected: true }));
   await new Promise((resolve) => setTimeout(resolve, 0));
 
   const restoredModel = createMakerSnapshotModel({ storage, now: () => 5_000 });
-  const restoredView = await restoredModel.open("chatgpt:conversation-4");
+  const restoredView = await restoredModel.open(chatGPTScope("chatgpt:conversation-4"));
   const restoredMaker = restoredView.groups[0].headings[0];
 
   assert.equal(Reflect.get(restoredMaker, "makerKey"), "maker-restored");
@@ -191,13 +196,13 @@ test("七天过期快照不会恢复", async () => {
     now: () => timestamp,
     ttlMs: 1_000
   });
-  await firstModel.open("chatgpt:conversation-expiring");
+  await firstModel.open(chatGPTScope("chatgpt:conversation-expiring"));
   firstModel.reconcile(observation({ isConnected: true }));
   await new Promise((resolve) => setTimeout(resolve, 0));
 
   timestamp = 1_001;
   const expiredModel = createMakerSnapshotModel({ storage, now: () => timestamp, ttlMs: 1_000 });
-  const expiredView = await expiredModel.open("chatgpt:conversation-expiring");
+  const expiredView = await expiredModel.open(chatGPTScope("chatgpt:conversation-expiring"));
 
   assert.deepEqual(expiredView.groups, []);
   assert.equal(Object.values(storage.values).some((value) => value?.conversationKey === "chatgpt:conversation-expiring"), false);
@@ -215,7 +220,7 @@ test("超过会话数量上限时按最近访问顺序淘汰", async () => {
   });
 
   for (const conversationKey of ["conversation-a", "conversation-b", "conversation-c"]) {
-    await model.open(`chatgpt:${conversationKey}`);
+    await model.open(chatGPTScope(`chatgpt:${conversationKey}`));
     model.reconcile(observation({ isConnected: true }));
     await new Promise((resolve) => setTimeout(resolve, 0));
     timestamp += 1_000;
@@ -236,7 +241,7 @@ test("超过快照软容量时仅保留内存模型", async () => {
     now: () => 20_000,
     maxBytes: 1
   });
-  await model.open("chatgpt:conversation-large");
+  await model.open(chatGPTScope("chatgpt:conversation-large"));
   const view = model.reconcile(observation({ isConnected: true }));
   await new Promise((resolve) => setTimeout(resolve, 0));
 
@@ -252,7 +257,7 @@ test("重复标题按序号获得不同 key 且流式改标题不换 key", async
     createKey: () => `maker-duplicate-${nextKey++}`,
     now: () => 30_000
   });
-  await model.open("chatgpt:conversation-duplicates");
+  await model.open(chatGPTScope("chatgpt:conversation-duplicates"));
 
   const duplicateObservation = observation({ isConnected: true }, "重复标题");
   duplicateObservation.makers.push({
@@ -293,7 +298,7 @@ test("损坏快照被忽略并从命名空间中移除", async () => {
   }];
 
   const model = createMakerSnapshotModel({ storage, now: () => 40_000 });
-  assert.deepEqual((await model.open(conversationKey)).groups, []);
+  assert.deepEqual((await model.open(chatGPTScope(conversationKey))).groups, []);
   assert.equal(Object.prototype.hasOwnProperty.call(storage.values, snapshotKey), false);
 });
 
@@ -314,7 +319,7 @@ test("Storage 失败时降级为页面内存模型", async () => {
       reportedError = error;
     }
   });
-  await model.open("chatgpt:conversation-memory-only");
+  await model.open(chatGPTScope("chatgpt:conversation-memory-only"));
   const view = model.reconcile(observation({ isConnected: true }));
 
   assert.equal(reportedError.message, "storage unavailable");
@@ -329,7 +334,7 @@ test("持久化时截断用户首行预览且保留列表与表格类型", async
     createKey: () => `maker-kind-${nextKey++}`,
     now: () => 60_000
   });
-  await model.open("chatgpt:conversation-kinds");
+  await model.open(chatGPTScope("chatgpt:conversation-kinds"));
 
   const kindsObservation = observation({ isConnected: true });
   kindsObservation.groups[0].previewTitle = "问".repeat(300);
@@ -360,7 +365,7 @@ test("close 会取消尚未执行的持久化任务", async () => {
     createKey: () => "maker-cancelled",
     now: () => 70_000
   });
-  await model.open("chatgpt:conversation-close");
+  await model.open(chatGPTScope("chatgpt:conversation-close"));
 
   model.reconcile(observation({ isConnected: true }));
   model.close();
@@ -375,7 +380,7 @@ test("较早会话的异步加载不会覆盖新会话", async () => {
   const firstSnapshotRead = new Promise((resolve) => {
     releaseFirstSnapshotRead = resolve;
   });
-  const firstStorageKey = `polaris.makerSnapshot.v1:${encodeURIComponent("chatgpt:conversation-old")}`;
+  const firstStorageKey = `polaris.makerSnapshot.v2:chatgpt:${encodeURIComponent("chatgpt:conversation-old")}`;
   const storage = {
     values,
     async get(keys) {
@@ -391,9 +396,9 @@ test("较早会话的异步加载不会覆盖新会话", async () => {
   };
   const model = createMakerSnapshotModel({ storage, now: () => 80_000 });
 
-  const oldOpen = model.open("chatgpt:conversation-old");
+  const oldOpen = model.open(chatGPTScope("chatgpt:conversation-old"));
   await new Promise((resolve) => setTimeout(resolve, 0));
-  const newView = await model.open("chatgpt:conversation-new");
+  const newView = await model.open(chatGPTScope("chatgpt:conversation-new"));
   releaseFirstSnapshotRead();
   const staleView = await oldOpen;
 
@@ -414,7 +419,7 @@ test("首个 Maker 立即入队，后续变化使用 trailing debounce", async (
     },
     clearTimer: () => {}
   });
-  await model.open("chatgpt:conversation-debounce");
+  await model.open(chatGPTScope("chatgpt:conversation-debounce"));
 
   model.reconcile(observation({ isConnected: true }, "初始标题"));
   await new Promise((resolve) => setTimeout(resolve, 0));
@@ -430,4 +435,263 @@ test("首个 Maker 立即入队，后续变化使用 trailing debounce", async (
   timers[0].callback();
   await new Promise((resolve) => setTimeout(resolve, 0));
   assert.equal(snapshot().makers[0].title, "更新标题");
+});
+
+test("v2 partial observation 保留未挂载消息，complete observation 删除已退出消息", async () => {
+  const storage = createMemoryStorage();
+  let nextKey = 1;
+  const model = createMakerSnapshotModel({
+    storage,
+    createKey: () => `maker-v2-${nextKey++}`,
+    now: () => 100_000
+  });
+  await model.open({ platformKey: "kimi", conversationKey: "https://www.kimi.com:conversation-1", persistence: true });
+
+  const first = observation({ isConnected: true });
+  first.coverage = "partial";
+  first.authoritativeMessageKeys = null;
+  first.mountedMessageKeys = ["kimi:assistant:1"];
+  first.makers[0].sourceMessageKey = "kimi:assistant:1";
+  model.reconcile(first);
+
+  const partial = {
+    coverage: "partial",
+    authoritativeMessageKeys: null,
+    groups: first.groups,
+    mountedMessageKeys: [],
+    makers: []
+  };
+  assert.equal(model.reconcile(partial).groups[0].headings.length, 1);
+
+  const complete = {
+    ...partial,
+    coverage: "complete",
+    authoritativeMessageKeys: [],
+    groups: []
+  };
+  assert.deepEqual(model.reconcile(complete).groups, []);
+});
+
+test("v2 为每个平台维护独立索引和 LRU", async () => {
+  const storage = createMemoryStorage();
+  let timestamp = 110_000;
+  let nextKey = 1;
+  const model = createMakerSnapshotModel({
+    storage,
+    createKey: () => `maker-platform-${nextKey++}`,
+    maxConversations: 1,
+    now: () => timestamp
+  });
+
+  for (const [platformKey, conversationKey] of [
+    ["chatgpt", "https://chatgpt.com:one"],
+    ["doubao", "https://www.doubao.com:one"],
+    ["chatgpt", "https://chatgpt.com:two"]
+  ]) {
+    await model.open({ platformKey, conversationKey, persistence: true });
+    const nextObservation = observation({ isConnected: true });
+    nextObservation.coverage = "complete";
+    nextObservation.authoritativeMessageKeys = [`${platformKey}:assistant:1`];
+    nextObservation.mountedMessageKeys = [`${platformKey}:assistant:1`];
+    nextObservation.makers[0].sourceMessageKey = `${platformKey}:assistant:1`;
+    model.reconcile(nextObservation);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    timestamp += 1_000;
+  }
+
+  assert.equal(storage.values["polaris.makerSnapshotIndex.v2:chatgpt"].length, 1);
+  assert.equal(storage.values["polaris.makerSnapshotIndex.v2:doubao"].length, 1);
+  assert.equal(Object.values(storage.values).some((value) => value?.conversationKey === "https://www.doubao.com:one"), true);
+});
+
+test("首次打开 ChatGPT 会话时惰性迁移 v1 并保留 makerKey", async () => {
+  const storage = createMemoryStorage();
+  const conversationKey = "https://chatgpt.com:legacy";
+  const legacyConversationKey = `chatgpt:${conversationKey}`;
+  const legacyStorageKey = `polaris.makerSnapshot.v1:${encodeURIComponent(legacyConversationKey)}`;
+  storage.values[legacyStorageKey] = {
+    schemaVersion: 1,
+    conversationKey: legacyConversationKey,
+    updatedAt: 120_000,
+    expiresAt: 130_000,
+    groups: [{ groupKey: "chatgpt-user-user-1", previewTitle: "旧问题", order: 0 }],
+    makers: [{
+      makerKey: "maker-legacy",
+      groupKey: "chatgpt-user-user-1",
+      assistantMessageId: "assistant-legacy",
+      canonicalKind: "text",
+      ordinalWithinKind: 0,
+      titleFingerprint: "旧标题",
+      title: "旧标题",
+      level: 2,
+      sourceType: "heading",
+      order: 0,
+      lastKnownScrollRatio: 0.2,
+      lastSeenAt: 120_000
+    }]
+  };
+  storage.values["polaris.makerSnapshotIndex.v1"] = [{
+    conversationKey: legacyConversationKey,
+    storageKey: legacyStorageKey,
+    updatedAt: 120_000,
+    lastAccessedAt: 120_000,
+    expiresAt: 130_000,
+    bytes: 100
+  }];
+
+  const model = createMakerSnapshotModel({ storage, now: () => 125_000 });
+  const view = await model.open({ platformKey: "chatgpt", conversationKey, persistence: true });
+
+  assert.equal(view.groups[0].headings[0].makerKey, "maker-legacy");
+  assert.equal(Object.prototype.hasOwnProperty.call(storage.values, legacyStorageKey), false);
+  const migrated = Object.values(storage.values).find((value) => value?.schemaVersion === 2);
+  assert.equal(migrated.makers[0].sourceMessageKey, "assistant-legacy");
+});
+
+test("persistence false 的会话完全不访问 Storage", async () => {
+  let storageCalls = 0;
+  const storage = {
+    async get() {
+      storageCalls += 1;
+      return {};
+    },
+    async set() {
+      storageCalls += 1;
+    },
+    async remove() {
+      storageCalls += 1;
+    }
+  };
+  const model = createMakerSnapshotModel({ storage, createKey: () => "maker-memory-scope", now: () => 130_000 });
+  await model.open({ platformKey: "xiaohongshu", conversationKey: "https://www.xiaohongshu.com/ai_chat", persistence: false });
+  const nextObservation = observation({ isConnected: true });
+  nextObservation.coverage = "partial";
+  nextObservation.authoritativeMessageKeys = null;
+  nextObservation.mountedMessageKeys = [];
+  nextObservation.makers[0].sourceMessageKey = "";
+  assert.equal(model.reconcile(nextObservation).groups[0].headings[0].makerKey, "maker-memory-scope");
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(storageCalls, 0);
+});
+
+test("partial observation 中已挂载消息以空 Maker 集合替换旧缓存", async () => {
+  const model = createMakerSnapshotModel({ storage: createMemoryStorage(), createKey: () => "maker-mounted", now: () => 140_000 });
+  await model.open({ platformKey: "doubao", conversationKey: "https://www.doubao.com:mounted", persistence: true });
+  const first = observation({ isConnected: true });
+  first.coverage = "partial";
+  first.authoritativeMessageKeys = null;
+  first.mountedMessageKeys = ["doubao:assistant:1"];
+  first.makers[0].sourceMessageKey = "doubao:assistant:1";
+  model.reconcile(first);
+
+  const emptyMounted = {
+    coverage: "partial",
+    authoritativeMessageKeys: null,
+    groups: first.groups,
+    mountedMessageKeys: ["doubao:assistant:1"],
+    makers: []
+  };
+  assert.equal(model.reconcile(emptyMounted).groups[0].headings.length, 0);
+});
+
+test("一个平台 Storage 失败不会阻止另一平台持久化", async () => {
+  const storage = createMemoryStorage();
+  const originalSet = storage.set;
+  storage.set = async (items) => {
+    if (Object.keys(items).some((key) => key.includes("qianwen"))) {
+      throw new Error("qianwen quota");
+    }
+    return originalSet(items);
+  };
+  const errors = [];
+  let nextKey = 1;
+  const model = createMakerSnapshotModel({
+    storage,
+    createKey: () => `maker-isolated-${nextKey++}`,
+    now: () => 150_000,
+    onError: (error) => errors.push(error.message)
+  });
+
+  await model.open({ platformKey: "qianwen", conversationKey: "https://www.qianwen.com:one", persistence: true });
+  await model.open({ platformKey: "chatgpt", conversationKey: "https://chatgpt.com:healthy", persistence: true });
+  const nextObservation = observation({ isConnected: true });
+  nextObservation.coverage = "complete";
+  nextObservation.authoritativeMessageKeys = ["assistant-1"];
+  nextObservation.mountedMessageKeys = ["assistant-1"];
+  nextObservation.makers[0].sourceMessageKey = "assistant-1";
+  model.reconcile(nextObservation);
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
+  assert.deepEqual(errors, ["qianwen quota"]);
+  assert.equal(Object.values(storage.values).some((value) => value?.conversationKey === "https://chatgpt.com:healthy"), true);
+});
+
+test("v2 写入失败时保留 ChatGPT v1 快照", async () => {
+  const storage = createMemoryStorage();
+  const conversationKey = "https://chatgpt.com:migration-fails";
+  const legacyConversationKey = `chatgpt:${conversationKey}`;
+  const legacyStorageKey = `polaris.makerSnapshot.v1:${encodeURIComponent(legacyConversationKey)}`;
+  storage.values[legacyStorageKey] = {
+    schemaVersion: 1,
+    conversationKey: legacyConversationKey,
+    updatedAt: 155_000,
+    expiresAt: 170_000,
+    groups: [],
+    makers: [{ makerKey: "maker-legacy-safe", assistantMessageId: "assistant-safe", groupKey: "orphan" }]
+  };
+  const originalSet = storage.set;
+  storage.set = async (items) => {
+    if (Object.keys(items).some((key) => key.startsWith("polaris.makerSnapshot.v2:"))) {
+      throw new Error("write failed");
+    }
+    return originalSet(items);
+  };
+
+  const model = createMakerSnapshotModel({ storage, now: () => 160_000 });
+  await model.open({ platformKey: "chatgpt", conversationKey, persistence: true });
+
+  assert.equal(Object.prototype.hasOwnProperty.call(storage.values, legacyStorageKey), true);
+});
+
+test("旧平台异步读取失败不会禁用随后打开的平台", async () => {
+  const memoryStorage = createMemoryStorage();
+  let rejectQianwenRead;
+  const qianwenRead = new Promise((resolve, reject) => {
+    rejectQianwenRead = reject;
+  });
+  const storage = {
+    ...memoryStorage,
+    async get(keys) {
+      if (keys === "polaris.makerSnapshotIndex.v2:qianwen") {
+        return qianwenRead;
+      }
+      return memoryStorage.get(keys);
+    }
+  };
+  const model = createMakerSnapshotModel({
+    storage,
+    createKey: () => "maker-current-platform",
+    now: () => 170_000
+  });
+
+  const staleOpen = model.open({
+    platformKey: "qianwen",
+    conversationKey: "https://www.qianwen.com:stale",
+    persistence: true
+  });
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  await model.open({
+    platformKey: "chatgpt",
+    conversationKey: "https://chatgpt.com:current",
+    persistence: true
+  });
+  rejectQianwenRead(new Error("stale qianwen read failed"));
+  await staleOpen;
+
+  model.reconcile(observation({ isConnected: true }));
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(
+    Object.values(memoryStorage.values).some((value) => value?.conversationKey === "https://chatgpt.com:current"),
+    true
+  );
 });

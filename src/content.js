@@ -4,6 +4,7 @@ import {
   createChromeStorageAdapter,
   createMakerSnapshotModel
 } from "./maker-snapshot-model.js";
+import { createMakerPlatformAdapter } from "./maker-platform-adapter.js";
 import { recoverMakerElement } from "./maker-jump-recovery.js";
 import { doubaoMessageRoleFromClassNames } from "./doubao-message-role.js";
 import { pageThemeFromColors } from "./page-theme.js";
@@ -272,7 +273,8 @@ import {
     lastRenderedHeadingCount: 0,
     markerSearchQuery: "",
     chatGPTConversation: null,
-    chatGPTMakerSnapshotView: null,
+    makerSnapshotView: null,
+    isMakerSnapshotOpen: false,
     chatGPTConversationRefreshTimer: 0,
     chatGPTConversationRequestId: 0,
     pendingMakerJumps: new Set(),
@@ -301,7 +303,7 @@ import {
     routeKey: "",
     isExtensionContextInvalidated: false
   };
-  const chatGPTMakerSnapshotModel = createMakerSnapshotModel({
+  const makerSnapshotModel = createMakerSnapshotModel({
     storage: createChromeStorageAdapter(chrome.storage.local),
     onError(error) {
       console.warn("[Polaris for Web] Maker snapshot storage unavailable", error);
@@ -385,8 +387,9 @@ import {
     state.markerListScrollAnimation = 0;
     state.observer?.disconnect();
     state.liquidGlassObserver?.disconnect();
-    chatGPTMakerSnapshotModel.close();
-    state.chatGPTMakerSnapshotView = null;
+    makerSnapshotModel.close();
+    state.makerSnapshotView = null;
+    state.isMakerSnapshotOpen = false;
     closeExplosionOverlay();
     state.isReleaseNoticeOpen = false;
     unlockPageScroll();
@@ -2406,6 +2409,10 @@ import {
     return "default";
   }
 
+  function currentMakerPlatformAdapter() {
+    return createMakerPlatformAdapter(currentPlatformKey());
+  }
+
   function getAssistantContainerSelectors() {
     if (isUnsupportedXiaohongshuMainPage()) {
       return [];
@@ -2652,7 +2659,7 @@ import {
       const ordinalWithinKind = ordinalByAssistantAndKind.get(ordinalKey) || 0;
       ordinalByAssistantAndKind.set(ordinalKey, ordinalWithinKind + 1);
       makers.push({
-        assistantMessageId,
+        sourceMessageKey: assistantMessageId,
         groupKey: userMessageId ? `chatgpt-user-${userMessageId}` : "orphan",
         canonicalKind,
         ordinalWithinKind,
@@ -2666,15 +2673,16 @@ import {
       });
     });
 
-    state.chatGPTMakerSnapshotView = chatGPTMakerSnapshotModel.reconcile({
-      activeAssistantMessageIds: conversation.activeAssistantMessageIds || [],
+    state.makerSnapshotView = makerSnapshotModel.reconcile({
+      coverage: "complete",
+      authoritativeMessageKeys: conversation.activeAssistantMessageIds || [],
       groups,
-      mountedAssistantMessageIds: assistantContainers
+      mountedMessageKeys: assistantContainers
         .map((container) => chatGPTMessageIdForContainer(container))
         .filter(Boolean),
       makers
     });
-    return state.chatGPTMakerSnapshotView.groups;
+    return state.makerSnapshotView.groups;
   }
 
   function collectMarkerGroups(userContainers, assistantContainers, headings) {
@@ -2682,14 +2690,25 @@ import {
       if (state.chatGPTConversation) {
         return collectChatGPTMarkerGroups(state.chatGPTConversation, assistantContainers, headings);
       }
-      if (state.chatGPTMakerSnapshotView?.groups.length) {
-        return state.chatGPTMakerSnapshotView.groups;
+      if (state.makerSnapshotView?.groups.length) {
+        return state.makerSnapshotView.groups;
       }
     }
+    const adapter = currentMakerPlatformAdapter();
+    const runtimeGroupOccurrences = new Map();
     const userItems = userContainers
       .map((element) => makeUserMarkerItem(element))
       .filter((user) => Boolean(user.title))
-      .sort((left, right) => compareConversationPosition(left.element, right.element));
+      .sort((left, right) => compareConversationPosition(left.element, right.element))
+      .map((user) => {
+        const occurrence = runtimeGroupOccurrences.get(user.previewTitle) || 0;
+        runtimeGroupOccurrences.set(user.previewTitle, occurrence + 1);
+        const identity = adapter.groupIdentity(
+          user.element,
+          adapter.runtimeGroupKey(user.previewTitle, occurrence)
+        );
+        return { ...user, markerKey: identity.groupKey, hasPersistentIdentity: identity.persistent };
+      });
     const userItemByElement = new Map(userItems.map((user) => [user.element, user]));
     const headingToAssistant = new Map();
     headings.forEach((heading) => {
@@ -2710,6 +2729,8 @@ import {
     const groupsByKey = new Map();
     const orphanGroup = { key: "orphan", user: null, headings: [] };
     const assistantToUser = new Map();
+    const assistantIdentityByElement = new Map();
+    const assistantOrdinalByGroup = new Map();
     let currentUser = null;
 
     entries.forEach((entry) => {
@@ -2719,31 +2740,94 @@ import {
           return;
         }
         currentUser = user;
-        groupsByKey.set(user.markerKey, { key: user.markerKey, user, headings: [] });
+        groupsByKey.set(user.markerKey, {
+          key: user.markerKey,
+          user,
+          headings: [],
+          hasAssistantMessage: false
+        });
         return;
       }
 
       assistantToUser.set(entry.element, currentUser);
+      const groupKey = currentUser?.markerKey || "orphan";
+      const assistantOrdinal = assistantOrdinalByGroup.get(groupKey) || 0;
+      assistantOrdinalByGroup.set(groupKey, assistantOrdinal + 1);
+      const sourceMessageKey = adapter.sourceIdentity(entry.element, groupKey, assistantOrdinal);
+      assistantIdentityByElement.set(entry.element, currentUser?.hasPersistentIdentity
+        ? sourceMessageKey
+        : "");
+      if (currentUser) {
+        groupsByKey.get(currentUser.markerKey).hasAssistantMessage = true;
+      }
     });
 
     headings.forEach((heading) => {
-      let user = assistantToUser.get(headingToAssistant.get(heading));
+      const assistantContainer = headingToAssistant.get(heading);
+      let user = assistantToUser.get(assistantContainer);
       if (!user && isXiaohongshuMainChatPage()) {
         user = userItems
           .filter((item) => compareConversationPosition(item.element, heading.element) <= 0)
           .pop() || null;
       }
       const group = user ? groupsByKey.get(user.markerKey) : orphanGroup;
-      group.headings.push(heading);
+      group.headings.push({
+        ...heading,
+        sourceMessageKey: assistantIdentityByElement.get(assistantContainer) || ""
+      });
     });
 
-    return [...groupsByKey.values(), orphanGroup]
+    const rawGroups = [...groupsByKey.values(), orphanGroup]
       .filter((group) => group.user || group.headings.length)
       .sort((left, right) => {
         const leftElement = left.user ? left.user.element : left.headings[0].element;
         const rightElement = right.user ? right.user.element : right.headings[0].element;
         return compareConversationPosition(leftElement, rightElement);
       });
+    if (!state.isMakerSnapshotOpen) {
+      return rawGroups;
+    }
+
+    const groups = rawGroups.filter((group) => group.user).map((group, order) => ({
+      groupKey: group.key,
+      userMessageKey: group.user.hasPersistentIdentity ? group.key : "",
+      previewTitle: group.user.previewTitle,
+      title: group.user.title,
+      order,
+      hasAssistantMessage: group.hasAssistantMessage
+    }));
+    const ordinalBySourceAndKind = new Map();
+    const makers = rawGroups
+      .flatMap((group) => group.headings.map((heading) => ({ group, heading })))
+      .map(({ group, heading }, order) => {
+        const canonicalKind = canonicalKindForHeading(heading);
+        const ordinalKey = `${heading.sourceMessageKey || group.key}:${canonicalKind}`;
+        const ordinalWithinKind = ordinalBySourceAndKind.get(ordinalKey) || 0;
+        ordinalBySourceAndKind.set(ordinalKey, ordinalWithinKind + 1);
+        return {
+          sourceMessageKey: heading.sourceMessageKey,
+          groupKey: group.key,
+          canonicalKind,
+          ordinalWithinKind,
+          titleFingerprint: normalizeTitle(heading.title),
+          title: heading.title,
+          level: heading.level,
+          sourceType: heading.sourceType,
+          order,
+          lastKnownScrollRatio: lastKnownScrollRatioForElement(heading.element),
+          element: heading.element
+        };
+      });
+    state.makerSnapshotView = makerSnapshotModel.reconcile({
+      coverage: adapter.coverage(),
+      authoritativeMessageKeys: null,
+      groups,
+      mountedMessageKeys: [...new Set(
+        [...assistantIdentityByElement.values()].filter(Boolean)
+      )],
+      makers
+    });
+    return state.makerSnapshotView.groups;
   }
 
   function syncUserMarkerExpansion(groups) {
@@ -3342,7 +3426,11 @@ import {
   }
 
   function markerKeyForHeading(heading) {
-    return heading.markerKey || markerKeyFor(heading.element);
+    return existingMakerKeyForHeading(heading) || markerKeyFor(heading.element);
+  }
+
+  function existingMakerKeyForHeading(heading) {
+    return heading.makerKey || heading.markerKey || "";
   }
 
   function nearestVerticalScrollContainer(element) {
@@ -3366,8 +3454,9 @@ import {
   }
 
   function currentElementForHeading(heading) {
-    if (isChatGPTPage() && heading.markerKey) {
-      const mappedElement = chatGPTMakerSnapshotModel.resolveElement(heading.markerKey);
+    const makerKey = existingMakerKeyForHeading(heading);
+    if (makerKey) {
+      const mappedElement = makerSnapshotModel.resolveElement(makerKey);
       if (mappedElement instanceof HTMLElement) {
         return mappedElement;
       }
@@ -3418,8 +3507,8 @@ import {
     if (jumpToHeading(heading)) {
       return true;
     }
-    const makerKey = heading.markerKey || "";
-    if (!isChatGPTPage() || !makerKey || state.pendingMakerJumps.has(makerKey)) {
+    const makerKey = existingMakerKeyForHeading(heading);
+    if (!makerKey || state.pendingMakerJumps.has(makerKey)) {
       return false;
     }
     const scrollContainer = conversationScrollContainer();
@@ -3432,7 +3521,7 @@ import {
       makerKey,
       scrollContainer,
       scrollRatio: heading.lastKnownScrollRatio,
-      resolveElement: (key) => chatGPTMakerSnapshotModel.resolveElement(key)
+      resolveElement: (key) => makerSnapshotModel.resolveElement(key)
     });
     state.pendingMakerJumps.delete(makerKey);
     if (recoveredElement instanceof HTMLElement && jumpToHeading(heading)) {
@@ -3785,7 +3874,7 @@ import {
       const markerKey = marker.dataset.markerKey || "";
       const heading = state.headings.find((item) => markerKeyForHeading(item) === markerKey);
       if (!heading || !await jumpToHeadingWithRecovery(heading)) {
-        if (heading && isChatGPTPage()) {
+        if (heading) {
           showMarkerNotice(t("userMarker.replyNotLoaded"));
         }
         return;
@@ -3907,11 +3996,11 @@ import {
     const assistantContainers = getAssistantContainers();
     const userContainers = getUserContainers();
     const hasChatGPTConversation = isChatGPTPage() && Boolean(state.chatGPTConversation?.userMessages.length);
-    const hasChatGPTSnapshot = isChatGPTPage() && Boolean(state.chatGPTMakerSnapshotView?.groups.length);
+    const hasMakerSnapshot = Boolean(state.makerSnapshotView?.groups.length);
     const hasConversation = assistantContainers.length > 0
       || userContainers.length > 0
       || hasChatGPTConversation
-      || hasChatGPTSnapshot;
+      || hasMakerSnapshot;
     if (!hasConversation) {
       return {
         assistantContainers,
@@ -3923,11 +4012,11 @@ import {
       };
     }
 
-    const headings = collectHeadings(assistantContainers, { applyConfig: !isChatGPTPage() });
+    const headings = collectHeadings(assistantContainers, { applyConfig: false });
     const markerGroups = collectMarkerGroups(userContainers, assistantContainers, headings);
-    const renderHeadings = isChatGPTPage()
-      ? markerGroups.flatMap((group) => group.headings).filter(isHeadingEnabledForCurrentConfig)
-      : headings;
+    const renderHeadings = markerGroups
+      .flatMap((group) => group.headings)
+      .filter(isHeadingEnabledForCurrentConfig);
     return {
       assistantContainers,
       userContainers,
@@ -4097,8 +4186,9 @@ import {
     state.lastRenderedHeadingCount = 0;
     state.markerSearchQuery = "";
     state.chatGPTConversation = null;
-    chatGPTMakerSnapshotModel.close();
-    state.chatGPTMakerSnapshotView = null;
+    makerSnapshotModel.close();
+    state.makerSnapshotView = null;
+    state.isMakerSnapshotOpen = false;
     state.pendingMakerJumps.clear();
     window.clearTimeout(state.chatGPTConversationRefreshTimer);
     state.chatGPTConversationRefreshTimer = 0;
@@ -4124,27 +4214,29 @@ import {
     document.documentElement.removeAttribute(DEBUG_ATTR);
   }
 
-  function currentChatGPTConversationScope() {
-    if (!isChatGPTPage()) {
-      return "";
-    }
-    const conversationId = chatGPTConversationIdFromPath(window.location.pathname);
-    return conversationId ? `chatgpt:${window.location.origin}:${conversationId}` : "";
+  function currentMakerConversationScope() {
+    return currentMakerPlatformAdapter().conversationScope({
+      location: window.location
+    });
   }
 
-  async function openCurrentChatGPTMakerSnapshot() {
+  function makerConversationScopesEqual(left, right) {
+    return left?.platformKey === right?.platformKey
+      && left?.conversationKey === right?.conversationKey
+      && left?.persistence === right?.persistence;
+  }
+
+  async function openCurrentMakerSnapshot() {
     const routeKey = currentRouteKey();
-    const conversationScope = currentChatGPTConversationScope();
-    if (!conversationScope) {
-      chatGPTMakerSnapshotModel.close();
-      state.chatGPTMakerSnapshotView = null;
+    const conversationScope = currentMakerConversationScope();
+    state.isMakerSnapshotOpen = false;
+    const snapshotView = await makerSnapshotModel.open(conversationScope);
+    if (routeKey !== currentRouteKey()
+      || !makerConversationScopesEqual(conversationScope, currentMakerConversationScope())) {
       return;
     }
-    const snapshotView = await chatGPTMakerSnapshotModel.open(conversationScope);
-    if (routeKey !== currentRouteKey() || conversationScope !== currentChatGPTConversationScope()) {
-      return;
-    }
-    state.chatGPTMakerSnapshotView = snapshotView;
+    state.makerSnapshotView = snapshotView;
+    state.isMakerSnapshotOpen = true;
     scheduleRender({ suppressMarkerMotion: true });
   }
 
@@ -4161,7 +4253,7 @@ import {
       removeNavigationRoot();
       return;
     }
-    void openCurrentChatGPTMakerSnapshot();
+    void openCurrentMakerSnapshot();
     scheduleChatGPTConversationRefresh();
     scheduleRender();
   }
@@ -4810,7 +4902,7 @@ import {
     }
     watchConfigChanges();
     state.routeKey = currentRouteKey();
-    await openCurrentChatGPTMakerSnapshot();
+    await openCurrentMakerSnapshot();
     watchRouteChanges();
     window.addEventListener("message", handleChatGPTConversationMessage);
     render();

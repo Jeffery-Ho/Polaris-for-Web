@@ -1,5 +1,16 @@
 const RELEASE_NOTES = Object.freeze([
   {
+    version: "0.42.0",
+    en: {
+      title: "Maker snapshots across supported AI chats",
+      changes: ["Doubao, Kimi, Qianwen, Yuanbao, and Xiaohongshu Diandian now share the resilient Maker snapshot model with ChatGPT, while pages without a verified conversation identity stay safely in memory-only mode."]
+    },
+    zh: {
+      title: "Maker 快照扩展到全部支持平台",
+      changes: ["豆包、Kimi、千问、元宝和小红书点点现与 ChatGPT 共用稳定 Maker 快照模型；无法确认会话身份的页面会安全降级为仅当前页面内存模式。"]
+    }
+  },
+  {
     version: "0.41.0",
     en: {
       title: "Resilient ChatGPT Maker snapshots",

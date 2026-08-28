@@ -119,11 +119,19 @@ test("ChatGPT Maker 临时快照提供内置更新说明", () => {
   assert.match(note.en.changes[0], /local snapshot/);
 });
 
+test("全平台 Maker 快照提供内置更新说明", () => {
+  const note = releaseNotesForUpdate("0.41.1", "0.42.0")[0];
+  assert.equal(note.version, "0.42");
+  assert.equal(note.isFallback, undefined);
+  assert.match(note.zh.changes[0], /豆包/);
+  assert.match(note.en.changes[0], /memory-only/);
+});
+
 test("缺失当前功能版本说明时按 0.xx 粒度安全降级", () => {
-  const note = releaseNotesForUpdate("0.41.0", "0.42.2")
+  const note = releaseNotesForUpdate("0.42.0", "0.43.2")
     .find((candidate) => candidate.isFallback);
   assert.ok(note);
-  assert.equal(note.version, "0.42");
+  assert.equal(note.version, "0.43");
   assert.equal(note.isFallback, true);
   assert.match(note.zh.title, /更新说明/);
 });

@@ -110,18 +110,19 @@
         synchronized settings.
       </p>
 
-      <h3>Temporary ChatGPT Maker Snapshots</h3>
+      <h3>Temporary Maker Snapshots</h3>
       <p>
-        To keep navigation available when ChatGPT removes older message elements from the page,
-        Polaris for Web stores a temporary local snapshot containing user-message first-line
-        previews, Maker titles, heading levels, stable identifiers, and positioning metadata.
-        It does not store full AI responses or full user prompts in this snapshot.
+        To keep navigation available when a supported AI chat removes or redraws message elements,
+        Polaris for Web may store a temporary local snapshot containing user-message first-line
+        previews of up to 160 characters, Maker titles, heading levels, stable identifiers, and
+        positioning metadata. It does not store full AI responses or full user prompts in this snapshot.
       </p>
       <p>
         Maker snapshots use the Chrome Storage Local API, remain only on the current device,
         are not synchronized, and are not transmitted to the developer or any third party.
-        Snapshots expire after seven days and are also limited to the 20 most recently used
-        conversations or 2 MB in total, whichever limit is reached first.
+        Snapshots expire after seven days. Each supported platform independently retains at most
+        20 recently used conversations or 2 MB, whichever limit is reached first. Pages without
+        a verified stable conversation identity use only temporary in-page memory and are not saved.
       </p>
 
       <h3>Clipboard</h3>
@@ -169,9 +170,9 @@
 
       <h2>4. Data Retention</h2>
       <p>
-        Polaris for Web does not create a persistent copy of full AI responses. Temporary ChatGPT
+        Polaris for Web does not create a persistent copy of full AI responses. Temporary
         Maker snapshots retain only the limited navigation fields described above for up to seven
-        days, subject to the 20-conversation and 2 MB local limits.
+        days, subject to each platform's 20-conversation and 2 MB local limits.
       </p>
       <p>
         Extension settings remain in Chrome storage until they are reset or removed by the user
@@ -181,7 +182,7 @@
 
       <h2>5. Browser Permissions</h2>
       <ul>
-        <li><strong>Storage permission:</strong> used to save and synchronize extension preferences and to keep temporary ChatGPT Maker snapshots locally on the current device.</li>
+        <li><strong>Storage permission:</strong> used to save and synchronize extension preferences and to keep temporary Maker snapshots for supported AI chats locally on the current device.</li>
         <li><strong>Host permissions:</strong> used to run the extension on supported AI chat websites and locally inspect AI response content required for navigation features.</li>
       </ul>
       <p>The extension requests only the permissions needed to provide its disclosed functionality.</p>

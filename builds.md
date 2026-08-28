@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 175
+
+- Date: 2026-08-28
+- Version: 0.42.0
+- Summary: Extends the resilient Maker snapshot model to every supported AI chat platform.
+- Notes: ChatGPT, Doubao, Kimi, Qianwen, Yuanbao, and Xiaohongshu Diandian now share platform-aware Maker identity, reconciliation, DOM remapping, and missing-target recovery. Version 2 stores an independent seven-day, 20-conversation, 2 MB LRU namespace per platform; unverified conversation or message identities remain memory-only, and one platform's Storage failure does not disable another. ChatGPT v1 snapshots migrate lazily without changing Maker keys. `pnpm test` passed 142/142, `pnpm check` passed, and the final `pnpm build` completed successfully; `dist/manifest.json` is `0.42.0(175)`. Live unpacked-extension validation across the five newly migrated platforms remains pending because no controllable browser session with the extension and signed-in conversations was available.
+
 ## 174
 
 - Date: 2026-08-28
