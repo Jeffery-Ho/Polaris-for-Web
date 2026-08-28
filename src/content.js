@@ -10,6 +10,11 @@ import {
 } from "./maker-snapshot-model.js";
 import { createMakerPlatformAdapter } from "./maker-platform-adapter.js";
 import { recoverMakerElement } from "./maker-jump-recovery.js";
+import { createHistoricalMakerLoader } from "./historical-maker-loader.js";
+import {
+  captureHistoricalScrollPosition,
+  restoreHistoricalScrollPosition
+} from "./historical-scroll-position.js";
 import { doubaoMessageRoleFromClassNames } from "./doubao-message-role.js";
 import { pageThemeFromColors } from "./page-theme.js";
 import { releaseNotesForUpdate } from "./release-notes.js";
@@ -185,6 +190,9 @@ import {
   const CHATGPT_CONVERSATION_REQUEST = "request";
   const CHATGPT_CONVERSATION_RESPONSE = "response";
   const CHATGPT_CONVERSATION_REFRESH_DELAY_MS = 300;
+  const HISTORICAL_MAKER_SCAN_TIMEOUT_MS = 10_000;
+  const HISTORICAL_MAKER_SETTLE_MS = 250;
+  const HISTORICAL_MAKER_SCROLL_RATIO = 0.8;
   const ROUTE_CHANGE_EVENT = "polaris-for-web-route-change";
   const FLOATING_ACTIVE_CLASS = "gpt-paragraph-nav__floating-active";
   const LIQUID_GLASS_SELECTOR = [
@@ -283,6 +291,17 @@ import {
     isMakerSnapshotOpen: false,
     chatGPTConversationRefreshTimer: 0,
     chatGPTConversationRequestId: 0,
+    chatGPTConversationWaiters: new Map(),
+    historicalMakerScan: {
+      status: "idle",
+      addedGroups: 0,
+      addedMakers: 0,
+      reachedStart: false,
+      partial: false
+    },
+    historicalMakerInteractionLocked: false,
+    historicalMakerActivationToken: 0,
+    historicalMakerScrollContainer: null,
     pendingMakerJumps: new Set(),
     explosionSearchQuery: "",
     expandedFoldGroups: new Set(),
@@ -314,6 +333,35 @@ import {
       console.warn("[Polaris for Web] Maker snapshot storage unavailable", error);
     }
   });
+  const historicalMakerLoader = createHistoricalMakerLoader();
+  const historicalMakerSettledWaiters = new Set();
+
+  function idleHistoricalMakerScan() {
+    return {
+      status: "idle",
+      addedGroups: 0,
+      addedMakers: 0,
+      reachedStart: false,
+      partial: false
+    };
+  }
+
+  function releaseHistoricalMakerInteraction(scrollContainer) {
+    unlockHistoricalMakerInteraction(scrollContainer);
+    if (state.historicalMakerScrollContainer === scrollContainer) {
+      state.historicalMakerInteractionLocked = false;
+      state.historicalMakerScrollContainer = null;
+    }
+  }
+
+  function cancelHistoricalMakerScan(reason, { reset = false } = {}) {
+    state.historicalMakerActivationToken += 1;
+    historicalMakerLoader.cancel(reason);
+    releaseHistoricalMakerInteraction(state.historicalMakerScrollContainer);
+    if (reset) {
+      state.historicalMakerScan = idleHistoricalMakerScan();
+    }
+  }
   const markerMotionSuppressor = createMarkerMotionSuppressor({
     setSuppressed: (isSuppressed) => {
       document.getElementById(ROOT_ID)?.classList.toggle(MARKER_MOTION_SUPPRESSION_CLASS, isSuppressed);
@@ -386,6 +434,7 @@ import {
     }
 
     state.isExtensionContextInvalidated = true;
+    cancelHistoricalMakerScan("dispose");
     window.clearTimeout(state.scheduled);
     state.scheduledRenderSuppressesMarkerMotion = false;
     markerMotionSuppressor.reset();
@@ -505,6 +554,8 @@ import {
       input.value = state.markerSearchQuery;
     }
 
+    input.disabled = isHistoricalMakerInteractionLocked();
+
     return input;
   }
 
@@ -544,7 +595,7 @@ import {
   }
 
   function toggleNavigation() {
-    if (!state.markerGroups.length) {
+    if (!state.markerGroups.length || isHistoricalMakerInteractionLocked()) {
       return;
     }
     if (!state.isCollapsed) {
@@ -591,6 +642,7 @@ import {
       tab.hidden = isMinimized && !isActive;
       tab.setAttribute("aria-hidden", String(isMinimized && !isActive));
       tab.tabIndex = isActive ? 0 : -1;
+      tab.disabled = isHistoricalMakerInteractionLocked();
       if (tab.dataset.controlTab === "navigation") {
         tab.setAttribute("aria-expanded", String(!state.isCollapsed));
       }
@@ -601,6 +653,7 @@ import {
     }
     const toggle = capsule.querySelector(`.${CONTROL_COMPACT_TOGGLE_CLASS}`);
     if (toggle instanceof HTMLButtonElement) {
+      toggle.disabled = isHistoricalMakerInteractionLocked();
       toggle.setAttribute("aria-label", t(isMinimized ? "controls.maximize" : "controls.minimize"));
       toggle.replaceChildren(createControlCompactIcon(isMinimized));
     }
@@ -615,6 +668,9 @@ import {
   }
 
   function activateControlTab(tabKey, { toggleNavigationWhenActive = false, openChapters = false } = {}) {
+    if (isHistoricalMakerInteractionLocked()) {
+      return;
+    }
     const isActive = state.activeControlTab === tabKey;
     state.activeControlTab = tabKey;
     if (tabKey === "navigation" && isActive && toggleNavigationWhenActive) {
@@ -3524,6 +3580,168 @@ import {
       : document.scrollingElement;
   }
 
+  function isHistoricalMakerInteractionLocked() {
+    return state.historicalMakerInteractionLocked;
+  }
+
+  function historicalMakerCounts() {
+    const groups = state.makerSnapshotView?.groups || state.markerGroups;
+    return {
+      groupCount: groups.filter((group) => group.user).length,
+      makerCount: groups.reduce((count, group) => count + group.headings.length, 0)
+    };
+  }
+
+  function visibleHistoricalMakerAnchor(scrollContainer) {
+    const isDocumentScroller = scrollContainer === document.scrollingElement;
+    const viewport = isDocumentScroller
+      ? { top: 0, bottom: window.innerHeight }
+      : scrollContainer.getBoundingClientRect();
+    return [...getUserContainers(), ...getAssistantContainers()]
+      .filter((element) => {
+        const rect = element.getBoundingClientRect();
+        return rect.bottom > viewport.top && rect.top < viewport.bottom;
+      })
+      .sort((left, right) => left.getBoundingClientRect().top - right.getBoundingClientRect().top)[0] || null;
+  }
+
+  function resolveHistoricalMakerAnchor(anchorKey) {
+    const adapter = currentMakerPlatformAdapter();
+    return [...getUserContainers(), ...getAssistantContainers()]
+      .find((element) => adapter.messageIdentity(element) === anchorKey) || null;
+  }
+
+  function waitForHistoricalMakerChange(signal) {
+    return new Promise((resolve, reject) => {
+      if (signal.aborted) {
+        reject(new DOMException("Aborted", "AbortError"));
+        return;
+      }
+      const waiter = { timer: 0 };
+      const finish = () => {
+        historicalMakerSettledWaiters.delete(waiter);
+        signal.removeEventListener("abort", abort);
+        render(null, { suppressMarkerMotion: true });
+        resolve();
+      };
+      const abort = () => {
+        window.clearTimeout(waiter.timer);
+        historicalMakerSettledWaiters.delete(waiter);
+        signal.removeEventListener("abort", abort);
+        reject(new DOMException("Aborted", "AbortError"));
+      };
+      waiter.finish = finish;
+      waiter.timer = window.setTimeout(finish, HISTORICAL_MAKER_SETTLE_MS);
+      historicalMakerSettledWaiters.add(waiter);
+      signal.addEventListener("abort", abort, { once: true });
+    });
+  }
+
+  function postponeHistoricalMakerSettledWait() {
+    historicalMakerSettledWaiters.forEach((waiter) => {
+      window.clearTimeout(waiter.timer);
+      waiter.timer = window.setTimeout(waiter.finish, HISTORICAL_MAKER_SETTLE_MS);
+    });
+  }
+
+  function createHistoricalMakerSource(scrollContainer) {
+    return {
+      async prepare({ signal }) {
+        if (isChatGPTPage()) {
+          await requestImmediateChatGPTConversationRefresh(signal);
+        }
+      },
+      measure() {
+        if (!scrollContainer.isConnected) {
+          throw new Error("Conversation scroll container is unavailable");
+        }
+        return {
+          scrollTop: scrollContainer.scrollTop,
+          scrollHeight: scrollContainer.scrollHeight,
+          clientHeight: scrollContainer.clientHeight,
+          ...historicalMakerCounts()
+        };
+      },
+      scrollEarlier() {
+        scrollContainer.scrollTo({
+          top: Math.max(0, scrollContainer.scrollTop - scrollContainer.clientHeight * HISTORICAL_MAKER_SCROLL_RATIO),
+          behavior: "auto"
+        });
+      },
+      waitForChange({ signal }) {
+        return waitForHistoricalMakerChange(signal);
+      }
+    };
+  }
+
+  async function startHistoricalMakerScan() {
+    if (isHistoricalMakerInteractionLocked()) {
+      return;
+    }
+    const scrollContainer = conversationScrollContainer();
+    if (!(scrollContainer instanceof HTMLElement)) {
+      state.historicalMakerScan = { ...state.historicalMakerScan, status: "unavailable" };
+      render();
+      return;
+    }
+
+    const routeKey = currentRouteKey();
+    const scope = currentMakerConversationScope();
+    const activationToken = state.historicalMakerActivationToken + 1;
+    state.historicalMakerActivationToken = activationToken;
+    const anchorElement = visibleHistoricalMakerAnchor(scrollContainer);
+    const position = captureHistoricalScrollPosition({
+      scrollContainer,
+      anchorElement,
+      anchorKey: anchorElement ? currentMakerPlatformAdapter().messageIdentity(anchorElement) : ""
+    });
+    state.historicalMakerInteractionLocked = true;
+    state.historicalMakerScrollContainer = scrollContainer;
+    lockHistoricalMakerInteraction(scrollContainer);
+    try {
+      state.activeControlTab = "navigation";
+      state.isCollapsed = false;
+      closeExplosionOverlay();
+      markerListScrollPersistence.cancel();
+      render();
+      const result = await historicalMakerLoader.start({
+        scope,
+        source: createHistoricalMakerSource(scrollContainer),
+        timeoutMs: HISTORICAL_MAKER_SCAN_TIMEOUT_MS,
+        onProgress(progress) {
+          if (activationToken !== state.historicalMakerActivationToken || routeKey !== currentRouteKey()) {
+            return;
+          }
+          state.historicalMakerScan = progress;
+          render(null, { suppressMarkerMotion: true });
+        }
+      });
+      if (activationToken !== state.historicalMakerActivationToken || routeKey !== currentRouteKey()) {
+        return;
+      }
+      if (scrollContainer.isConnected) {
+        restoreHistoricalScrollPosition({
+          scrollContainer,
+          position,
+          resolveAnchor: resolveHistoricalMakerAnchor
+        });
+      }
+      state.historicalMakerScan = result;
+    } catch {
+      if (activationToken === state.historicalMakerActivationToken && routeKey === currentRouteKey()) {
+        state.historicalMakerScan = {
+          ...historicalMakerLoader.current(),
+          status: "unavailable"
+        };
+      }
+    } finally {
+      if (activationToken === state.historicalMakerActivationToken && routeKey === currentRouteKey()) {
+        releaseHistoricalMakerInteraction(scrollContainer);
+        render(null, { suppressMarkerMotion: true });
+      }
+    }
+  }
+
   async function jumpToHeadingWithRecovery(heading) {
     if (jumpToHeading(heading)) {
       return true;
@@ -3786,6 +4004,41 @@ import {
     };
   }
 
+  function historicalMakerRenderItem() {
+    const scan = state.historicalMakerScan;
+    let label = t("history.ready");
+    let action = t("history.fetch");
+    if (scan.status === "loading") {
+      label = t("history.loading", { groups: scan.addedGroups, makers: scan.addedMakers });
+      action = t("history.cancel");
+    } else if (scan.status === "complete") {
+      label = scan.partial
+        ? t("history.partial", { groups: scan.addedGroups, makers: scan.addedMakers })
+        : t("history.complete", { groups: scan.addedGroups, makers: scan.addedMakers });
+      action = t("history.rescan");
+    } else if (scan.status === "timeout" || scan.status === "cancelled") {
+      label = t("history.timeout", { groups: scan.addedGroups, makers: scan.addedMakers });
+      action = t("history.continue");
+    } else if (scan.status === "stalled") {
+      label = t("history.stalled");
+      action = t("history.retry");
+    } else if (scan.status === "unavailable") {
+      label = t("history.unavailable");
+      action = t("history.retry");
+    }
+    if (scan.partial && scan.status !== "complete") {
+      label = `${label} · ${t("history.partialIndicator")}`;
+    }
+    return {
+      key: "historical-maker-loader",
+      type: "history",
+      label,
+      action,
+      isLoading: scan.status === "loading",
+      signature: markerRenderSignature(["history", scan.status, scan.partial, label, action])
+    };
+  }
+
   function createMarkerRenderRow(item) {
     if (item.type === "empty") {
       const empty = document.createElement("div");
@@ -3796,6 +4049,23 @@ import {
     }
 
     const row = document.createElement("div");
+    if (item.type === "history") {
+      const card = document.createElement("div");
+      card.className = "gpt-paragraph-nav__history-card";
+      const status = document.createElement("span");
+      status.className = "gpt-paragraph-nav__history-status";
+      status.setAttribute("aria-live", "polite");
+      card.appendChild(status);
+      const action = document.createElement("button");
+      action.type = "button";
+      action.className = "gpt-paragraph-nav__history-action";
+      action.dataset.markerItemType = "history";
+      card.appendChild(action);
+      row.appendChild(card);
+      updateMarkerRenderRow(row, item);
+      return row;
+    }
+
     const marker = document.createElement("button");
     marker.type = "button";
     marker.dataset.markerItemType = item.type;
@@ -3840,6 +4110,19 @@ import {
   function updateMarkerRenderRow(row, item) {
     if (item.type === "empty") {
       row.textContent = item.message;
+      return;
+    }
+
+    if (item.type === "history") {
+      row.className = "gpt-paragraph-nav__marker-row gpt-paragraph-nav__marker-row--history";
+      row.dataset.markerRenderKey = item.key;
+      const card = row.querySelector(".gpt-paragraph-nav__history-card");
+      card.setAttribute("aria-busy", String(item.isLoading));
+      card.classList.toggle("is-loading", item.isLoading);
+      card.querySelector(".gpt-paragraph-nav__history-status").textContent = item.label;
+      const action = card.querySelector(".gpt-paragraph-nav__history-action");
+      action.textContent = item.action;
+      action.setAttribute("aria-label", item.action);
       return;
     }
 
@@ -3889,6 +4172,19 @@ import {
     const marker = event.target.closest("[data-marker-item-type]");
     const list = event.currentTarget;
     if (!(marker instanceof HTMLButtonElement) || !(list instanceof HTMLElement) || !list.contains(marker)) {
+      return;
+    }
+
+    if (marker.dataset.markerItemType === "history") {
+      if (isHistoricalMakerInteractionLocked()) {
+        historicalMakerLoader.cancel();
+      } else {
+        void startHistoricalMakerScan();
+      }
+      return;
+    }
+
+    if (isHistoricalMakerInteractionLocked()) {
       return;
     }
 
@@ -3994,17 +4290,18 @@ import {
   }
 
   function markerRenderItems(visibleGroups, earlierUserGroupCount) {
+    const items = [historicalMakerRenderItem()];
     if (!visibleGroups.length && state.markerSearchQuery) {
       const message = t("search.empty");
-      return [{
+      items.push({
         key: "search-empty",
         type: "empty",
         message,
         signature: markerRenderSignature(["empty", message])
-      }];
+      });
+      return items;
     }
 
-    const items = [];
     let isEarlierUserGroupsControlAppended = false;
     visibleGroups.forEach((group) => {
       if (earlierUserGroupCount && !isEarlierUserGroupsControlAppended && group.user) {
@@ -4071,6 +4368,8 @@ import {
 
     const renderSnapshot = snapshot || collectMarkerRenderSnapshot();
     const root = getRoot();
+    root.classList.toggle("is-history-loading", isHistoricalMakerInteractionLocked());
+    root.setAttribute("aria-busy", String(isHistoricalMakerInteractionLocked()));
     updatePageTheme(root);
     getReleaseNoticeOverlay(root);
 
@@ -4129,7 +4428,7 @@ import {
       return count + (group.user ? 1 : 0) + (isExpanded ? displayedHeadingCount(group, group.visibleHeadings) : 0);
     }, earlierUserGroupCount ? 1 : 0);
     const hasMarkers = markerGroups.length > 0;
-    root.style.setProperty("--queue-visible-count", String(Math.min(displayedCount || 1, state.config.maxVisible)));
+    root.style.setProperty("--queue-visible-count", String(Math.min(displayedCount + 1, state.config.maxVisible + 1)));
     root.classList.toggle("is-empty", !hasMarkers);
     root.classList.toggle("is-collapsed", state.isCollapsed && hasMarkers);
     list.style.height = state.isCollapsed && state.collapsedListHeight > 0 ? `${state.collapsedListHeight}px` : "";
@@ -4182,6 +4481,7 @@ import {
   }
 
   function resetRouteState() {
+    cancelHistoricalMakerScan("route", { reset: true });
     window.clearTimeout(state.scheduled);
     state.scheduledRenderSuppressesMarkerMotion = false;
     markerMotionSuppressor.reset();
@@ -4308,6 +4608,51 @@ import {
     }, CHATGPT_CONVERSATION_REFRESH_DELAY_MS);
   }
 
+  function requestImmediateChatGPTConversationRefresh(signal) {
+    const conversationId = chatGPTConversationIdFromPath(window.location.pathname);
+    if (!isChatGPTPage() || !conversationId) {
+      return Promise.reject(new Error("ChatGPT conversation is unavailable"));
+    }
+    window.clearTimeout(state.chatGPTConversationRefreshTimer);
+    state.chatGPTConversationRefreshTimer = 0;
+    state.chatGPTConversationRequestId += 1;
+    const requestId = state.chatGPTConversationRequestId;
+    const routeKey = currentRouteKey();
+    return new Promise((resolve, reject) => {
+      const abort = () => {
+        state.chatGPTConversationWaiters.delete(requestId);
+        reject(new DOMException("Aborted", "AbortError"));
+      };
+      if (signal.aborted) {
+        abort();
+        return;
+      }
+      state.chatGPTConversationWaiters.set(requestId, { abort, reject, resolve, signal });
+      signal.addEventListener("abort", abort, { once: true });
+      window.postMessage({
+        channel: CHATGPT_CONVERSATION_CHANNEL,
+        conversationId,
+        requestId,
+        routeKey,
+        type: CHATGPT_CONVERSATION_REQUEST
+      }, window.location.origin);
+    });
+  }
+
+  function settleChatGPTConversationWaiter(requestId, error = null) {
+    const waiter = state.chatGPTConversationWaiters.get(requestId);
+    if (!waiter) {
+      return;
+    }
+    state.chatGPTConversationWaiters.delete(requestId);
+    waiter.signal.removeEventListener("abort", waiter.abort);
+    if (error) {
+      waiter.reject(error);
+    } else {
+      waiter.resolve();
+    }
+  }
+
   function handleChatGPTConversationMessage(event) {
     if (event.source !== window || event.origin !== window.location.origin) {
       return;
@@ -4324,14 +4669,17 @@ import {
       return;
     }
     if (!data.conversation || data.error) {
+      settleChatGPTConversationWaiter(data.requestId, new Error(data.error || "Conversation request failed"));
       return;
     }
     const conversation = parseChatGPTConversation(data.conversation);
     if (!conversation.userMessages.length) {
+      settleChatGPTConversationWaiter(data.requestId, new Error("Conversation history is empty"));
       return;
     }
     state.chatGPTConversation = conversation;
     scheduleRender({ suppressMarkerMotion: true });
+    settleChatGPTConversationWaiter(data.requestId);
   }
 
   function watchRouteChanges() {
@@ -4361,7 +4709,11 @@ import {
     if (mutations.every(shouldIgnoreMutation)) {
       return;
     }
-    scheduleChatGPTConversationRefresh();
+    if (!isHistoricalMakerInteractionLocked()) {
+      scheduleChatGPTConversationRefresh();
+    } else {
+      postponeHistoricalMakerSettledWait();
+    }
     markerRenderStateMachine.request();
   }
 
@@ -4405,6 +4757,9 @@ import {
   }
 
   function updateActiveMarker() {
+    if (isHistoricalMakerInteractionLocked()) {
+      return;
+    }
     if (!state.activeMarkerKey) {
       clearActiveMarker();
       return;
@@ -4469,7 +4824,10 @@ import {
   function updateFloatingActiveMarker(activeMarker) {
     const root = getRoot();
     const floating = getFloatingActive(root);
-    if (!(activeMarker instanceof HTMLElement) || state.isCollapsed || state.activeControlTab === "settings") {
+    if (!(activeMarker instanceof HTMLElement)
+      || state.isCollapsed
+      || state.activeControlTab === "settings"
+      || isHistoricalMakerInteractionLocked()) {
       floating.hidden = true;
       floating.querySelector(".gpt-paragraph-nav__floating-active-preview").textContent = "";
       return;
@@ -4504,6 +4862,9 @@ import {
   }
 
   function scheduleScrollWork() {
+    if (isHistoricalMakerInteractionLocked()) {
+      return;
+    }
     if (state.scrollScheduled) {
       return;
     }
@@ -4537,6 +4898,47 @@ import {
     return event.isPrimary && (event.pointerType !== "mouse" || event.button === 0);
   }
 
+  function isHistoricalMakerCancelTarget(target) {
+    return target instanceof Element && Boolean(target.closest(".gpt-paragraph-nav__history-action"));
+  }
+
+  function handleHistoricalMakerInteraction(event) {
+    if (!isHistoricalMakerInteractionLocked() || isHistoricalMakerCancelTarget(event.target)) {
+      return;
+    }
+    const root = document.getElementById(ROOT_ID);
+    const target = event.target;
+    const isInsidePolaris = root instanceof HTMLElement && target instanceof Node && root.contains(target);
+    const scrollContainer = state.historicalMakerScrollContainer;
+    const isInsideConversation = scrollContainer instanceof HTMLElement
+      && target instanceof Node
+      && (scrollContainer === document.scrollingElement || scrollContainer.contains(target));
+    if (!isInsidePolaris && !isInsideConversation) {
+      return;
+    }
+    if (event.cancelable) {
+      event.preventDefault();
+    }
+    event.stopImmediatePropagation();
+  }
+
+  function lockHistoricalMakerInteraction(scrollContainer) {
+    scrollContainer.addEventListener("wheel", handleHistoricalMakerInteraction, { capture: true, passive: false });
+    scrollContainer.addEventListener("touchmove", handleHistoricalMakerInteraction, { capture: true, passive: false });
+    scrollContainer.addEventListener("pointerdown", handleHistoricalMakerInteraction, { capture: true });
+    scrollContainer.addEventListener("click", handleHistoricalMakerInteraction, { capture: true });
+  }
+
+  function unlockHistoricalMakerInteraction(scrollContainer) {
+    if (!(scrollContainer instanceof HTMLElement)) {
+      return;
+    }
+    scrollContainer.removeEventListener("wheel", handleHistoricalMakerInteraction, { capture: true });
+    scrollContainer.removeEventListener("touchmove", handleHistoricalMakerInteraction, { capture: true });
+    scrollContainer.removeEventListener("pointerdown", handleHistoricalMakerInteraction, { capture: true });
+    scrollContainer.removeEventListener("click", handleHistoricalMakerInteraction, { capture: true });
+  }
+
   function suppressNextClick() {
     state.suppressNextClick = true;
     window.clearTimeout(state.suppressNextClickTimer);
@@ -4559,7 +4961,7 @@ import {
   }
 
   function handlePointerDown(event) {
-    if (state.pointerDrag || state.isExplosionOpen || !isPrimaryPointer(event)) {
+    if (isHistoricalMakerInteractionLocked() || state.pointerDrag || state.isExplosionOpen || !isPrimaryPointer(event)) {
       return;
     }
 
@@ -4695,6 +5097,36 @@ import {
 
   function handleKeydown(event) {
     if (event.defaultPrevented) {
+      return;
+    }
+
+    if (isHistoricalMakerInteractionLocked()) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        historicalMakerLoader.cancel();
+        return;
+      }
+      if (isHistoricalMakerCancelTarget(event.target)) {
+        return;
+      }
+      const root = document.getElementById(ROOT_ID);
+      const isInsidePolaris = root instanceof HTMLElement
+        && event.target instanceof Node
+        && root.contains(event.target);
+      const scrollContainer = state.historicalMakerScrollContainer;
+      const isInsideConversation = scrollContainer instanceof HTMLElement
+        && event.target instanceof Node
+        && (scrollContainer === document.scrollingElement || scrollContainer.contains(event.target));
+      const isInteractiveTarget = event.target instanceof Element
+        && Boolean(event.target.closest("button, input, textarea, select, [contenteditable='true']"));
+      const scrollingKeys = new Set(["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End", " "]);
+      const isConversationScrollKey = scrollingKeys.has(event.key)
+        && isInsideConversation
+        && !isInteractiveTarget;
+      if (isInsidePolaris || isConversationScrollKey) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+      }
       return;
     }
 

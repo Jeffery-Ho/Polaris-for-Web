@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 180
+
+- Date: 2026-08-28
+- Version: 0.43.0
+- Summary: Adds explicit, cancellable loading of historical Makers on every supported platform.
+- Notes: A dedicated history card now scans earlier host content without reusing the local earlier-question disclosure. ChatGPT refreshes its active branch before the shared DOM scan, while the other platforms use controlled conversation scrolling. Each run is scope-isolated, lasts at most ten seconds, keeps incrementally reconciled records, reports partial ChatGPT results, and restores the reading position by message anchor, bottom distance, or original scroll position. Conversation and Maker navigation locks are released on every terminal path, with keyboard and pointer cancellation preserved. `pnpm test` passed 195/195, `pnpm check` passed, and the single `pnpm build` completed successfully; `dist/manifest.json` is `0.43.0(180)`. Live unpacked-extension validation on signed-in ChatGPT and non-ChatGPT long conversations remains pending because no controllable logged-in extension session was available in this automated run.
+
 ## 179
 
 - Date: 2026-08-28

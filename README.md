@@ -26,6 +26,7 @@ Polaris for Web automatically detects headings and list titles in AI responses a
 ## Features
 
 - Maker navigation on every supported platform uses the shared snapshot model and stable per-Maker keys. Verified conversation and user-group identities receive a seven-day `chrome.storage.local` snapshot; stable group-scoped response ordinals preserve Makers even while a host temporarily omits its assistant message ID, while unverified pages or groups safely remain memory-only. Snapshots keep only user first-line previews, Maker titles, and positioning metadata, with an independent limit of 20 conversations or 2 MB per platform.
+- An explicit history card can actively scan earlier conversation content for Makers on all supported platforms. ChatGPT refreshes its full active branch before the shared DOM scan; every scan is cancellable, lasts at most ten seconds, preserves newly found snapshot records, and restores the prior reading position.
 - Progressive Maker rendering begins during streaming output as soon as the first non-empty supported marker is available; fixed 120ms snapshots reuse existing Maker nodes and update only changed items, preserving list scrolling, focus, hover, and manual collapse state. Wheel, trackpad, or list-drag input on a Maker or group card immediately takes control from temporary Active Maker positioning, so any Maker can remain outside the list viewport while streaming continues.
 - Click-to-jump navigation, active-section highlighting, and a scrollable marker queue.
 - Visible titles inside AI markers, user groups, and the floating active marker are left-aligned; user group capsules remain on the queue's right edge while AI markers and folded stacks remain on the left.
@@ -80,7 +81,7 @@ Visit the [Polaris support page](https://jeffery-ho.github.io/polaris-landing/) 
 
 ## Version
 
-Current version: `0.42.4(179)`
+Current version: `0.43.0(180)`
 
 ## License
 

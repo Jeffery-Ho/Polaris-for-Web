@@ -1,5 +1,16 @@
 const RELEASE_NOTES = Object.freeze([
   {
+    version: "0.43.0",
+    en: {
+      title: "Load historical Makers on demand",
+      changes: ["A new history card can actively scan earlier conversation content on every supported platform, preserve newly found Makers in the existing local snapshot model, and return to the original reading position when finished or cancelled."]
+    },
+    zh: {
+      title: "主动获取历史 Maker",
+      changes: ["六个支持平台现可通过独立历史卡片主动获取更早会话中的 Maker；新发现内容沿用本地快照模型，并在完成或取消后返回原阅读位置。"]
+    }
+  },
+  {
     version: "0.42.0",
     en: {
       title: "Maker snapshots across supported AI chats",

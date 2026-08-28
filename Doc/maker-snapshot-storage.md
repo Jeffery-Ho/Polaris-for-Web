@@ -37,6 +37,18 @@ The list continues to show at most the configured number of recent user groups, 
 
 The page-memory `marker-N` fallback sequence restarts at `marker-1` whenever a conversation scope is activated. It is independent from persistent `makerKey` values: refreshing rebuilds runtime DOM mappings from the beginning without re-keying saved Makers.
 
+## Active history loading
+
+The history card is separate from the earlier-question control. Earlier questions only reveal records already present in the current model; active loading temporarily scrolls the host conversation toward its history so virtualized messages can mount, pass through the existing platform Adapter, and reconcile into the snapshot.
+
+ChatGPT refreshes its complete active branch before scanning, which establishes the authoritative group skeleton and response identities. Maker titles still come from the shared DOM recognizer so headings, lists, tables, and platform-specific cards follow the same rules as ordinary rendering. The other platforms begin directly with the DOM scan. Unverified conversations and groups keep newly discovered Makers in memory only.
+
+Each run lasts at most ten seconds, moves roughly 80 percent of one conversation viewport per step, and waits 250 milliseconds for DOM reconciliation. Reaching the history start with three stable passes completes the run; three stable passes away from the start report a stall. Timeout and cancellation retain all records already reconciled and allow another run.
+
+Before scanning, Polaris records the first visible message anchor, its viewport offset, the distance from the conversation bottom, and the current scroll position. Completion, timeout, and user cancellation restore by remapped message anchor first, bottom distance second, and original scroll position last. Route changes cancel the old activation without restoring its position into the new conversation.
+
+While a run is active, only the current conversation scroller receives temporary blocking listeners. Conversation scrolling and Maker navigation are locked, the history cancel action remains available, and all listeners are removed on every terminal path. No permanent global wheel handler is introduced.
+
 ## Storage lifecycle
 
 Version 2 uses per-platform namespaces:
