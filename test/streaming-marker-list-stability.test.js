@@ -3,6 +3,15 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 const contentSource = readFileSync(new URL("../src/content.js", import.meta.url), "utf8");
+const stylesSource = readFileSync(new URL("../src/styles.css", import.meta.url), "utf8");
+const liquidGlassSelectorStart = contentSource.indexOf("  const LIQUID_GLASS_SELECTOR = [");
+const liquidGlassSelectorEnd = contentSource.indexOf('  ].join(", ");', liquidGlassSelectorStart);
+const liquidGlassSelectorSource = contentSource.slice(liquidGlassSelectorStart, liquidGlassSelectorEnd);
+const baseGlassStart = stylesSource.indexOf(".gpt-paragraph-nav__control-capsule,");
+const dynamicGlassStart = stylesSource.indexOf("@supports ((backdrop-filter:", baseGlassStart);
+const baseGlassSource = stylesSource.slice(baseGlassStart, dynamicGlassStart);
+const dynamicGlassEnd = stylesSource.indexOf("\n\n.gpt-paragraph-nav__control-capsule {", dynamicGlassStart);
+const dynamicGlassSource = stylesSource.slice(dynamicGlassStart, dynamicGlassEnd);
 const renderStart = contentSource.indexOf("  function render(snapshot = null");
 const renderEnd = contentSource.indexOf("  function scheduleRender(", renderStart);
 const renderSource = contentSource.slice(renderStart, renderEnd);
@@ -124,4 +133,16 @@ test("液态玻璃只在元素首次注册时主动刷新", () => {
   assert.ok(alreadyRegisteredGuard >= 0);
   assert.ok(earlyReturn > alreadyRegisteredGuard);
   assert.ok(refresh > earlyReturn);
+});
+
+test("Maker 与浮动 Maker 使用轻量玻璃且不注册动态 SVG 滤镜", () => {
+  assert.doesNotMatch(liquidGlassSelectorSource, /__marker|__fold|__floating-active/);
+  assert.match(baseGlassSource, /\.gpt-paragraph-nav__fold/);
+  assert.match(baseGlassSource, /\.gpt-paragraph-nav__marker/);
+  assert.match(baseGlassSource, /\.gpt-paragraph-nav__floating-active/);
+  assert.match(baseGlassSource, /backdrop-filter: blur\(var\(--gpt-glass-blur\)\) saturate\(var\(--gpt-glass-saturate\)\)/);
+  assert.match(dynamicGlassSource, /\.gpt-paragraph-nav__control-capsule/);
+  assert.match(dynamicGlassSource, /\.gpt-paragraph-nav__search-input/);
+  assert.doesNotMatch(dynamicGlassSource, /__marker|__fold|__floating-active/);
+  assert.doesNotMatch(floatingSource, /updateLiquidGlassFilter\(/);
 });

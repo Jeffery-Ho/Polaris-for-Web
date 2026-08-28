@@ -11,5 +11,5 @@ These rules apply to the shared Maker navigation UI on every supported platform:
 - A pointer gesture may begin on a Maker, user group, or fold card. Movement beyond 4 px becomes a list drag and suppresses the card click; a gesture within the threshold remains a click.
 - Wheel and trackpad input use the browser's native scrolling only when the pointer is over a Maker, user group, or fold card. Transparent space outside those cards must not extend the list's wheel hit area.
 - Wheel and list-scroll hot paths must not scan every Maker, read per-item layout, or refresh every liquid-glass filter. Active styling updates only the previous and next active elements, and floating-marker updates reuse the cached active element.
-- Liquid-glass filters refresh when an element is first registered, resized, or changes active state; ordinary list scrolling must not trigger a full-list refresh.
+- AI Makers, user groups, fold cards, and the floating Active Maker use lightweight blur and saturation without SVG displacement or chromatic aberration. Controls and search may retain the full liquid-glass effect and refresh only when first registered or resized.
 - Route changes, configuration reset, and fold-threshold changes clear transient fold state. This state is not persisted to Chrome Storage or Maker snapshots.

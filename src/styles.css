@@ -172,10 +172,7 @@
 @supports ((backdrop-filter: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3C/svg%3E#displace") blur(1px)) or (-webkit-backdrop-filter: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3C/svg%3E#displace") blur(1px))) {
   .gpt-paragraph-nav__control-capsule,
   .gpt-paragraph-nav__control-compact-toggle,
-  .gpt-paragraph-nav__search-input,
-  .gpt-paragraph-nav__fold,
-  .gpt-paragraph-nav__marker,
-  .gpt-paragraph-nav__floating-active {
+  .gpt-paragraph-nav__search-input {
     -webkit-backdrop-filter: var(--gpt-liquid-glass-filter) blur(var(--gpt-glass-blur)) saturate(var(--gpt-glass-saturate));
     backdrop-filter: var(--gpt-liquid-glass-filter) blur(var(--gpt-glass-blur)) saturate(var(--gpt-glass-saturate));
   }

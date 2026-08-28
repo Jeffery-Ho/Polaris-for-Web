@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 177
+
+- Date: 2026-08-28
+- Version: 0.42.2
+- Summary: Reduces Maker-list compositing cost while preserving native high-precision scrolling.
+- Notes: AI Makers, user groups, fold cards, and the floating Active Maker now retain their existing backgrounds, borders, shadows, active colors, blur, and saturation without creating per-element SVG displacement or chromatic-aberration filters. Controls and search keep the full liquid-glass effect. Active tracking only toggles the previous and next elements, and floating scroll updates no longer calculate a filter. Native passive wheel scrolling, the 4 px drag threshold, and manual-scroll ownership remain unchanged. `pnpm test` passed 151/151, `pnpm check` passed, and the single `pnpm build` completed successfully; `dist/manifest.json` is `0.42.2(177)`. Live unpacked-extension Performance and light/dark visual validation in long static and streaming ChatGPT conversations remains pending because no controllable signed-in extension session was available.
+
 ## 176
 
 - Date: 2026-08-28

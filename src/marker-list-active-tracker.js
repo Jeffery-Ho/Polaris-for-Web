@@ -1,4 +1,4 @@
-export function createMarkerListActiveTracker({ setActive, refreshVisual }) {
+export function createMarkerListActiveTracker({ setActive }) {
   let activeElement = null;
 
   function current() {
@@ -16,12 +16,10 @@ export function createMarkerListActiveTracker({ setActive, refreshVisual }) {
     }
     if (previousElement) {
       setActive(previousElement, false);
-      refreshVisual(previousElement);
     }
     activeElement = connectedNextElement;
     if (activeElement) {
       setActive(activeElement, true);
-      refreshVisual(activeElement);
     }
     return activeElement;
   }

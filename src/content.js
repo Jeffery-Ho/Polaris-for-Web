@@ -183,10 +183,7 @@ import {
   const LIQUID_GLASS_SELECTOR = [
     `.${CONTROL_CAPSULE_CLASS}`,
     `.${CONTROL_COMPACT_TOGGLE_CLASS}`,
-    ".gpt-paragraph-nav__search-input",
-    ".gpt-paragraph-nav__fold",
-    ".gpt-paragraph-nav__marker",
-    ".gpt-paragraph-nav__floating-active"
+    ".gpt-paragraph-nav__search-input"
   ].join(", ");
   const QUEUE_MAX_VISIBLE = 30;
   const DEFAULT_TOP_GAP = 8;
@@ -324,9 +321,6 @@ import {
   const markerListActiveTracker = createMarkerListActiveTracker({
     setActive(marker, isActive) {
       marker.classList.toggle("is-active", isActive);
-    },
-    refreshVisual(marker) {
-      updateLiquidGlassFilter(marker);
     }
   });
   const markerListScrollPersistence = createMarkerListScrollPersistence({
@@ -3661,7 +3655,7 @@ import {
     const radius = Math.max(0, Math.round(parseFloat(style.borderTopLeftRadius) || 0));
     const depth = Math.max(3, Math.min(10, Math.round(Math.min(width, height) / 4)));
     const strength = Math.max(18, Math.min(42, Math.round(Math.min(width, height) * 1.2)));
-    const chromaticAberration = element.classList.contains(FLOATING_ACTIVE_CLASS) || element.classList.contains("is-active") ? 2 : 1;
+    const chromaticAberration = 1;
     const signature = `${width}:${height}:${radius}:${depth}:${strength}:${chromaticAberration}`;
     if (liquidGlassSignatures.get(element) === signature) {
       return;
@@ -4467,7 +4461,6 @@ import {
     floating.style.setProperty("--marker-width", activeMarker.style.getPropertyValue("--marker-width") || "24px");
     floating.style.setProperty("--floating-active-bottom", `calc(${Math.max(0, rootRect.bottom - listRect.bottom)}px + 20pt)`);
     floating.hidden = false;
-    updateLiquidGlassFilter(floating);
   }
 
   function scheduleFloatingActiveUpdate() {

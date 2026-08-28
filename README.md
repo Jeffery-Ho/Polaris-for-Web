@@ -31,7 +31,7 @@ Polaris for Web automatically detects headings and list titles in AI responses a
 - Visible titles inside AI markers, user groups, and the floating active marker are left-aligned; user group capsules remain on the queue's right edge while AI markers and folded stacks remain on the left.
 - Platform-specific marker filters for H1, H2, H3, H4, and unordered lists.
 - Settings synchronization through `chrome.storage.sync`.
-- Light and dark adaptive glass styling for markers, buttons, and the settings panel.
+- Light and dark adaptive glass styling, with lightweight blur and saturation on Maker cards and the floating Active Maker while controls and search retain the full displacement effect.
 - Native browser scrolling on Maker, user-group, and fold cards, without custom wheel animation or a transparent extended hit area.
 - Fuzzy title search for both the navigation marker queue and Chapter View, with `Cmd/Ctrl+F` focusing the current search box.
 - Long marker queues are grouped into stacks of `N` markers (default 20); each full group collapses into a stack card showing its first title followed by the remaining count, without a leading total-count badge.
@@ -80,7 +80,7 @@ Visit the [Polaris support page](https://jeffery-ho.github.io/polaris-landing/) 
 
 ## Version
 
-Current version: `0.42.1(176)`
+Current version: `0.42.2(177)`
 
 ## License
 
