@@ -9,4 +9,7 @@ These rules apply to the shared Maker navigation UI on every supported platform:
 - Search continues to expand matching results temporarily without rewriting the user's normal group state.
 - Wheel, trackpad, and pointer-drag input take control from temporary Active Maker list positioning without clearing the selected Maker.
 - A pointer gesture may begin on a Maker, user group, or fold card. Movement beyond 4 px becomes a list drag and suppresses the card click; a gesture within the threshold remains a click.
+- Wheel and trackpad input use the browser's native scrolling only when the pointer is over a Maker, user group, or fold card. Transparent space outside those cards must not extend the list's wheel hit area.
+- Wheel and list-scroll hot paths must not scan every Maker, read per-item layout, or refresh every liquid-glass filter. Active styling updates only the previous and next active elements, and floating-marker updates reuse the cached active element.
+- Liquid-glass filters refresh when an element is first registered, resized, or changes active state; ordinary list scrolling must not trigger a full-list refresh.
 - Route changes, configuration reset, and fold-threshold changes clear transient fold state. This state is not persisted to Chrome Storage or Maker snapshots.

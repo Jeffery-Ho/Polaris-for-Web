@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 176
+
+- Date: 2026-08-28
+- Version: 0.42.1
+- Summary: Removes Maker-list main-thread work from the wheel and scroll hot paths.
+- Notes: Maker, user-group, and fold cards now use native browser wheel scrolling and only cancel the temporary 1.2-second Active Maker positioning; the transparent extension area no longer captures wheel input. A cached active-element tracker updates at most the previous and next Maker, floating-state scroll work uses that cache, and liquid-glass filters no longer refresh across the full list during ordinary scrolling. Card dragging retains its 4 px threshold and manual-scroll ownership. `pnpm test` passed 150/150, `pnpm check` passed, and the single `pnpm build` completed successfully; `dist/manifest.json` is `0.42.1(176)`. Live unpacked-extension Performance validation in a long static and streaming ChatGPT conversation remains pending because no controllable signed-in extension session was available.
+
 ## 175
 
 - Date: 2026-08-28

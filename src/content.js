@@ -14,6 +14,11 @@ import {
   hasExceededMarkerListDragThreshold,
   preserveMarkerListDragPosition
 } from "./marker-list-drag.js";
+import { createMarkerListActiveTracker } from "./marker-list-active-tracker.js";
+import {
+  createMarkerListNativeWheelHandler,
+  markerListCardForTarget
+} from "./marker-list-native-scroll.js";
 import { createMarkerListReconciler } from "./marker-list-reconciler.js";
 import { createMarkerListScrollPersistence } from "./marker-list-scroll-persistence.js";
 import { createMarkerMotionSuppressor } from "./marker-motion-suppression.js";
@@ -261,8 +266,6 @@ import {
     scheduledRenderSuppressesMarkerMotion: false,
     scrollScheduled: 0,
     floatingScheduled: 0,
-    markerListScrollAnimation: 0,
-    markerListScrollTarget: 0,
     markerNoticeTimer: 0,
     pointerDrag: null,
     suppressNextClick: false,
@@ -317,6 +320,14 @@ import {
   const markerListReconciler = createMarkerListReconciler({
     createRow: createMarkerRenderRow,
     updateRow: updateMarkerRenderRow
+  });
+  const markerListActiveTracker = createMarkerListActiveTracker({
+    setActive(marker, isActive) {
+      marker.classList.toggle("is-active", isActive);
+    },
+    refreshVisual(marker) {
+      updateLiquidGlassFilter(marker);
+    }
   });
   const markerListScrollPersistence = createMarkerListScrollPersistence({
     durationMs: MARKER_LIST_SCROLL_PERSIST_MS,
@@ -381,10 +392,9 @@ import {
     markerMotionSuppressor.reset();
     markerRenderStateMachine.reset();
     markerListReconciler.reset();
+    markerListActiveTracker.reset();
     markerListScrollPersistence.reset();
     window.clearTimeout(state.markerNoticeTimer);
-    window.cancelAnimationFrame(state.markerListScrollAnimation);
-    state.markerListScrollAnimation = 0;
     state.observer?.disconnect();
     state.liquidGlassObserver?.disconnect();
     makerSnapshotModel.close();
@@ -445,10 +455,11 @@ import {
       list.setAttribute("role", "tabpanel");
       list.setAttribute("aria-labelledby", "gpt-paragraph-nav-tab-navigation");
       list.addEventListener("click", handleMarkerListClick);
+      list.addEventListener("wheel", createMarkerListNativeWheelHandler({
+        list,
+        cancelAutoPosition: () => markerListScrollPersistence.cancel()
+      }), { passive: true });
       list.addEventListener("scroll", () => {
-        if (!state.markerListScrollAnimation) {
-          state.markerListScrollTarget = list.scrollTop;
-        }
         scheduleFloatingActiveUpdate();
       }, { passive: true });
       root.appendChild(list);
@@ -3542,7 +3553,6 @@ import {
     } else if (bottomOverflow > 0) {
       list.scrollTop += bottomOverflow + 8;
     }
-    state.markerListScrollTarget = list.scrollTop;
   }
 
   function getLiquidGlassDisplacementMap({ height, width, radius, depth }) {
@@ -3626,12 +3636,13 @@ import {
   }
 
   function observeLiquidGlassElement(element) {
-    if (!state.liquidGlassElements.has(element)) {
-      state.liquidGlassElements.add(element);
-      const observer = getLiquidGlassObserver();
-      if (observer) {
-        observer.observe(element);
-      }
+    if (state.liquidGlassElements.has(element)) {
+      return;
+    }
+    state.liquidGlassElements.add(element);
+    const observer = getLiquidGlassObserver();
+    if (observer) {
+      observer.observe(element);
     }
     updateLiquidGlassFilter(element);
   }
@@ -3840,9 +3851,11 @@ import {
       return;
     }
 
+    const wasActive = marker.classList.contains("is-active");
     marker.className = item.type === "ai"
       ? `gpt-paragraph-nav__marker gpt-paragraph-nav__marker--ai level-${item.level}`
       : "gpt-paragraph-nav__marker gpt-paragraph-nav__marker--user";
+    marker.classList.toggle("is-active", wasActive);
     marker.style.setProperty("--marker-width", `${item.width}px`);
     marker.setAttribute("aria-label", item.ariaLabel || item.title);
     marker.querySelector(".gpt-paragraph-nav__preview").textContent = item.preview;
@@ -3880,9 +3893,9 @@ import {
         return;
       }
       state.activeMarkerKey = markerKey;
-      syncActiveMarker(state.activeMarkerKey);
+      const activeMarker = syncActiveMarker(state.activeMarkerKey);
       requestActiveMarkerListScrollPersistence();
-      updateFloatingActiveMarker();
+      updateFloatingActiveMarker(activeMarker);
       return;
     }
 
@@ -4036,6 +4049,7 @@ import {
     if (!isSupportedRoute()) {
       closeExplosionOverlay();
       markerListReconciler.reset();
+      markerListActiveTracker.reset();
       markerListScrollPersistence.reset();
       removeNavigationRoot();
       return;
@@ -4049,6 +4063,7 @@ import {
     if (!renderSnapshot.hasConversation) {
       closeExplosionOverlay();
       markerListReconciler.reset();
+      markerListActiveTracker.reset();
       markerListScrollPersistence.reset();
       if (!state.isReleaseNoticeOpen) {
         removeNavigationRoot();
@@ -4114,9 +4129,6 @@ import {
       list,
       markerRenderItems(visibleGroups, earlierUserGroupCount)
     );
-    if (state.markerListScrollAnimation) {
-      state.markerListScrollTarget += markerListScrollDelta;
-    }
     if (didChangeMarkerList) {
       preserveMarkerListDragPosition({
         drag: state.pointerDrag,
@@ -4128,7 +4140,6 @@ import {
     if (didChangeMarkerList && suppressMarkerMotion) {
       markerMotionSuppressor.suppress();
     }
-    syncMarkerListScrollTarget(list);
     syncLiquidGlassElements(root);
 
     if (didChangeMarkerList || snapshot === null) {
@@ -4157,12 +4168,10 @@ import {
     markerMotionSuppressor.reset();
     markerRenderStateMachine.reset();
     markerListReconciler.reset();
+    markerListActiveTracker.reset();
     markerListScrollPersistence.reset();
     window.clearTimeout(state.markerNoticeTimer);
     state.markerNoticeTimer = 0;
-    window.cancelAnimationFrame(state.markerListScrollAnimation);
-    state.markerListScrollAnimation = 0;
-    state.markerListScrollTarget = 0;
     if (state.pointerDrag) {
       state.pointerDrag.root.classList.remove("is-dragging");
       state.pointerDrag = null;
@@ -4350,12 +4359,16 @@ import {
   }
 
   function getActiveMarker() {
+    const trackedMarker = markerListActiveTracker.current();
+    if (trackedMarker?.dataset.markerKey === state.activeMarkerKey) {
+      return trackedMarker;
+    }
     const list = getList();
     if (!state.activeMarkerKey) {
-      return null;
+      return markerListActiveTracker.sync(null);
     }
     const activeMarker = list.querySelector(`[data-marker-key="${CSS.escape(state.activeMarkerKey)}"]`);
-    return activeMarker instanceof HTMLElement ? activeMarker : null;
+    return markerListActiveTracker.sync(activeMarker instanceof HTMLElement ? activeMarker : null);
   }
 
   function clearActiveMarker() {
@@ -4366,18 +4379,10 @@ import {
 
   function syncActiveMarker(activeMarkerKey = state.activeMarkerKey) {
     const list = getList();
-    let activeMarker = null;
-    let hasMarkedActive = false;
-    list.querySelectorAll(".gpt-paragraph-nav__marker").forEach((marker) => {
-      const isActive = Boolean(activeMarkerKey && !hasMarkedActive && marker.dataset.markerKey === activeMarkerKey);
-      marker.classList.toggle("is-active", isActive);
-      if (isActive) {
-        activeMarker = marker;
-        hasMarkedActive = true;
-      }
-      updateLiquidGlassFilter(marker);
-    });
-    return activeMarker;
+    const nextMarker = activeMarkerKey
+      ? list.querySelector(`[data-marker-key="${CSS.escape(activeMarkerKey)}"]`)
+      : null;
+    return markerListActiveTracker.sync(nextMarker instanceof HTMLElement ? nextMarker : null);
   }
 
   function updateActiveMarker() {
@@ -4437,7 +4442,7 @@ import {
     return rect.bottom > 0 && rect.top < window.innerHeight && rect.right > 0 && rect.left < window.innerWidth;
   }
 
-  function updateFloatingActiveMarker(activeMarker = syncActiveMarker(state.activeMarkerKey)) {
+  function updateFloatingActiveMarker(activeMarker) {
     const root = getRoot();
     const floating = getFloatingActive(root);
     if (!(activeMarker instanceof HTMLElement) || state.isCollapsed || state.activeControlTab === "settings") {
@@ -4471,7 +4476,7 @@ import {
     }
     state.floatingScheduled = window.requestAnimationFrame(() => {
       state.floatingScheduled = 0;
-      updateFloatingActiveMarker();
+      updateFloatingActiveMarker(markerListActiveTracker.current());
     });
   }
 
@@ -4485,78 +4490,11 @@ import {
     });
   }
 
-  function wheelDeltaYInPixels(event) {
-    if (event.deltaMode === WheelEvent.DOM_DELTA_LINE) {
-      return event.deltaY * 16;
-    }
-    if (event.deltaMode === WheelEvent.DOM_DELTA_PAGE) {
-      return event.deltaY * window.innerHeight;
-    }
-    return event.deltaY;
-  }
-
   function markerListMaxScrollTop(list) {
     return Math.max(0, list.scrollHeight - list.clientHeight);
   }
 
-  function clampMarkerListScrollTop(scrollTop, maxScrollTop) {
-    return Math.min(maxScrollTop, Math.max(0, scrollTop));
-  }
-
-  function syncMarkerListScrollTarget(list) {
-    const maxScrollTop = markerListMaxScrollTop(list);
-    if (state.markerListScrollAnimation) {
-      state.markerListScrollTarget = clampMarkerListScrollTop(state.markerListScrollTarget, maxScrollTop);
-      return;
-    }
-    state.markerListScrollTarget = clampMarkerListScrollTop(list.scrollTop, maxScrollTop);
-  }
-
-  function animateMarkerListScroll(list) {
-    if (state.markerListScrollAnimation) {
-      return;
-    }
-
-    const step = () => {
-      const maxScrollTop = markerListMaxScrollTop(list);
-      const targetScrollTop = clampMarkerListScrollTop(state.markerListScrollTarget, maxScrollTop);
-      const distance = targetScrollTop - list.scrollTop;
-      if (Math.abs(distance) < 0.5) {
-        list.scrollTop = targetScrollTop;
-        state.markerListScrollAnimation = 0;
-        state.markerListScrollTarget = targetScrollTop;
-        return;
-      }
-
-      list.scrollTop += distance * 0.35;
-      state.markerListScrollAnimation = window.requestAnimationFrame(step);
-    };
-
-    state.markerListScrollAnimation = window.requestAnimationFrame(step);
-  }
-
-  function markerListWheelHitWidth(root, list) {
-    const controls = root.querySelector(`.${CONTROLS_CLASS}`);
-    const controlWidth = controls instanceof HTMLElement ? controls.getBoundingClientRect().width : 0;
-    const markerWidths = Array.from(list.querySelectorAll(".gpt-paragraph-nav__marker, .gpt-paragraph-nav__fold"))
-      .filter((marker) => marker instanceof HTMLElement)
-      .map((marker) => marker.getBoundingClientRect().width);
-    const maxMarkerWidth = markerWidths.length ? Math.max(...markerWidths) : 0;
-    const configuredMaxWidth = state.config.tooltipMaxWidth || DEFAULT_CONFIG.tooltipMaxWidth;
-    return Math.min(root.getBoundingClientRect().width, Math.max(configuredMaxWidth, controlWidth, maxMarkerWidth));
-  }
-
-  function markerListInteractionTarget(event) {
-    const root = document.getElementById(ROOT_ID);
-    if (!(root instanceof HTMLElement) || root.classList.contains("is-empty") || root.classList.contains("is-collapsed")) {
-      return null;
-    }
-
-    const controls = root.querySelector(`.${CONTROLS_CLASS}`);
-    if (controls instanceof HTMLElement && event.target instanceof Node && controls.contains(event.target)) {
-      return null;
-    }
-
+  function markerListDragTarget(event, root) {
     const list = root.querySelector(`#${LIST_ID}`);
     if (!(list instanceof HTMLElement)) {
       return null;
@@ -4566,52 +4504,10 @@ import {
     if (maxScrollTop <= 0) {
       return null;
     }
-
-    const listRect = list.getBoundingClientRect();
-    if (event.clientY < listRect.top || event.clientY > listRect.bottom) {
+    if (!markerListCardForTarget(event.target, list)) {
       return null;
     }
-
-    const rootRect = root.getBoundingClientRect();
-    const hitRight = rootRect.right;
-    const hitLeft = Math.max(rootRect.left, hitRight - markerListWheelHitWidth(root, list));
-    if (event.clientX < hitLeft || event.clientX > hitRight) {
-      return null;
-    }
-
     return { root, list, maxScrollTop };
-  }
-
-  function handleMarkerListWheel(event) {
-    if (state.isExplosionOpen || state.isReleaseNoticeOpen || state.pointerDrag) {
-      return;
-    }
-
-    const deltaY = wheelDeltaYInPixels(event);
-    if (!deltaY) {
-      return;
-    }
-
-    const target = markerListInteractionTarget(event);
-    if (!target) {
-      return;
-    }
-
-    const { list, maxScrollTop } = target;
-    markerListScrollPersistence.cancel();
-    if (event.target instanceof Node && list.contains(event.target)) {
-      return;
-    }
-
-    const currentTarget = state.markerListScrollAnimation ? state.markerListScrollTarget : list.scrollTop;
-    const nextScrollTop = clampMarkerListScrollTop(currentTarget + deltaY, maxScrollTop);
-    if (nextScrollTop === currentTarget) {
-      return;
-    }
-
-    event.preventDefault();
-    state.markerListScrollTarget = nextScrollTop;
-    animateMarkerListScroll(list);
   }
 
   function isPrimaryPointer(event) {
@@ -4668,7 +4564,7 @@ import {
       return;
     }
 
-    const target = markerListInteractionTarget(event);
+    const target = markerListDragTarget(event, root);
     if (!target) {
       return;
     }
@@ -4728,7 +4624,6 @@ import {
         drag.maxScrollTop,
         Math.max(0, drag.startScrollTop - deltaY)
       );
-      state.markerListScrollTarget = drag.list.scrollTop;
       scheduleFloatingActiveUpdate();
     }
 
@@ -4915,7 +4810,6 @@ import {
     });
 
     window.addEventListener("scroll", scheduleScrollWork, { passive: true });
-    window.addEventListener("wheel", handleMarkerListWheel, { passive: false, capture: true });
     window.addEventListener("pointerdown", handlePointerDown, { capture: true });
     window.addEventListener("pointermove", handlePointerMove, { passive: false, capture: true });
     window.addEventListener("pointerup", handlePointerUp, { capture: true });

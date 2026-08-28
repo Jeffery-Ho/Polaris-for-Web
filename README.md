@@ -26,13 +26,13 @@ Polaris for Web automatically detects headings and list titles in AI responses a
 ## Features
 
 - Maker navigation on every supported platform uses the shared snapshot model and stable per-Maker keys. Verified conversation identities receive a seven-day `chrome.storage.local` snapshot; pages without one safely remain memory-only. Snapshots keep only user first-line previews, Maker titles, and positioning metadata, with an independent limit of 20 conversations or 2 MB per platform.
-- Progressive Maker rendering begins during streaming output as soon as the first non-empty supported marker is available; fixed 120ms snapshots reuse existing Maker nodes and update only changed items, preserving list scrolling, focus, hover, and manual collapse state. Wheel, trackpad, or list-drag input immediately takes control from temporary Active Maker positioning, so any Maker can remain outside the list viewport while streaming continues.
+- Progressive Maker rendering begins during streaming output as soon as the first non-empty supported marker is available; fixed 120ms snapshots reuse existing Maker nodes and update only changed items, preserving list scrolling, focus, hover, and manual collapse state. Wheel, trackpad, or list-drag input on a Maker or group card immediately takes control from temporary Active Maker positioning, so any Maker can remain outside the list viewport while streaming continues.
 - Click-to-jump navigation, active-section highlighting, and a scrollable marker queue.
 - Visible titles inside AI markers, user groups, and the floating active marker are left-aligned; user group capsules remain on the queue's right edge while AI markers and folded stacks remain on the left.
 - Platform-specific marker filters for H1, H2, H3, H4, and unordered lists.
 - Settings synchronization through `chrome.storage.sync`.
 - Light and dark adaptive glass styling for markers, buttons, and the settings panel.
-- An expanded mouse-wheel hit area that makes the marker list easier to scroll.
+- Native browser scrolling on Maker, user-group, and fold cards, without custom wheel animation or a transparent extended hit area.
 - Fuzzy title search for both the navigation marker queue and Chapter View, with `Cmd/Ctrl+F` focusing the current search box.
 - Long marker queues are grouped into stacks of `N` markers (default 20); each full group collapses into a stack card showing its first title followed by the remaining count, without a leading total-count badge.
 - User maker groups show the latest 20 groups by default, with earlier groups available on demand and search covering every group. Each newly observed latest group opens even before its AI markers are ready; a directly preceding group that arrives late with a loaded reply opens once, while later streaming updates preserve manual collapse state. ChatGPT keeps already loaded markers with their stable user group when message metadata briefly lags behind the DOM.
@@ -80,7 +80,7 @@ Visit the [Polaris support page](https://jeffery-ho.github.io/polaris-landing/) 
 
 ## Version
 
-Current version: `0.42.0(175)`
+Current version: `0.42.1(176)`
 
 ## License
 

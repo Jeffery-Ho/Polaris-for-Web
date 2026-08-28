@@ -6,9 +6,9 @@ const contentSource = readFileSync(new URL("../src/content.js", import.meta.url)
 const renderStart = contentSource.indexOf("  function render(snapshot = null");
 const renderEnd = contentSource.indexOf("  function scheduleRender(", renderStart);
 const renderSource = contentSource.slice(renderStart, renderEnd);
-const wheelStart = contentSource.indexOf("  function handleMarkerListWheel(");
-const wheelEnd = contentSource.indexOf("  function isPrimaryPointer(", wheelStart);
-const wheelSource = contentSource.slice(wheelStart, wheelEnd);
+const listStart = contentSource.indexOf("  function getList(");
+const listEnd = contentSource.indexOf("  function getMarkerSearchInput(", listStart);
+const listSource = contentSource.slice(listStart, listEnd);
 const pointerMoveStart = contentSource.indexOf("  function handlePointerMove(");
 const pointerMoveEnd = contentSource.indexOf("  function finishPointerDrag(", pointerMoveStart);
 const pointerMoveSource = contentSource.slice(pointerMoveStart, pointerMoveEnd);
@@ -24,9 +24,21 @@ const pointerDownSource = contentSource.slice(pointerDownStart, pointerDownEnd);
 const markerClickStart = contentSource.indexOf("  async function handleMarkerListClick(");
 const markerClickEnd = contentSource.indexOf("  function displayedHeadingCount(", markerClickStart);
 const markerClickSource = contentSource.slice(markerClickStart, markerClickEnd);
+const markerRowUpdateStart = contentSource.indexOf("  function updateMarkerRenderRow(");
+const markerRowUpdateEnd = contentSource.indexOf("  async function handleMarkerListClick(", markerRowUpdateStart);
+const markerRowUpdateSource = contentSource.slice(markerRowUpdateStart, markerRowUpdateEnd);
 const activeMarkerStart = contentSource.indexOf("  function updateActiveMarker(");
 const activeMarkerEnd = contentSource.indexOf("  function isMarkerVisibleInViewport(", activeMarkerStart);
 const activeMarkerSource = contentSource.slice(activeMarkerStart, activeMarkerEnd);
+const activeSyncStart = contentSource.indexOf("  function syncActiveMarker(");
+const activeSyncEnd = contentSource.indexOf("  function updateActiveMarker(", activeSyncStart);
+const activeSyncSource = contentSource.slice(activeSyncStart, activeSyncEnd);
+const floatingStart = contentSource.indexOf("  function updateFloatingActiveMarker(");
+const floatingEnd = contentSource.indexOf("  function scheduleScrollWork(", floatingStart);
+const floatingSource = contentSource.slice(floatingStart, floatingEnd);
+const liquidGlassRegistrationStart = contentSource.indexOf("  function observeLiquidGlassElement(");
+const liquidGlassRegistrationEnd = contentSource.indexOf("  function updateLiquidGlassFilter(", liquidGlassRegistrationStart);
+const liquidGlassRegistrationSource = contentSource.slice(liquidGlassRegistrationStart, liquidGlassRegistrationEnd);
 const routeResetStart = contentSource.indexOf("  function resetRouteState(");
 const routeResetEnd = contentSource.indexOf("  function removeNavigationRoot(", routeResetStart);
 const routeResetSource = contentSource.slice(routeResetStart, routeResetEnd);
@@ -46,26 +58,16 @@ test("流式渲染不再清空列表或取消进行中的滚动", () => {
   assert.doesNotMatch(renderSource, /stopMarkerListScrollAnimation/);
 });
 
-test("滚轮和触摸板命中 Maker 列表时让手动滚动接管", () => {
-  const targetResolution = wheelSource.indexOf("markerListInteractionTarget(event)");
-  const cancellation = wheelSource.indexOf("markerListScrollPersistence.cancel()");
-  const nativeListReturn = wheelSource.indexOf("list.contains(event.target)");
-
-  assert.ok(targetResolution >= 0);
-  assert.ok(cancellation > targetResolution);
-  assert.ok(nativeListReturn > cancellation);
+test("Maker 卡片 wheel 使用列表原生滚动并取消自动定位", () => {
+  assert.match(listSource, /createMarkerListNativeWheelHandler/);
+  assert.match(listSource, /cancelAutoPosition: \(\) => markerListScrollPersistence\.cancel\(\)/);
+  assert.match(listSource, /\{ passive: true \}/);
 });
 
-test("外扩命中区取消自动定位后继续执行用户滚动动画", () => {
-  const cancellation = wheelSource.indexOf("markerListScrollPersistence.cancel()");
-  const preventDefault = wheelSource.indexOf("event.preventDefault()", cancellation);
-  const targetUpdate = wheelSource.indexOf("state.markerListScrollTarget = nextScrollTop", cancellation);
-  const animation = wheelSource.indexOf("animateMarkerListScroll(list)", cancellation);
-
-  assert.ok(preventDefault > cancellation);
-  assert.ok(targetUpdate > preventDefault);
-  assert.ok(animation > targetUpdate);
-  assert.doesNotMatch(wheelSource, /cancelAnimationFrame|markerListScrollAnimation\s*=\s*0/);
+test("不再注册全局 wheel 或维护自定义滚动动画", () => {
+  assert.doesNotMatch(contentSource, /window\.addEventListener\("wheel"/);
+  assert.doesNotMatch(contentSource, /handleMarkerListWheel|markerListWheelHitWidth|animateMarkerListScroll/);
+  assert.doesNotMatch(contentSource, /markerListScrollAnimation|markerListScrollTarget/);
 });
 
 test("Maker 列表拖动超过阈值后让手动滚动接管", () => {
@@ -80,8 +82,8 @@ test("Maker 卡片轻点保留点击，超过阈值拖动时抑制点击", () =>
   assert.ok(dragActivation > thresholdGuard);
   assert.match(finishPointerDragSource, /drag\.didDrag[\s\S]*suppressNextClick\(\)/);
   assert.match(pointerDragClickSource, /state\.suppressNextClick[\s\S]*event\.preventDefault\(\)[\s\S]*event\.stopImmediatePropagation\(\)/);
-  assert.match(pointerDownSource, /markerListInteractionTarget\(event\)[\s\S]*kind: "list"/);
-  assert.doesNotMatch(pointerDownSource, /data-marker|gpt-paragraph-nav__marker|gpt-paragraph-nav__fold|\.closest\(/);
+  assert.match(pointerDownSource, /markerListDragTarget\(event, root\)[\s\S]*kind: "list"/);
+  assert.match(contentSource, /markerListCardForTarget\(event\.target, list\)/);
 });
 
 test("手动收起活动 Maker 分组时保留选中并阻止自动重新展开", () => {
@@ -98,5 +100,28 @@ test("DOM 映射临时缺失时保留选中 key 并暂停活动定位", () => {
 
 test("流式快照和路由重置不会恢复已取消的 Active Maker 定位", () => {
   assert.doesNotMatch(renderSource, /markerListScrollPersistence\.request\(\)/);
+  assert.match(routeResetSource, /markerListActiveTracker\.reset\(\)/);
   assert.match(routeResetSource, /markerListScrollPersistence\.reset\(\)/);
+});
+
+test("列表滚动仅使用缓存的活动元素更新浮动 Maker", () => {
+  assert.match(floatingSource, /updateFloatingActiveMarker\(markerListActiveTracker\.current\(\)\)/);
+  assert.doesNotMatch(floatingSource, /syncActiveMarker\(/);
+  assert.match(activeSyncSource, /markerListActiveTracker\.sync/);
+  assert.doesNotMatch(activeSyncSource, /querySelectorAll/);
+});
+
+test("流式更新同一 Maker 节点时保留活动样式", () => {
+  assert.match(markerRowUpdateSource, /const wasActive = marker\.classList\.contains\("is-active"\)/);
+  assert.match(markerRowUpdateSource, /marker\.classList\.toggle\("is-active", wasActive\)/);
+});
+
+test("液态玻璃只在元素首次注册时主动刷新", () => {
+  const alreadyRegisteredGuard = liquidGlassRegistrationSource.indexOf("state.liquidGlassElements.has(element)");
+  const earlyReturn = liquidGlassRegistrationSource.indexOf("return;", alreadyRegisteredGuard);
+  const refresh = liquidGlassRegistrationSource.indexOf("updateLiquidGlassFilter(element)");
+
+  assert.ok(alreadyRegisteredGuard >= 0);
+  assert.ok(earlyReturn > alreadyRegisteredGuard);
+  assert.ok(refresh > earlyReturn);
 });
