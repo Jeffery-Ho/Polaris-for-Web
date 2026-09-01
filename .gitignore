@@ -1,3 +1,6 @@
 .DS_Store
-dist/
 node_modules/
+
+# Keep local working notes out of the release repository.
+Doc/
+Recap/
