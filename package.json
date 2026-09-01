@@ -2,6 +2,10 @@
   "name": "polaris-for-web",
   "private": true,
   "type": "module",
+  "packageManager": "pnpm@11.19.0",
+  "engines": {
+    "node": ">=20.19.0 || >=22.12.0"
+  },
   "scripts": {
     "build": "vite build",
     "dev": "vite build --watch",

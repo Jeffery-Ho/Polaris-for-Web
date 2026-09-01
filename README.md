@@ -78,6 +78,20 @@ Polaris for Web processes only currently mounted AI response content locally in 
 
 Visit the [Polaris support page](https://jeffery-ho.github.io/polaris-landing/) for the extension, issue tracker, and optional PayPal support link.
 
+## Build on another device
+
+The repository tracks the source, build configuration, dependency lockfile, tests, and the latest `dist/` release bundle. On a new device, install a Node.js version supported by `package.json`, then run:
+
+```bash
+corepack enable
+pnpm install --frozen-lockfile
+pnpm check
+pnpm test
+pnpm build
+```
+
+Load the generated `dist/` directory as an unpacked extension in Chromium-based browsers. Do not use `dist.zip` as a source artifact; create a new archive from the freshly generated `dist/` directory only when a store upload requires it.
+
 ## Version
 
 Current version: `0.44.1(185)`
