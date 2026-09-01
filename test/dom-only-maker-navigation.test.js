@@ -36,6 +36,14 @@ test("Maker 分组只使用当前挂载 DOM，AI 标题跟随当前用户容器"
   assert.doesNotMatch(collection, /snapshot|sourceMessageKey|conversation/);
 });
 
+test("连续标题去重在用户回复分组后执行", () => {
+  const renderSnapshot = functionSource("collectMarkerRenderSnapshot", "render");
+  const groupDeduplication = functionSource("dedupeAdjacentGroupHeadings", "syncUserMarkerExpansion");
+
+  assert.match(renderSnapshot, /dedupeAdjacentGroupHeadings\(/);
+  assert.match(groupDeduplication, /group\.user\?\.element/);
+});
+
 test("未挂载目标只显示既有提示，不再尝试恢复滚动", () => {
   const target = functionSource("currentElementForHeading", "jumpToHeading");
   const click = functionSource("handleMarkerListClick", "displayedHeadingCount");

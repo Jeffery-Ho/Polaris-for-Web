@@ -1,6 +1,7 @@
 import { mountSettingsPanel } from "./settings-panel.jsx";
 import { cleanupLegacyMakerSnapshots } from "./legacy-maker-snapshot-cleanup.js";
 import { doubaoMessageRoleFromClassNames } from "./doubao-message-role.js";
+import { dedupeAdjacentTextHeadings } from "./adjacent-heading-deduplication.js";
 import { pageThemeFromColors } from "./page-theme.js";
 import { releaseNotesForUpdate } from "./release-notes.js";
 import { nextControlTabIndex } from "./control-tab-keyboard.js";
@@ -2662,6 +2663,13 @@ import {
     return rawGroups;
   }
 
+  function dedupeAdjacentGroupHeadings(groups) {
+    return groups.map((group) => ({
+      ...group,
+      headings: dedupeAdjacentTextHeadings(group.headings, () => group.user?.element || null)
+    }));
+  }
+
   function syncUserMarkerExpansion(groups) {
     state.latestUserMarkerKey = latestUserMarkerKey(groups);
   }
@@ -3041,7 +3049,6 @@ import {
       }
       return item.level <= maxHeadingLevel && enabledLevels.has(item.level);
     });
-    debugCollection(containers, usableHeadings);
     return usableHeadings.sort((left, right) => compareConversationPosition(left.element, right.element));
   }
 
@@ -3803,10 +3810,13 @@ import {
     }
 
     const headings = collectHeadings(assistantContainers, { applyConfig: false });
-    const markerGroups = collectMarkerGroups(userContainers, assistantContainers, headings);
+    const markerGroups = dedupeAdjacentGroupHeadings(
+      collectMarkerGroups(userContainers, assistantContainers, headings)
+    );
     const renderHeadings = markerGroups
       .flatMap((group) => group.headings)
       .filter(isHeadingEnabledForCurrentConfig);
+    debugCollection(assistantContainers, renderHeadings);
     return {
       assistantContainers,
       userContainers,

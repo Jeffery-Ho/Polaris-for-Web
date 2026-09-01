@@ -10,6 +10,27 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 188
+
+- Date: 2026-09-01
+- Version: 0.44.4
+- Summary: Deduplicates adjacent H1/H2 representations of the same text Maker.
+- Notes: Doubao can expose the same semantic title as consecutive H1 and H2 nodes. Adjacent text Makers within one user-reply group now deduplicate by normalized title without comparing level, preserving the first node for navigation. Different titles, non-adjacent repeats, table Makers, and video Makers remain distinct. `pnpm test` passed 128/128, `pnpm check` passed, and the final single `pnpm build` completed successfully; `dist/manifest.json` is `0.44.4(188)`. Live signed-in validation remains pending for ChatGPT, Doubao, Kimi, Qianwen, Yuanbao, and Xiaohongshu Diandian.
+
+## 187
+
+- Date: 2026-09-01
+- Version: 0.44.3
+- Summary: Deduplicates repeated Makers across sibling response nodes in one user-reply group.
+- Notes: The first pass used the outer assistant container as its boundary, but Doubao can render one answer in sibling containers. Deduplication now runs after user-group association, so adjacent text headings with the same level and normalized title collapse even when they originate from sibling nodes. Separate user questions, non-adjacent repeats, table Makers, and video Makers remain distinct. `pnpm test` passed 127/127, `pnpm check` passed, and the final single `pnpm build` completed successfully; `dist/manifest.json` is `0.44.3(187)`. Live signed-in validation remains pending for ChatGPT, Doubao, Kimi, Qianwen, Yuanbao, and Xiaohongshu Diandian.
+
+## 186
+
+- Date: 2026-09-01
+- Version: 0.44.2
+- Summary: Deduplicates adjacent repeated text Makers within one AI reply across all supported platforms.
+- Notes: Heading collection now keeps the first of two adjacent text headings only when they share the same outer assistant-response container, level, and normalized title. Different replies, non-adjacent repeats, table Makers, and video Makers remain distinct. `pnpm test` passed 125/125, `pnpm check` passed, and the final single `pnpm build` completed successfully; `dist/manifest.json` is `0.44.2(186)`. Live signed-in validation remains pending for ChatGPT, Doubao, Kimi, Qianwen, Yuanbao, and Xiaohongshu Diandian.
+
 ## 185
 
 - Date: 2026-09-01
