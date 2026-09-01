@@ -25,20 +25,19 @@ Polaris for Web automatically detects headings and list titles in AI responses a
 
 ## Features
 
-- Maker navigation on every supported platform uses the shared snapshot model and stable per-Maker keys. Verified conversation and user-group identities receive a seven-day `chrome.storage.local` snapshot; stable group-scoped response ordinals preserve Makers even while a host temporarily omits its assistant message ID, while unverified pages or groups safely remain memory-only. Snapshots keep only user first-line previews, Maker titles, and positioning metadata, with an independent limit of 20 conversations or 2 MB per platform.
-- An explicit history card can actively scan earlier conversation content for Makers on all supported platforms. ChatGPT refreshes its full active branch before the shared DOM scan; every scan is cancellable, lasts at most ten seconds, preserves newly found snapshot records, and restores the prior reading position.
-- Progressive Maker rendering begins during streaming output as soon as the first non-empty supported marker is available; fixed 120ms snapshots reuse existing Maker nodes and update only changed items, preserving list scrolling, focus, hover, and manual collapse state. Wheel, trackpad, or list-drag input on a Maker or group card immediately takes control from temporary Active Maker positioning, so any Maker can remain outside the list viewport while streaming continues.
+- Maker navigation is generated only from currently mounted user and AI response DOM. A route change removes the previous list immediately; only a later non-Polaris page mutation can populate the new list. DOM removal also removes its Makers, and a DOM remount receives new runtime keys.
+- Progressive Maker rendering begins during streaming output as soon as the first non-empty supported marker is available; fixed 120ms render batches reuse existing Maker nodes and update only changed items, preserving list scrolling, focus, hover, and manual collapse state. Wheel, trackpad, or list-drag input on a Maker or group card immediately takes control from temporary Active Maker positioning, so any Maker can remain outside the list viewport while streaming continues.
 - Click-to-jump navigation, active-section highlighting, and a scrollable marker queue.
 - Visible titles inside AI markers, user groups, and the floating active marker are left-aligned; user group capsules remain on the queue's right edge while AI markers and folded stacks remain on the left.
 - Platform-specific marker filters for H1, H2, H3, H4, and unordered lists.
 - Settings synchronization through `chrome.storage.sync`.
+- Settings preserve their internal scroll position during host-page refreshes, so long conversations do not interrupt access to Marker filters.
 - Light and dark adaptive glass styling, with lightweight blur and saturation on Maker cards and the floating Active Maker while controls and search retain the full displacement effect.
 - Native browser scrolling on Maker, user-group, and fold cards, without custom wheel animation or a transparent extended hit area.
 - Fuzzy title search for both the navigation marker queue and Chapter View, with `Cmd/Ctrl+F` focusing the current search box.
-- Long marker queues are grouped into stacks of `N` markers (default 20); each full group collapses into a stack card showing its first title followed by the remaining count, without a leading total-count badge.
-- User maker groups show the latest 20 groups by default, with earlier groups available on demand and search covering every group. Every group starts collapsed, including the latest, previous, and newly streamed groups; only an explicit click or active search expands its contents. ChatGPT keeps already loaded markers with their stable user group when message metadata briefly lags behind the DOM.
-- An active Maker does not lock its stack or user group open. Manual collapse keeps the Maker selected, and dragging more than 4px from any Maker or group card scrolls the list without triggering that card's click action.
-- ChatGPT user maker groups read the active conversation branch from its first message, so long virtualized conversations retain their historical order. Existing real-ID snapshots migrate in place to stable group-scoped response identities without changing `makerKey`; other platforms replay cached history before merging partial mounted DOM, preventing a refreshed tail segment from moving ahead of earlier Makers.
+- Long marker queues are grouped into stacks of `N` markers (default 20). Each stack starts expanded and shows its first title with the remaining count; clicking its card manually collapses or expands the Maker rows.
+- Currently mounted user maker groups show the latest 20 groups by default, with search covering those mounted groups. Every group starts expanded, including the latest, previous, and newly streamed groups; an explicit click can manually collapse its contents.
+- An active Maker does not change its stack or user group state. Manual collapse keeps the Maker selected, and dragging more than 4px from any Maker or group card scrolls the list without triggering that card's click action.
 - **Chapter View**, which organizes AI response content by marker section for convenient reading and copying on every supported platform.
 - A heart-shaped support entry at the right edge of the About & Settings header, opening the [Polaris support page](https://jeffery-ho.github.io/polaris-landing/) in a new tab with a fixed Polaris source tag. The landing page loads optional GA4 support-interaction analytics only after the visitor explicitly consents.
 - While Chapter View is open, its modal blocks arrow, Home, and End keys from changing the underlying main tab; `Shift + ← / →` continues to switch chapters outside editable fields.
@@ -73,7 +72,7 @@ Preferences are saved to `chrome.storage.sync`.
 
 ## Privacy
 
-Polaris for Web processes AI response content locally in your browser and does not transmit it to the developer or third-party servers. Maker snapshots for supported AI chats are stored only on the current device for up to seven days and are not synchronized; they contain Maker titles, a user prompt's first-line preview, and navigation metadata rather than full responses or prompts. The separate support page only loads optional Google Analytics after the visitor explicitly consents, and never sends AI conversation content or extension settings. See the [Privacy Policy](https://jeffery-ho.github.io/Polaris-for-Web/privacy-policy.html) for details.
+Polaris for Web processes only currently mounted AI response content locally in your browser and does not transmit it to the developer or third-party servers. It does not retain Maker conversation history across page refreshes, routes, or DOM removal. The separate support page only loads optional Google Analytics after the visitor explicitly consents, and never sends AI conversation content or extension settings. See the [Privacy Policy](https://jeffery-ho.github.io/Polaris-for-Web/privacy-policy.html) for details.
 
 ## Support
 
@@ -81,7 +80,7 @@ Visit the [Polaris support page](https://jeffery-ho.github.io/polaris-landing/) 
 
 ## Version
 
-Current version: `0.43.0(180)`
+Current version: `0.44.1(185)`
 
 ## License
 

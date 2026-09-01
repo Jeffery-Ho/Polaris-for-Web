@@ -1,20 +1,5 @@
 import { mountSettingsPanel } from "./settings-panel.jsx";
-import { chatGPTConversationIdFromPath, parseChatGPTConversation } from "./chatgpt-conversation.js";
-import {
-  assignChatGPTAssistantIdentities,
-  createChatGPTSourceIdentityIndex
-} from "./chatgpt-marker-groups.js";
-import {
-  createChromeStorageAdapter,
-  createMakerSnapshotModel
-} from "./maker-snapshot-model.js";
-import { createMakerPlatformAdapter } from "./maker-platform-adapter.js";
-import { recoverMakerElement } from "./maker-jump-recovery.js";
-import { createHistoricalMakerLoader } from "./historical-maker-loader.js";
-import {
-  captureHistoricalScrollPosition,
-  restoreHistoricalScrollPosition
-} from "./historical-scroll-position.js";
+import { cleanupLegacyMakerSnapshots } from "./legacy-maker-snapshot-cleanup.js";
 import { doubaoMessageRoleFromClassNames } from "./doubao-message-role.js";
 import { pageThemeFromColors } from "./page-theme.js";
 import { releaseNotesForUpdate } from "./release-notes.js";
@@ -35,7 +20,7 @@ import { createMarkerMotionSuppressor } from "./marker-motion-suppression.js";
 import { createMarkerRenderStateMachine } from "./marker-render-state-machine.js";
 import { createRuntimeMarkerKeySequence } from "./runtime-marker-key-sequence.js";
 import {
-  shouldAutoExpandActiveFoldGroup,
+  isFoldGroupExpanded,
   toggleFoldGroupExpansion
 } from "./marker-group-expansion.js";
 import {
@@ -186,13 +171,6 @@ import {
   const SETTINGS_CLASS = "gpt-paragraph-nav__settings";
   const LIST_ID = "gpt-paragraph-nav-list";
   const SETTINGS_PANEL_ID = "gpt-paragraph-nav-settings-panel";
-  const CHATGPT_CONVERSATION_CHANNEL = "polaris-for-web-chatgpt-conversation";
-  const CHATGPT_CONVERSATION_REQUEST = "request";
-  const CHATGPT_CONVERSATION_RESPONSE = "response";
-  const CHATGPT_CONVERSATION_REFRESH_DELAY_MS = 300;
-  const HISTORICAL_MAKER_SCAN_TIMEOUT_MS = 10_000;
-  const HISTORICAL_MAKER_SETTLE_MS = 250;
-  const HISTORICAL_MAKER_SCROLL_RATIO = 0.8;
   const ROUTE_CHANGE_EVENT = "polaris-for-web-route-change";
   const FLOATING_ACTIVE_CLASS = "gpt-paragraph-nav__floating-active";
   const LIQUID_GLASS_SELECTOR = [
@@ -258,6 +236,7 @@ import {
   });
   const liquidGlassSignatures = new WeakMap();
   const settingsPanelControllers = new WeakMap();
+  const settingsPanelRenderSignatures = new WeakMap();
   const extensionMetadata = {
     iconUrl: "",
     routeBridgeUrl: "",
@@ -286,27 +265,10 @@ import {
     lastDebugSignature: "",
     lastRenderedHeadingCount: 0,
     markerSearchQuery: "",
-    chatGPTConversation: null,
-    makerSnapshotView: null,
-    isMakerSnapshotOpen: false,
-    chatGPTConversationRefreshTimer: 0,
-    chatGPTConversationRequestId: 0,
-    chatGPTConversationWaiters: new Map(),
-    historicalMakerScan: {
-      status: "idle",
-      addedGroups: 0,
-      addedMakers: 0,
-      reachedStart: false,
-      partial: false
-    },
-    historicalMakerInteractionLocked: false,
-    historicalMakerActivationToken: 0,
-    historicalMakerScrollContainer: null,
-    pendingMakerJumps: new Set(),
+    awaitingRouteDom: false,
     explosionSearchQuery: "",
-    expandedFoldGroups: new Set(),
-    manuallyCollapsedFoldGroups: new Set(),
-    expandedUserMarkerKeys: new Set(),
+    collapsedFoldGroups: new Set(),
+    collapsedUserMarkerKeys: new Set(),
     latestUserMarkerKey: "",
     areEarlierUserGroupsExpanded: false,
     isCollapsed: false,
@@ -327,41 +289,6 @@ import {
     routeKey: "",
     isExtensionContextInvalidated: false
   };
-  const makerSnapshotModel = createMakerSnapshotModel({
-    storage: createChromeStorageAdapter(chrome.storage.local),
-    onError(error) {
-      console.warn("[Polaris for Web] Maker snapshot storage unavailable", error);
-    }
-  });
-  const historicalMakerLoader = createHistoricalMakerLoader();
-  const historicalMakerSettledWaiters = new Set();
-
-  function idleHistoricalMakerScan() {
-    return {
-      status: "idle",
-      addedGroups: 0,
-      addedMakers: 0,
-      reachedStart: false,
-      partial: false
-    };
-  }
-
-  function releaseHistoricalMakerInteraction(scrollContainer) {
-    unlockHistoricalMakerInteraction(scrollContainer);
-    if (state.historicalMakerScrollContainer === scrollContainer) {
-      state.historicalMakerInteractionLocked = false;
-      state.historicalMakerScrollContainer = null;
-    }
-  }
-
-  function cancelHistoricalMakerScan(reason, { reset = false } = {}) {
-    state.historicalMakerActivationToken += 1;
-    historicalMakerLoader.cancel(reason);
-    releaseHistoricalMakerInteraction(state.historicalMakerScrollContainer);
-    if (reset) {
-      state.historicalMakerScan = idleHistoricalMakerScan();
-    }
-  }
   const markerMotionSuppressor = createMarkerMotionSuppressor({
     setSuppressed: (isSuppressed) => {
       document.getElementById(ROOT_ID)?.classList.toggle(MARKER_MOTION_SUPPRESSION_CLASS, isSuppressed);
@@ -434,7 +361,6 @@ import {
     }
 
     state.isExtensionContextInvalidated = true;
-    cancelHistoricalMakerScan("dispose");
     window.clearTimeout(state.scheduled);
     state.scheduledRenderSuppressesMarkerMotion = false;
     markerMotionSuppressor.reset();
@@ -445,9 +371,6 @@ import {
     window.clearTimeout(state.markerNoticeTimer);
     state.observer?.disconnect();
     state.liquidGlassObserver?.disconnect();
-    makerSnapshotModel.close();
-    state.makerSnapshotView = null;
-    state.isMakerSnapshotOpen = false;
     closeExplosionOverlay();
     state.isReleaseNoticeOpen = false;
     unlockPageScroll();
@@ -534,7 +457,6 @@ import {
       input.value = state.markerSearchQuery;
       input.addEventListener("input", () => {
         state.markerSearchQuery = input.value;
-        state.expandedFoldGroups.clear();
         if (input.value) {
           state.isCollapsed = false;
         }
@@ -553,8 +475,6 @@ import {
     } else if (document.activeElement !== input && input.value !== state.markerSearchQuery) {
       input.value = state.markerSearchQuery;
     }
-
-    input.disabled = isHistoricalMakerInteractionLocked();
 
     return input;
   }
@@ -595,7 +515,7 @@ import {
   }
 
   function toggleNavigation() {
-    if (!state.markerGroups.length || isHistoricalMakerInteractionLocked()) {
+    if (!state.markerGroups.length) {
       return;
     }
     if (!state.isCollapsed) {
@@ -642,7 +562,6 @@ import {
       tab.hidden = isMinimized && !isActive;
       tab.setAttribute("aria-hidden", String(isMinimized && !isActive));
       tab.tabIndex = isActive ? 0 : -1;
-      tab.disabled = isHistoricalMakerInteractionLocked();
       if (tab.dataset.controlTab === "navigation") {
         tab.setAttribute("aria-expanded", String(!state.isCollapsed));
       }
@@ -653,7 +572,6 @@ import {
     }
     const toggle = capsule.querySelector(`.${CONTROL_COMPACT_TOGGLE_CLASS}`);
     if (toggle instanceof HTMLButtonElement) {
-      toggle.disabled = isHistoricalMakerInteractionLocked();
       toggle.setAttribute("aria-label", t(isMinimized ? "controls.maximize" : "controls.minimize"));
       toggle.replaceChildren(createControlCompactIcon(isMinimized));
     }
@@ -668,9 +586,6 @@ import {
   }
 
   function activateControlTab(tabKey, { toggleNavigationWhenActive = false, openChapters = false } = {}) {
-    if (isHistoricalMakerInteractionLocked()) {
-      return;
-    }
     const isActive = state.activeControlTab === tabKey;
     state.activeControlTab = tabKey;
     if (tabKey === "navigation" && isActive && toggleNavigationWhenActive) {
@@ -1441,9 +1356,13 @@ import {
     writeSyncConfig(config);
   }
 
-  function resetFoldGroupExpansion() {
-    state.expandedFoldGroups.clear();
-    state.manuallyCollapsedFoldGroups.clear();
+  function resetCollapsedFoldGroups() {
+    state.collapsedFoldGroups.clear();
+  }
+
+  function resetCollapsedGroups() {
+    resetCollapsedFoldGroups();
+    state.collapsedUserMarkerKeys.clear();
   }
 
   function watchConfigChanges() {
@@ -1468,19 +1387,44 @@ import {
         state.areEarlierUserGroupsExpanded = false;
       }
       if (foldThresholdChanged) {
-        resetFoldGroupExpansion();
+        resetCollapsedFoldGroups();
       }
       render();
     });
   }
 
+  function settingsPanelRenderSignature(model) {
+    return JSON.stringify({
+      appName: model.appName,
+      contactLabel: model.contactLabel,
+      emailLabel: model.emailLabel,
+      fields: model.fields.map(({ key, label, min, max, step, unit, value }) => [key, label, min, max, step, unit, value]),
+      issueLabel: model.issueLabel,
+      markerLevels: model.markerLevels.map(({ key, label, level, isDisabled, isSelected }) => [key, label, level, isDisabled, isSelected]),
+      markerTypesLabel: model.markerTypesLabel,
+      releaseNotesLabel: model.releaseNotesLabel,
+      resetLabel: model.resetLabel,
+      settingsTitle: model.settingsTitle,
+      showRating: model.showRating,
+      supportedPlatformsLabel: model.supportedPlatformsLabel,
+      unorderedList: model.unorderedList,
+      version: model.version
+    });
+  }
+
   function syncSettingsInputs(settings) {
+    const model = createSettingsPanelModel();
+    const signature = settingsPanelRenderSignature(model);
     let controller = settingsPanelControllers.get(settings);
     if (!controller) {
       controller = mountSettingsPanel(settings);
       settingsPanelControllers.set(settings, controller);
     }
-    controller.render(createSettingsPanelModel());
+    if (settingsPanelRenderSignatures.get(settings) === signature) {
+      return;
+    }
+    controller.render(model);
+    settingsPanelRenderSignatures.set(settings, signature);
   }
 
   function enabledLevelsForPlatform(platformKey, config = state.config) {
@@ -1525,7 +1469,7 @@ import {
           state.areEarlierUserGroupsExpanded = false;
         }
         if (key === "foldThreshold" && previousFoldThreshold !== state.config.foldThreshold) {
-          resetFoldGroupExpansion();
+          resetCollapsedFoldGroups();
         }
       },
       onConfigCommit() {
@@ -1554,7 +1498,7 @@ import {
       onReset() {
         state.config = normalizeConfig(DEFAULT_CONFIG);
         state.areEarlierUserGroupsExpanded = false;
-        resetFoldGroupExpansion();
+        resetCollapsedGroups();
         saveConfig(state.config);
         render();
       },
@@ -2475,10 +2419,6 @@ import {
     return "default";
   }
 
-  function currentMakerPlatformAdapter() {
-    return createMakerPlatformAdapter(currentPlatformKey());
-  }
-
   function getAssistantContainerSelectors() {
     if (isUnsupportedXiaohongshuMainPage()) {
       return [];
@@ -2638,17 +2578,6 @@ import {
     };
   }
 
-  function chatGPTMessageIdForContainer(container) {
-    if (!(container instanceof HTMLElement)) {
-      return "";
-    }
-    const messageElement = container.closest("[data-message-id], [data-messageid]")
-      || container.querySelector("[data-message-id], [data-messageid]");
-    return messageElement instanceof HTMLElement
-      ? messageElement.getAttribute("data-message-id") || messageElement.getAttribute("data-messageid") || ""
-      : "";
-  }
-
   function assistantContainerForHeading(heading, assistantContainers) {
     let matchedContainer = null;
     assistantContainers.forEach((container) => {
@@ -2662,133 +2591,11 @@ import {
     return matchedContainer;
   }
 
-  function canonicalKindForHeading(heading) {
-    if (heading.sourceType === "table") {
-      return "table";
-    }
-    if (heading.sourceType === "unordered-list") {
-      return "list";
-    }
-    if (heading.sourceType === "video") {
-      return "video";
-    }
-    return "text";
-  }
-
-  function lastKnownScrollRatioForElement(element) {
-    const scrollContainer = nearestVerticalScrollContainer(element);
-    if (scrollContainer) {
-      const maxScrollTop = scrollContainer.scrollHeight - scrollContainer.clientHeight;
-      if (maxScrollTop <= 0) {
-        return 0;
-      }
-      const containerRect = scrollContainer.getBoundingClientRect();
-      const elementRect = element.getBoundingClientRect();
-      const elementScrollTop = scrollContainer.scrollTop + elementRect.top - containerRect.top;
-      return Math.min(1, Math.max(0, elementScrollTop / maxScrollTop));
-    }
-    const maxScrollTop = document.documentElement.scrollHeight - window.innerHeight;
-    if (maxScrollTop <= 0) {
-      return 0;
-    }
-    return Math.min(1, Math.max(0, (element.getBoundingClientRect().top + window.scrollY) / maxScrollTop));
-  }
-
-  function collectChatGPTMarkerGroups(conversation, userContainers, assistantContainers, headings) {
-    const adapter = currentMakerPlatformAdapter();
-    const sourceIdentityIndex = createChatGPTSourceIdentityIndex(conversation, adapter);
-    const groups = conversation.userMessages.map((message) => {
-      const title = normalizeTitle(message.text);
-      return {
-        groupKey: `chatgpt-user-${message.id}`,
-        userMessageId: message.id,
-        previewTitle: firstLineMarkerTitle(message.text) || title,
-        title,
-        order: message.order,
-        hasAssistantMessage: message.hasAssistantMessage
-      };
-    });
-    const conversationEntries = [
-      ...userContainers.map((element) => ({ type: "user", element })),
-      ...assistantContainers.map((element) => ({ type: "assistant", element }))
-    ].sort((left, right) => compareConversationPosition(left.element, right.element));
-    const assistantIdentityByElement = assignChatGPTAssistantIdentities({
-      entries: conversationEntries,
-      conversation,
-      sourceIdentityIndex,
-      messageIdForElement: chatGPTMessageIdForContainer
-    });
-    const ordinalByAssistantAndKind = new Map();
-    const makers = [];
-
-    headings.forEach((heading, order) => {
-      const assistantContainer = assistantContainerForHeading(heading, assistantContainers);
-      const assistantIdentity = assistantIdentityByElement.get(assistantContainer) || {};
-      if (assistantIdentity.inactive) {
-        return;
-      }
-      const sourceMessageKey = assistantIdentity.sourceMessageKey || "";
-      const userMessageId = assistantIdentity.userMessageId || "";
-      const canonicalKind = canonicalKindForHeading(heading);
-      const assistantRuntimeKey = assistantContainer
-        ? assistantContainers.indexOf(assistantContainer)
-        : "orphan";
-      const ordinalKey = `${sourceMessageKey || `runtime:${assistantRuntimeKey}`}:${canonicalKind}`;
-      const ordinalWithinKind = ordinalByAssistantAndKind.get(ordinalKey) || 0;
-      ordinalByAssistantAndKind.set(ordinalKey, ordinalWithinKind + 1);
-      makers.push({
-        sourceMessageKey,
-        sourceMessageAliases: assistantIdentity.sourceMessageAliases || [],
-        groupKey: userMessageId ? `chatgpt-user-${userMessageId}` : "orphan",
-        canonicalKind,
-        ordinalWithinKind,
-        titleFingerprint: normalizeTitle(heading.title),
-        title: heading.title,
-        level: heading.level,
-        sourceType: heading.sourceType,
-        order,
-        lastKnownScrollRatio: lastKnownScrollRatioForElement(heading.element),
-        element: heading.element
-      });
-    });
-
-    state.makerSnapshotView = makerSnapshotModel.reconcile({
-      coverage: "complete",
-      authoritativeMessageKeys: sourceIdentityIndex.authoritativeMessageKeys,
-      sourceMessageAliases: sourceIdentityIndex.sourceMessageAliases,
-      groups,
-      mountedMessageKeys: [...new Set(assistantContainers
-        .map((container) => assistantIdentityByElement.get(container)?.sourceMessageKey)
-        .filter(Boolean))],
-      makers
-    });
-    return state.makerSnapshotView.groups;
-  }
-
   function collectMarkerGroups(userContainers, assistantContainers, headings) {
-    if (isChatGPTPage()) {
-      if (state.chatGPTConversation) {
-        return collectChatGPTMarkerGroups(state.chatGPTConversation, userContainers, assistantContainers, headings);
-      }
-      if (state.makerSnapshotView?.groups.length) {
-        return state.makerSnapshotView.groups;
-      }
-    }
-    const adapter = currentMakerPlatformAdapter();
-    const runtimeGroupOccurrences = new Map();
     const userItems = userContainers
       .map((element) => makeUserMarkerItem(element))
       .filter((user) => Boolean(user.title))
-      .sort((left, right) => compareConversationPosition(left.element, right.element))
-      .map((user) => {
-        const occurrence = runtimeGroupOccurrences.get(user.previewTitle) || 0;
-        runtimeGroupOccurrences.set(user.previewTitle, occurrence + 1);
-        const identity = adapter.groupIdentity(
-          user.element,
-          adapter.runtimeGroupKey(user.previewTitle, occurrence)
-        );
-        return { ...user, markerKey: identity.groupKey, hasPersistentIdentity: identity.persistent };
-      });
+      .sort((left, right) => compareConversationPosition(left.element, right.element));
     const userItemByElement = new Map(userItems.map((user) => [user.element, user]));
     const headingToAssistant = new Map();
     headings.forEach((heading) => {
@@ -2809,8 +2616,6 @@ import {
     const groupsByKey = new Map();
     const orphanGroup = { key: "orphan", user: null, headings: [] };
     const assistantToUser = new Map();
-    const assistantIdentityByElement = new Map();
-    const assistantOrdinalByGroup = new Map();
     let currentUser = null;
 
     entries.forEach((entry) => {
@@ -2830,19 +2635,6 @@ import {
       }
 
       assistantToUser.set(entry.element, currentUser);
-      const groupKey = currentUser?.markerKey || "orphan";
-      const assistantOrdinal = assistantOrdinalByGroup.get(groupKey) || 0;
-      assistantOrdinalByGroup.set(groupKey, assistantOrdinal + 1);
-      const sourceMessageKey = currentUser?.hasPersistentIdentity
-        ? adapter.sourceIdentity(entry.element, groupKey, assistantOrdinal, { allowDerived: true })
-        : "";
-      const sourceMessageAlias = currentUser?.hasPersistentIdentity
-        ? adapter.sourceIdentity(entry.element, groupKey, assistantOrdinal)
-        : "";
-      assistantIdentityByElement.set(entry.element, {
-        sourceMessageKey,
-        sourceMessageAliases: sourceMessageAlias ? [sourceMessageAlias] : []
-      });
       if (currentUser) {
         groupsByKey.get(currentUser.markerKey).hasAssistantMessage = true;
       }
@@ -2857,12 +2649,7 @@ import {
           .pop() || null;
       }
       const group = user ? groupsByKey.get(user.markerKey) : orphanGroup;
-      const assistantIdentity = assistantIdentityByElement.get(assistantContainer);
-      group.headings.push({
-        ...heading,
-        sourceMessageKey: assistantIdentity?.sourceMessageKey || "",
-        sourceMessageAliases: assistantIdentity?.sourceMessageAliases || []
-      });
+      group.headings.push(heading);
     });
 
     const rawGroups = [...groupsByKey.values(), orphanGroup]
@@ -2872,58 +2659,7 @@ import {
         const rightElement = right.user ? right.user.element : right.headings[0].element;
         return compareConversationPosition(leftElement, rightElement);
       });
-    if (!state.isMakerSnapshotOpen) {
-      return rawGroups;
-    }
-
-    const groups = rawGroups.filter((group) => group.user).map((group, order) => ({
-      groupKey: group.key,
-      userMessageKey: group.user.hasPersistentIdentity ? group.key : "",
-      previewTitle: group.user.previewTitle,
-      title: group.user.title,
-      order,
-      hasAssistantMessage: group.hasAssistantMessage
-    }));
-    const ordinalBySourceAndKind = new Map();
-    const makers = rawGroups
-      .flatMap((group) => group.headings.map((heading) => ({ group, heading })))
-      .map(({ group, heading }, order) => {
-        const canonicalKind = canonicalKindForHeading(heading);
-        const ordinalKey = `${heading.sourceMessageKey || group.key}:${canonicalKind}`;
-        const ordinalWithinKind = ordinalBySourceAndKind.get(ordinalKey) || 0;
-        ordinalBySourceAndKind.set(ordinalKey, ordinalWithinKind + 1);
-        return {
-          sourceMessageKey: heading.sourceMessageKey,
-          sourceMessageAliases: heading.sourceMessageAliases || [],
-          groupKey: group.key,
-          canonicalKind,
-          ordinalWithinKind,
-          titleFingerprint: normalizeTitle(heading.title),
-          title: heading.title,
-          level: heading.level,
-          sourceType: heading.sourceType,
-          order,
-          lastKnownScrollRatio: lastKnownScrollRatioForElement(heading.element),
-          element: heading.element
-        };
-      });
-    state.makerSnapshotView = makerSnapshotModel.reconcile({
-      coverage: adapter.coverage(),
-      authoritativeMessageKeys: null,
-      sourceMessageAliases: Object.fromEntries(
-        [...assistantIdentityByElement.values()]
-          .filter((identity) => identity.sourceMessageKey && identity.sourceMessageAliases.length)
-          .map((identity) => [identity.sourceMessageKey, identity.sourceMessageAliases])
-      ),
-      groups,
-      mountedMessageKeys: [...new Set(
-        [...assistantIdentityByElement.values()]
-          .map((identity) => identity.sourceMessageKey)
-          .filter(Boolean)
-      )],
-      makers
-    });
-    return state.makerSnapshotView.groups;
+    return rawGroups;
   }
 
   function syncUserMarkerExpansion(groups) {
@@ -3531,13 +3267,6 @@ import {
   }
 
   function currentElementForHeading(heading) {
-    const makerKey = existingMakerKeyForHeading(heading);
-    if (makerKey) {
-      const mappedElement = makerSnapshotModel.resolveElement(makerKey);
-      if (mappedElement instanceof HTMLElement) {
-        return mappedElement;
-      }
-    }
     if (heading.element instanceof HTMLElement && heading.element.isConnected) {
       return heading.element;
     }
@@ -3571,202 +3300,6 @@ import {
     }
     window.history.replaceState(null, "", `#${encodeURIComponent(element.id)}`);
     return true;
-  }
-
-  function conversationScrollContainer() {
-    const mountedConversationElement = [...getAssistantContainers(), ...getUserContainers()][0];
-    return mountedConversationElement
-      ? nearestVerticalScrollContainer(mountedConversationElement) || document.scrollingElement
-      : document.scrollingElement;
-  }
-
-  function isHistoricalMakerInteractionLocked() {
-    return state.historicalMakerInteractionLocked;
-  }
-
-  function historicalMakerCounts() {
-    const groups = state.makerSnapshotView?.groups || state.markerGroups;
-    return {
-      groupCount: groups.filter((group) => group.user).length,
-      makerCount: groups.reduce((count, group) => count + group.headings.length, 0)
-    };
-  }
-
-  function visibleHistoricalMakerAnchor(scrollContainer) {
-    const isDocumentScroller = scrollContainer === document.scrollingElement;
-    const viewport = isDocumentScroller
-      ? { top: 0, bottom: window.innerHeight }
-      : scrollContainer.getBoundingClientRect();
-    return [...getUserContainers(), ...getAssistantContainers()]
-      .filter((element) => {
-        const rect = element.getBoundingClientRect();
-        return rect.bottom > viewport.top && rect.top < viewport.bottom;
-      })
-      .sort((left, right) => left.getBoundingClientRect().top - right.getBoundingClientRect().top)[0] || null;
-  }
-
-  function resolveHistoricalMakerAnchor(anchorKey) {
-    const adapter = currentMakerPlatformAdapter();
-    return [...getUserContainers(), ...getAssistantContainers()]
-      .find((element) => adapter.messageIdentity(element) === anchorKey) || null;
-  }
-
-  function waitForHistoricalMakerChange(signal) {
-    return new Promise((resolve, reject) => {
-      if (signal.aborted) {
-        reject(new DOMException("Aborted", "AbortError"));
-        return;
-      }
-      const waiter = { timer: 0 };
-      const finish = () => {
-        historicalMakerSettledWaiters.delete(waiter);
-        signal.removeEventListener("abort", abort);
-        render(null, { suppressMarkerMotion: true });
-        resolve();
-      };
-      const abort = () => {
-        window.clearTimeout(waiter.timer);
-        historicalMakerSettledWaiters.delete(waiter);
-        signal.removeEventListener("abort", abort);
-        reject(new DOMException("Aborted", "AbortError"));
-      };
-      waiter.finish = finish;
-      waiter.timer = window.setTimeout(finish, HISTORICAL_MAKER_SETTLE_MS);
-      historicalMakerSettledWaiters.add(waiter);
-      signal.addEventListener("abort", abort, { once: true });
-    });
-  }
-
-  function postponeHistoricalMakerSettledWait() {
-    historicalMakerSettledWaiters.forEach((waiter) => {
-      window.clearTimeout(waiter.timer);
-      waiter.timer = window.setTimeout(waiter.finish, HISTORICAL_MAKER_SETTLE_MS);
-    });
-  }
-
-  function createHistoricalMakerSource(scrollContainer) {
-    return {
-      async prepare({ signal }) {
-        if (isChatGPTPage()) {
-          await requestImmediateChatGPTConversationRefresh(signal);
-        }
-      },
-      measure() {
-        if (!scrollContainer.isConnected) {
-          throw new Error("Conversation scroll container is unavailable");
-        }
-        return {
-          scrollTop: scrollContainer.scrollTop,
-          scrollHeight: scrollContainer.scrollHeight,
-          clientHeight: scrollContainer.clientHeight,
-          ...historicalMakerCounts()
-        };
-      },
-      scrollEarlier() {
-        scrollContainer.scrollTo({
-          top: Math.max(0, scrollContainer.scrollTop - scrollContainer.clientHeight * HISTORICAL_MAKER_SCROLL_RATIO),
-          behavior: "auto"
-        });
-      },
-      waitForChange({ signal }) {
-        return waitForHistoricalMakerChange(signal);
-      }
-    };
-  }
-
-  async function startHistoricalMakerScan() {
-    if (isHistoricalMakerInteractionLocked()) {
-      return;
-    }
-    const scrollContainer = conversationScrollContainer();
-    if (!(scrollContainer instanceof HTMLElement)) {
-      state.historicalMakerScan = { ...state.historicalMakerScan, status: "unavailable" };
-      render();
-      return;
-    }
-
-    const routeKey = currentRouteKey();
-    const scope = currentMakerConversationScope();
-    const activationToken = state.historicalMakerActivationToken + 1;
-    state.historicalMakerActivationToken = activationToken;
-    const anchorElement = visibleHistoricalMakerAnchor(scrollContainer);
-    const position = captureHistoricalScrollPosition({
-      scrollContainer,
-      anchorElement,
-      anchorKey: anchorElement ? currentMakerPlatformAdapter().messageIdentity(anchorElement) : ""
-    });
-    state.historicalMakerInteractionLocked = true;
-    state.historicalMakerScrollContainer = scrollContainer;
-    lockHistoricalMakerInteraction(scrollContainer);
-    try {
-      state.activeControlTab = "navigation";
-      state.isCollapsed = false;
-      closeExplosionOverlay();
-      markerListScrollPersistence.cancel();
-      render();
-      const result = await historicalMakerLoader.start({
-        scope,
-        source: createHistoricalMakerSource(scrollContainer),
-        timeoutMs: HISTORICAL_MAKER_SCAN_TIMEOUT_MS,
-        onProgress(progress) {
-          if (activationToken !== state.historicalMakerActivationToken || routeKey !== currentRouteKey()) {
-            return;
-          }
-          state.historicalMakerScan = progress;
-          render(null, { suppressMarkerMotion: true });
-        }
-      });
-      if (activationToken !== state.historicalMakerActivationToken || routeKey !== currentRouteKey()) {
-        return;
-      }
-      if (scrollContainer.isConnected) {
-        restoreHistoricalScrollPosition({
-          scrollContainer,
-          position,
-          resolveAnchor: resolveHistoricalMakerAnchor
-        });
-      }
-      state.historicalMakerScan = result;
-    } catch {
-      if (activationToken === state.historicalMakerActivationToken && routeKey === currentRouteKey()) {
-        state.historicalMakerScan = {
-          ...historicalMakerLoader.current(),
-          status: "unavailable"
-        };
-      }
-    } finally {
-      if (activationToken === state.historicalMakerActivationToken && routeKey === currentRouteKey()) {
-        releaseHistoricalMakerInteraction(scrollContainer);
-        render(null, { suppressMarkerMotion: true });
-      }
-    }
-  }
-
-  async function jumpToHeadingWithRecovery(heading) {
-    if (jumpToHeading(heading)) {
-      return true;
-    }
-    const makerKey = existingMakerKeyForHeading(heading);
-    if (!makerKey || state.pendingMakerJumps.has(makerKey)) {
-      return false;
-    }
-    const scrollContainer = conversationScrollContainer();
-    if (!(scrollContainer instanceof HTMLElement)) {
-      return false;
-    }
-
-    state.pendingMakerJumps.add(makerKey);
-    const recoveredElement = await recoverMakerElement({
-      makerKey,
-      scrollContainer,
-      scrollRatio: heading.lastKnownScrollRatio,
-      resolveElement: (key) => makerSnapshotModel.resolveElement(key)
-    });
-    state.pendingMakerJumps.delete(makerKey);
-    if (recoveredElement instanceof HTMLElement && jumpToHeading(heading)) {
-      return true;
-    }
-    return false;
   }
 
   function scrollMarkerIntoListView(marker) {
@@ -3933,7 +3466,10 @@ import {
   function foldMarkerRenderItem(headings, foldKey) {
     const first = headings[0];
     const remainingCount = headings.length - 1;
-    const isExpanded = state.expandedFoldGroups.has(foldKey);
+    const isExpanded = isFoldGroupExpanded({
+      foldKey,
+      collapsedKeys: state.collapsedFoldGroups
+    });
     const ariaLabel = isExpanded
       ? t("fold.collapseAria", { title: first.title, count: remainingCount })
       : t("fold.expandAria", { title: first.title, count: remainingCount });
@@ -4004,41 +3540,6 @@ import {
     };
   }
 
-  function historicalMakerRenderItem() {
-    const scan = state.historicalMakerScan;
-    let label = t("history.ready");
-    let action = t("history.fetch");
-    if (scan.status === "loading") {
-      label = t("history.loading", { groups: scan.addedGroups, makers: scan.addedMakers });
-      action = t("history.cancel");
-    } else if (scan.status === "complete") {
-      label = scan.partial
-        ? t("history.partial", { groups: scan.addedGroups, makers: scan.addedMakers })
-        : t("history.complete", { groups: scan.addedGroups, makers: scan.addedMakers });
-      action = t("history.rescan");
-    } else if (scan.status === "timeout" || scan.status === "cancelled") {
-      label = t("history.timeout", { groups: scan.addedGroups, makers: scan.addedMakers });
-      action = t("history.continue");
-    } else if (scan.status === "stalled") {
-      label = t("history.stalled");
-      action = t("history.retry");
-    } else if (scan.status === "unavailable") {
-      label = t("history.unavailable");
-      action = t("history.retry");
-    }
-    if (scan.partial && scan.status !== "complete") {
-      label = `${label} · ${t("history.partialIndicator")}`;
-    }
-    return {
-      key: "historical-maker-loader",
-      type: "history",
-      label,
-      action,
-      isLoading: scan.status === "loading",
-      signature: markerRenderSignature(["history", scan.status, scan.partial, label, action])
-    };
-  }
-
   function createMarkerRenderRow(item) {
     if (item.type === "empty") {
       const empty = document.createElement("div");
@@ -4049,23 +3550,6 @@ import {
     }
 
     const row = document.createElement("div");
-    if (item.type === "history") {
-      const card = document.createElement("div");
-      card.className = "gpt-paragraph-nav__history-card";
-      const status = document.createElement("span");
-      status.className = "gpt-paragraph-nav__history-status";
-      status.setAttribute("aria-live", "polite");
-      card.appendChild(status);
-      const action = document.createElement("button");
-      action.type = "button";
-      action.className = "gpt-paragraph-nav__history-action";
-      action.dataset.markerItemType = "history";
-      card.appendChild(action);
-      row.appendChild(card);
-      updateMarkerRenderRow(row, item);
-      return row;
-    }
-
     const marker = document.createElement("button");
     marker.type = "button";
     marker.dataset.markerItemType = item.type;
@@ -4110,19 +3594,6 @@ import {
   function updateMarkerRenderRow(row, item) {
     if (item.type === "empty") {
       row.textContent = item.message;
-      return;
-    }
-
-    if (item.type === "history") {
-      row.className = "gpt-paragraph-nav__marker-row gpt-paragraph-nav__marker-row--history";
-      row.dataset.markerRenderKey = item.key;
-      const card = row.querySelector(".gpt-paragraph-nav__history-card");
-      card.setAttribute("aria-busy", String(item.isLoading));
-      card.classList.toggle("is-loading", item.isLoading);
-      card.querySelector(".gpt-paragraph-nav__history-status").textContent = item.label;
-      const action = card.querySelector(".gpt-paragraph-nav__history-action");
-      action.textContent = item.action;
-      action.setAttribute("aria-label", item.action);
       return;
     }
 
@@ -4175,23 +3646,10 @@ import {
       return;
     }
 
-    if (marker.dataset.markerItemType === "history") {
-      if (isHistoricalMakerInteractionLocked()) {
-        historicalMakerLoader.cancel();
-      } else {
-        void startHistoricalMakerScan();
-      }
-      return;
-    }
-
-    if (isHistoricalMakerInteractionLocked()) {
-      return;
-    }
-
     if (marker.dataset.markerItemType === "ai") {
       const markerKey = marker.dataset.markerKey || "";
       const heading = state.headings.find((item) => markerKeyForHeading(item) === markerKey);
-      if (!heading || !await jumpToHeadingWithRecovery(heading)) {
+      if (!heading || !jumpToHeading(heading)) {
         if (heading) {
           showMarkerNotice(t("userMarker.replyNotLoaded"));
         }
@@ -4208,8 +3666,7 @@ import {
       const foldKey = marker.dataset.foldKey || "";
       toggleFoldGroupExpansion({
         foldKey,
-        expandedKeys: state.expandedFoldGroups,
-        manuallyCollapsedKeys: state.manuallyCollapsedFoldGroups
+        collapsedKeys: state.collapsedFoldGroups
       });
       render();
       return;
@@ -4236,10 +3693,10 @@ import {
       showMarkerNotice(t("userMarker.replyNotLoaded"));
       return;
     }
-    if (state.expandedUserMarkerKeys.has(groupKey)) {
-      state.expandedUserMarkerKeys.delete(groupKey);
+    if (state.collapsedUserMarkerKeys.has(groupKey)) {
+      state.collapsedUserMarkerKeys.delete(groupKey);
     } else {
-      state.expandedUserMarkerKeys.add(groupKey);
+      state.collapsedUserMarkerKeys.add(groupKey);
     }
     render();
   }
@@ -4255,7 +3712,10 @@ import {
     const groups = fullFoldGroups(headings);
     const trailing = trailingHeadings(headings);
     return groups.reduce((count, { index, group: foldedHeadings }) => (
-      count + 1 + (state.expandedFoldGroups.has(foldKeyFor(group, index)) ? foldedHeadings.length : 0)
+      count + 1 + (isFoldGroupExpanded({
+        foldKey: foldKeyFor(group, index),
+        collapsedKeys: state.collapsedFoldGroups
+      }) ? foldedHeadings.length : 0)
     ), trailing.length);
   }
 
@@ -4265,7 +3725,7 @@ import {
       groupKey: group.key,
       hasUser: Boolean(group.user),
       isSearchActive,
-      expandedKeys: state.expandedUserMarkerKeys
+      collapsedKeys: state.collapsedUserMarkerKeys
     });
     const items = [];
 
@@ -4280,7 +3740,7 @@ import {
       groups.forEach(({ group: foldedHeadings, index }) => {
         const foldKey = foldKeyFor(group, index);
         items.push(foldMarkerRenderItem(foldedHeadings, foldKey));
-        if (state.expandedFoldGroups.has(foldKey)) {
+        if (isFoldGroupExpanded({ foldKey, collapsedKeys: state.collapsedFoldGroups })) {
           foldedHeadings.forEach((heading) => items.push(aiMarkerRenderItem(heading)));
         }
       });
@@ -4290,7 +3750,7 @@ import {
   }
 
   function markerRenderItems(visibleGroups, earlierUserGroupCount) {
-    const items = [historicalMakerRenderItem()];
+    const items = [];
     if (!visibleGroups.length && state.markerSearchQuery) {
       const message = t("search.empty");
       items.push({
@@ -4317,14 +3777,20 @@ import {
   }
 
   function collectMarkerRenderSnapshot() {
+    if (state.awaitingRouteDom) {
+      return {
+        assistantContainers: [],
+        userContainers: [],
+        hasConversation: false,
+        headings: [],
+        markerGroups: [],
+        metrics: null
+      };
+    }
     const assistantContainers = getAssistantContainers();
     const userContainers = getUserContainers();
-    const hasChatGPTConversation = isChatGPTPage() && Boolean(state.chatGPTConversation?.userMessages.length);
-    const hasMakerSnapshot = Boolean(state.makerSnapshotView?.groups.length);
     const hasConversation = assistantContainers.length > 0
-      || userContainers.length > 0
-      || hasChatGPTConversation
-      || hasMakerSnapshot;
+      || userContainers.length > 0;
     if (!hasConversation) {
       return {
         assistantContainers,
@@ -4368,8 +3834,6 @@ import {
 
     const renderSnapshot = snapshot || collectMarkerRenderSnapshot();
     const root = getRoot();
-    root.classList.toggle("is-history-loading", isHistoricalMakerInteractionLocked());
-    root.setAttribute("aria-busy", String(isHistoricalMakerInteractionLocked()));
     updatePageTheme(root);
     getReleaseNoticeOverlay(root);
 
@@ -4423,7 +3887,7 @@ import {
         groupKey: group.key,
         hasUser: Boolean(group.user),
         isSearchActive,
-        expandedKeys: state.expandedUserMarkerKeys
+        collapsedKeys: state.collapsedUserMarkerKeys
       });
       return count + (group.user ? 1 : 0) + (isExpanded ? displayedHeadingCount(group, group.visibleHeadings) : 0);
     }, earlierUserGroupCount ? 1 : 0);
@@ -4481,7 +3945,6 @@ import {
   }
 
   function resetRouteState() {
-    cancelHistoricalMakerScan("route", { reset: true });
     window.clearTimeout(state.scheduled);
     state.scheduledRenderSuppressesMarkerMotion = false;
     markerMotionSuppressor.reset();
@@ -4514,16 +3977,8 @@ import {
     state.lastExplosionRenderSignature = "";
     state.lastRenderedHeadingCount = 0;
     state.markerSearchQuery = "";
-    state.chatGPTConversation = null;
-    makerSnapshotModel.close();
-    state.makerSnapshotView = null;
-    state.isMakerSnapshotOpen = false;
-    state.pendingMakerJumps.clear();
-    window.clearTimeout(state.chatGPTConversationRefreshTimer);
-    state.chatGPTConversationRefreshTimer = 0;
     state.explosionSearchQuery = "";
-    resetFoldGroupExpansion();
-    state.expandedUserMarkerKeys.clear();
+    resetCollapsedGroups();
     state.latestUserMarkerKey = "";
     state.areEarlierUserGroupsExpanded = false;
   }
@@ -4536,36 +3991,11 @@ import {
       if (controller) {
         controller.unmount();
         settingsPanelControllers.delete(settings);
+        settingsPanelRenderSignatures.delete(settings);
       }
       root.remove();
     }
     document.documentElement.removeAttribute(DEBUG_ATTR);
-  }
-
-  function currentMakerConversationScope() {
-    return currentMakerPlatformAdapter().conversationScope({
-      location: window.location
-    });
-  }
-
-  function makerConversationScopesEqual(left, right) {
-    return left?.platformKey === right?.platformKey
-      && left?.conversationKey === right?.conversationKey
-      && left?.persistence === right?.persistence;
-  }
-
-  async function openCurrentMakerSnapshot() {
-    const routeKey = currentRouteKey();
-    const conversationScope = currentMakerConversationScope();
-    state.isMakerSnapshotOpen = false;
-    const snapshotView = await makerSnapshotModel.open(conversationScope);
-    if (routeKey !== currentRouteKey()
-      || !makerConversationScopesEqual(conversationScope, currentMakerConversationScope())) {
-      return;
-    }
-    state.makerSnapshotView = snapshotView;
-    state.isMakerSnapshotOpen = true;
-    scheduleRender({ suppressMarkerMotion: true });
   }
 
   function handleRouteChange() {
@@ -4577,109 +4007,11 @@ import {
     state.routeKey = nextRouteKey;
     closeExplosionOverlay();
     resetRouteState();
+    state.awaitingRouteDom = true;
+    removeNavigationRoot();
     if (!isSupportedRoute()) {
-      removeNavigationRoot();
       return;
     }
-    void openCurrentMakerSnapshot();
-    scheduleChatGPTConversationRefresh();
-    scheduleRender();
-  }
-
-  function scheduleChatGPTConversationRefresh() {
-    if (!isChatGPTPage()) {
-      return;
-    }
-    window.clearTimeout(state.chatGPTConversationRefreshTimer);
-    state.chatGPTConversationRefreshTimer = window.setTimeout(() => {
-      state.chatGPTConversationRefreshTimer = 0;
-      const conversationId = chatGPTConversationIdFromPath(window.location.pathname);
-      if (!conversationId) {
-        return;
-      }
-      state.chatGPTConversationRequestId += 1;
-      window.postMessage({
-        channel: CHATGPT_CONVERSATION_CHANNEL,
-        conversationId,
-        requestId: state.chatGPTConversationRequestId,
-        routeKey: currentRouteKey(),
-        type: CHATGPT_CONVERSATION_REQUEST
-      }, window.location.origin);
-    }, CHATGPT_CONVERSATION_REFRESH_DELAY_MS);
-  }
-
-  function requestImmediateChatGPTConversationRefresh(signal) {
-    const conversationId = chatGPTConversationIdFromPath(window.location.pathname);
-    if (!isChatGPTPage() || !conversationId) {
-      return Promise.reject(new Error("ChatGPT conversation is unavailable"));
-    }
-    window.clearTimeout(state.chatGPTConversationRefreshTimer);
-    state.chatGPTConversationRefreshTimer = 0;
-    state.chatGPTConversationRequestId += 1;
-    const requestId = state.chatGPTConversationRequestId;
-    const routeKey = currentRouteKey();
-    return new Promise((resolve, reject) => {
-      const abort = () => {
-        state.chatGPTConversationWaiters.delete(requestId);
-        reject(new DOMException("Aborted", "AbortError"));
-      };
-      if (signal.aborted) {
-        abort();
-        return;
-      }
-      state.chatGPTConversationWaiters.set(requestId, { abort, reject, resolve, signal });
-      signal.addEventListener("abort", abort, { once: true });
-      window.postMessage({
-        channel: CHATGPT_CONVERSATION_CHANNEL,
-        conversationId,
-        requestId,
-        routeKey,
-        type: CHATGPT_CONVERSATION_REQUEST
-      }, window.location.origin);
-    });
-  }
-
-  function settleChatGPTConversationWaiter(requestId, error = null) {
-    const waiter = state.chatGPTConversationWaiters.get(requestId);
-    if (!waiter) {
-      return;
-    }
-    state.chatGPTConversationWaiters.delete(requestId);
-    waiter.signal.removeEventListener("abort", waiter.abort);
-    if (error) {
-      waiter.reject(error);
-    } else {
-      waiter.resolve();
-    }
-  }
-
-  function handleChatGPTConversationMessage(event) {
-    if (event.source !== window || event.origin !== window.location.origin) {
-      return;
-    }
-    const data = event.data;
-    if (!data || data.channel !== CHATGPT_CONVERSATION_CHANNEL || data.type !== CHATGPT_CONVERSATION_RESPONSE) {
-      return;
-    }
-    const conversationId = chatGPTConversationIdFromPath(window.location.pathname);
-    if (data.requestId !== state.chatGPTConversationRequestId
-      || !conversationId
-      || data.conversationId !== conversationId
-      || data.routeKey !== currentRouteKey()) {
-      return;
-    }
-    if (!data.conversation || data.error) {
-      settleChatGPTConversationWaiter(data.requestId, new Error(data.error || "Conversation request failed"));
-      return;
-    }
-    const conversation = parseChatGPTConversation(data.conversation);
-    if (!conversation.userMessages.length) {
-      settleChatGPTConversationWaiter(data.requestId, new Error("Conversation history is empty"));
-      return;
-    }
-    state.chatGPTConversation = conversation;
-    scheduleRender({ suppressMarkerMotion: true });
-    settleChatGPTConversationWaiter(data.requestId);
   }
 
   function watchRouteChanges() {
@@ -4690,30 +4022,38 @@ import {
 
     window.addEventListener(ROUTE_CHANGE_EVENT, handleRouteChange);
     if (document.querySelector("script[data-polaris-route-bridge]")) {
-      scheduleChatGPTConversationRefresh();
       return;
     }
 
     const bridge = document.createElement("script");
     bridge.src = extensionMetadata.routeBridgeUrl;
     bridge.dataset.polarisRouteBridge = "true";
-    bridge.addEventListener("load", scheduleChatGPTConversationRefresh, { once: true });
     (document.head || document.documentElement).appendChild(bridge);
   }
 
+  function isPolarisOwnedMutationNode(node) {
+    if (!(node instanceof Node)) {
+      return false;
+    }
+    if (node instanceof HTMLElement && node.id === ROOT_ID) {
+      return true;
+    }
+    return node.parentElement?.closest(`#${ROOT_ID}`) instanceof HTMLElement;
+  }
+
   function shouldIgnoreMutation(mutation) {
-    return isInsideNavigationRoot(mutation.target) || isUserInputContext(mutation.target);
+    if (isInsideNavigationRoot(mutation.target) || isUserInputContext(mutation.target)) {
+      return true;
+    }
+    const changedNodes = [...mutation.addedNodes, ...mutation.removedNodes];
+    return changedNodes.length > 0 && changedNodes.every(isPolarisOwnedMutationNode);
   }
 
   function handleDocumentMutations(mutations) {
     if (mutations.every(shouldIgnoreMutation)) {
       return;
     }
-    if (!isHistoricalMakerInteractionLocked()) {
-      scheduleChatGPTConversationRefresh();
-    } else {
-      postponeHistoricalMakerSettledWait();
-    }
+    state.awaitingRouteDom = false;
     markerRenderStateMachine.request();
   }
 
@@ -4757,9 +4097,6 @@ import {
   }
 
   function updateActiveMarker() {
-    if (isHistoricalMakerInteractionLocked()) {
-      return;
-    }
     if (!state.activeMarkerKey) {
       clearActiveMarker();
       return;
@@ -4778,40 +4115,6 @@ import {
       return;
     }
 
-    const group = state.markerGroups.find((candidate) => candidate.headings
-      .some((heading) => markerKeyForHeading(heading) === state.activeMarkerKey));
-    const isSearchActive = Boolean(normalizeSearchQuery(state.markerSearchQuery));
-    const isParentGroupExpanded = Boolean(group
-      && isUserMarkerExpanded({
-        groupKey: group.key,
-        hasUser: Boolean(group.user),
-        isSearchActive,
-        expandedKeys: state.expandedUserMarkerKeys
-      }));
-    const visibleHeadings = group
-      ? (isSearchActive
-        ? group.headings.filter((heading) => matchesSearch(state.markerSearchQuery, heading.title))
-        : group.headings)
-      : filteredHeadings(state.headings);
-    if (group && foldEnabledFor(visibleHeadings)) {
-      const markerIndex = visibleHeadings.findIndex((heading) => markerKeyForHeading(heading) === state.activeMarkerKey);
-      const size = state.config.foldThreshold;
-      const fullGroupCount = Math.floor(visibleHeadings.length / size);
-      if (markerIndex >= 0 && markerIndex < fullGroupCount * size) {
-        const groupIndex = Math.floor(markerIndex / size);
-        const foldKey = foldKeyFor(group, groupIndex);
-        if (!state.expandedFoldGroups.has(foldKey) && shouldAutoExpandActiveFoldGroup({
-          foldKey,
-          isParentExpanded: isParentGroupExpanded,
-          manuallyCollapsedKeys: state.manuallyCollapsedFoldGroups
-        })) {
-          state.expandedFoldGroups.add(foldKey);
-          scheduleRender();
-          return;
-        }
-      }
-    }
-
     state.activeHeading = activeElement;
     updateFloatingActiveMarker(syncActiveMarker(markerKeyForHeading(selected)));
   }
@@ -4826,8 +4129,7 @@ import {
     const floating = getFloatingActive(root);
     if (!(activeMarker instanceof HTMLElement)
       || state.isCollapsed
-      || state.activeControlTab === "settings"
-      || isHistoricalMakerInteractionLocked()) {
+      || state.activeControlTab === "settings") {
       floating.hidden = true;
       floating.querySelector(".gpt-paragraph-nav__floating-active-preview").textContent = "";
       return;
@@ -4862,9 +4164,6 @@ import {
   }
 
   function scheduleScrollWork() {
-    if (isHistoricalMakerInteractionLocked()) {
-      return;
-    }
     if (state.scrollScheduled) {
       return;
     }
@@ -4898,47 +4197,6 @@ import {
     return event.isPrimary && (event.pointerType !== "mouse" || event.button === 0);
   }
 
-  function isHistoricalMakerCancelTarget(target) {
-    return target instanceof Element && Boolean(target.closest(".gpt-paragraph-nav__history-action"));
-  }
-
-  function handleHistoricalMakerInteraction(event) {
-    if (!isHistoricalMakerInteractionLocked() || isHistoricalMakerCancelTarget(event.target)) {
-      return;
-    }
-    const root = document.getElementById(ROOT_ID);
-    const target = event.target;
-    const isInsidePolaris = root instanceof HTMLElement && target instanceof Node && root.contains(target);
-    const scrollContainer = state.historicalMakerScrollContainer;
-    const isInsideConversation = scrollContainer instanceof HTMLElement
-      && target instanceof Node
-      && (scrollContainer === document.scrollingElement || scrollContainer.contains(target));
-    if (!isInsidePolaris && !isInsideConversation) {
-      return;
-    }
-    if (event.cancelable) {
-      event.preventDefault();
-    }
-    event.stopImmediatePropagation();
-  }
-
-  function lockHistoricalMakerInteraction(scrollContainer) {
-    scrollContainer.addEventListener("wheel", handleHistoricalMakerInteraction, { capture: true, passive: false });
-    scrollContainer.addEventListener("touchmove", handleHistoricalMakerInteraction, { capture: true, passive: false });
-    scrollContainer.addEventListener("pointerdown", handleHistoricalMakerInteraction, { capture: true });
-    scrollContainer.addEventListener("click", handleHistoricalMakerInteraction, { capture: true });
-  }
-
-  function unlockHistoricalMakerInteraction(scrollContainer) {
-    if (!(scrollContainer instanceof HTMLElement)) {
-      return;
-    }
-    scrollContainer.removeEventListener("wheel", handleHistoricalMakerInteraction, { capture: true });
-    scrollContainer.removeEventListener("touchmove", handleHistoricalMakerInteraction, { capture: true });
-    scrollContainer.removeEventListener("pointerdown", handleHistoricalMakerInteraction, { capture: true });
-    scrollContainer.removeEventListener("click", handleHistoricalMakerInteraction, { capture: true });
-  }
-
   function suppressNextClick() {
     state.suppressNextClick = true;
     window.clearTimeout(state.suppressNextClickTimer);
@@ -4961,7 +4219,7 @@ import {
   }
 
   function handlePointerDown(event) {
-    if (isHistoricalMakerInteractionLocked() || state.pointerDrag || state.isExplosionOpen || !isPrimaryPointer(event)) {
+    if (state.pointerDrag || state.isExplosionOpen || !isPrimaryPointer(event)) {
       return;
     }
 
@@ -5100,36 +4358,6 @@ import {
       return;
     }
 
-    if (isHistoricalMakerInteractionLocked()) {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        historicalMakerLoader.cancel();
-        return;
-      }
-      if (isHistoricalMakerCancelTarget(event.target)) {
-        return;
-      }
-      const root = document.getElementById(ROOT_ID);
-      const isInsidePolaris = root instanceof HTMLElement
-        && event.target instanceof Node
-        && root.contains(event.target);
-      const scrollContainer = state.historicalMakerScrollContainer;
-      const isInsideConversation = scrollContainer instanceof HTMLElement
-        && event.target instanceof Node
-        && (scrollContainer === document.scrollingElement || scrollContainer.contains(event.target));
-      const isInteractiveTarget = event.target instanceof Element
-        && Boolean(event.target.closest("button, input, textarea, select, [contenteditable='true']"));
-      const scrollingKeys = new Set(["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End", " "]);
-      const isConversationScrollKey = scrollingKeys.has(event.key)
-        && isInsideConversation
-        && !isInteractiveTarget;
-      if (isInsidePolaris || isConversationScrollKey) {
-        event.preventDefault();
-        event.stopImmediatePropagation();
-      }
-      return;
-    }
-
     if (event.key === "Escape" && state.isReleaseNoticeOpen) {
       event.preventDefault();
       closeReleaseNotice();
@@ -5252,9 +4480,12 @@ import {
     }
     watchConfigChanges();
     state.routeKey = currentRouteKey();
-    await openCurrentMakerSnapshot();
+    try {
+      await cleanupLegacyMakerSnapshots({ storage: chrome.storage.local });
+    } catch (error) {
+      console.warn("[Polaris for Web] Legacy Maker snapshot cleanup unavailable", error);
+    }
     watchRouteChanges();
-    window.addEventListener("message", handleChatGPTConversationMessage);
     render();
 
     state.observer = new MutationObserver(handleDocumentMutations);

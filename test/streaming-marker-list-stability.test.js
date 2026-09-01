@@ -95,10 +95,10 @@ test("Maker 卡片轻点保留点击，超过阈值拖动时抑制点击", () =>
   assert.match(contentSource, /markerListCardForTarget\(event\.target, list\)/);
 });
 
-test("手动收起活动 Maker 分组时保留选中并阻止自动重新展开", () => {
-  assert.match(markerClickSource, /toggleFoldGroupExpansion\([\s\S]*manuallyCollapsedKeys: state\.manuallyCollapsedFoldGroups/);
+test("手动收起活动 Maker 分组时保留选中，滚动不改写分组状态", () => {
+  assert.match(markerClickSource, /toggleFoldGroupExpansion\([\s\S]*collapsedKeys: state\.collapsedFoldGroups/);
   assert.doesNotMatch(markerClickSource, /clearActiveMarker\(\)/);
-  assert.match(activeMarkerSource, /isParentGroupExpanded[\s\S]*shouldAutoExpandActiveFoldGroup\([\s\S]*state\.manuallyCollapsedFoldGroups/);
+  assert.doesNotMatch(activeMarkerSource, /shouldAutoExpandActiveFoldGroup|collapsedFoldGroups|collapsedUserMarkerKeys/);
 });
 
 test("DOM 映射临时缺失时保留选中 key 并暂停活动定位", () => {

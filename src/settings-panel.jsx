@@ -250,7 +250,13 @@ export function mountSettingsPanel(host) {
 
   return {
     render(model) {
+      const previousBody = mountPoint.querySelector(".polaris-settings-body");
+      const scrollTop = previousBody instanceof HTMLElement ? previousBody.scrollTop : 0;
       mountPoint.replaceChildren(createSettingsPanel(model));
+      const nextBody = mountPoint.querySelector(".polaris-settings-body");
+      if (nextBody instanceof HTMLElement) {
+        nextBody.scrollTop = scrollTop;
+      }
     },
     unmount() {
       shadowRoot.replaceChildren();

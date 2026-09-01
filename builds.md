@@ -10,6 +10,41 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 185
+
+- Date: 2026-09-01
+- Version: 0.44.1
+- Summary: Keeps Settings scrolling stable during long conversations.
+- Notes: A stable visible-settings signature skips Shadow DOM replacement during unrelated host-page mutations. A genuine settings update preserves the settings body's scroll position, so the bottom Marker filter controls remain reachable. `pnpm test` passed 119/119, `pnpm check` passed, and the final single `pnpm build` completed successfully; `dist/manifest.json` is `0.44.1(185)`. Live signed-in long-conversation validation remains pending because no controllable browser session is available.
+
+## 184
+
+- Date: 2026-09-01
+- Version: 0.44.0
+- Summary: Makes Maker stacks and user groups expanded by default.
+- Notes: User groups and Maker stacks now use collapsed-key state, so every new group starts expanded and only an explicit click can hide it. Active Maker scrolling only synchronizes selection and never changes either group state. `pnpm test` passed 116/116, `pnpm check` passed, and the final `pnpm build` completed successfully; `dist/manifest.json` is `0.44.0(184)`. Live signed-in visual validation remains pending.
+
+## 183
+
+- Date: 2026-09-01
+- Version: 0.43.3
+- Summary: Keeps the scrolling Maker list below the search bar.
+- Notes: The scrolling list has an explicit lower stacking layer while the search control has the higher layer, so the list and its shadow buffer cannot cover the field. `pnpm test` passed 116/116, `pnpm check` passed, and the final `pnpm build` completed successfully; `dist/manifest.json` is `0.43.3(183)`. Live visual validation remains pending.
+
+## 182
+
+- Date: 2026-09-01
+- Version: 0.43.2
+- Summary: Removes Maker snapshots and rebuilds navigation solely from mounted DOM.
+- Notes: The release clears only legacy `polaris.makerSnapshot.v1/v2` keys and their indexes once, then stores a non-conversation cleanup marker. It retains route notifications only, waits for a host DOM mutation after navigation, and no longer rehydrates, reads conversation APIs, or scrolls to recover unmounted Makers. `pnpm test` passed 115/115 and `pnpm check` passed before the final verification build; `dist/manifest.json` is `0.43.2(182)`. Live signed-in route-switch and expanded-group validation remains pending because this automated run has no controllable extension session.
+
+## 181
+
+- Date: 2026-09-01
+- Version: 0.43.1
+- Summary: Prevents stale ChatGPT Makers during session changes and removes active history loading.
+- Notes: A route activation now invalidates the prior ChatGPT session and removes the queue immediately. Only a response confirmed for the current route can hydrate its snapshot and mount AI Makers; stale callbacks and assistant IDs remain excluded. The historical Maker scan, its interaction lock, UI, localization, styles, tests, and release note were removed without deleting existing local snapshots. `pnpm test` passed 177/177 and `pnpm check` passed before the final single build; live signed-in ChatGPT route-switch and expanded-group validation remains pending.
+
 ## 180
 
 - Date: 2026-08-28

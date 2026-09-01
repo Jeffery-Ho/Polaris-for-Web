@@ -110,21 +110,6 @@
         synchronized settings.
       </p>
 
-      <h3>Temporary Maker Snapshots</h3>
-      <p>
-        To keep navigation available when a supported AI chat removes or redraws message elements,
-        Polaris for Web may store a temporary local snapshot containing user-message first-line
-        previews of up to 160 characters, Maker titles, heading levels, stable identifiers, and
-        positioning metadata. It does not store full AI responses or full user prompts in this snapshot.
-      </p>
-      <p>
-        Maker snapshots use the Chrome Storage Local API, remain only on the current device,
-        are not synchronized, and are not transmitted to the developer or any third party.
-        Snapshots expire after seven days. Each supported platform independently retains at most
-        20 recently used conversations or 2 MB, whichever limit is reached first. Pages without
-        a verified stable conversation identity use only temporary in-page memory and are not saved.
-      </p>
-
       <h3>Clipboard</h3>
       <p>
         When the user explicitly selects text and activates the copy function, Polaris for Web
@@ -155,8 +140,7 @@
       </p>
       <p>
         The only external processing performed by the extension is the optional synchronization
-        of non-personal extension settings through Chrome Storage Sync. Temporary Maker snapshots
-        are excluded from synchronization. The settings synchronization service is provided
+        of non-personal extension settings through Chrome Storage Sync. The settings synchronization service is provided
         and controlled by Google. The extension does not include third-party analytics, telemetry,
         or advertising services.
       </p>
@@ -170,9 +154,8 @@
 
       <h2>4. Data Retention</h2>
       <p>
-        Polaris for Web does not create a persistent copy of full AI responses. Temporary
-        Maker snapshots retain only the limited navigation fields described above for up to seven
-        days, subject to each platform's 20-conversation and 2 MB local limits.
+        Polaris for Web does not create a persistent copy of AI responses, user prompts, or Maker
+        navigation history. Makers are generated from the response elements currently mounted on the page.
       </p>
       <p>
         Extension settings remain in Chrome storage until they are reset or removed by the user
@@ -182,7 +165,7 @@
 
       <h2>5. Browser Permissions</h2>
       <ul>
-        <li><strong>Storage permission:</strong> used to save and synchronize extension preferences and to keep temporary Maker snapshots for supported AI chats locally on the current device.</li>
+        <li><strong>Storage permission:</strong> used to save and synchronize extension preferences.</li>
         <li><strong>Host permissions:</strong> used to run the extension on supported AI chat websites and locally inspect AI response content required for navigation features.</li>
       </ul>
       <p>The extension requests only the permissions needed to provide its disclosed functionality.</p>
@@ -192,8 +175,7 @@
         Because website content is processed locally and is not transmitted to the developer,
         Polaris for Web does not maintain external databases containing user content. Any
         synchronization of extension settings is handled through Chrome's Storage Sync service
-        and its associated security mechanisms. Temporary Maker snapshots remain in Chrome's
-        local extension storage and are never added to the synchronized settings payload.
+        and its associated security mechanisms.
       </p>
 
       <h2>7. Chrome Web Store Limited Use Compliance</h2>

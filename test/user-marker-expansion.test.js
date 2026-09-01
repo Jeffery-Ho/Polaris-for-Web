@@ -11,21 +11,21 @@ function userGroup(key, headings = [], hasAssistantMessage = false) {
   return { key, user: { markerKey: key }, headings, hasAssistantMessage };
 }
 
-test("最新组、上一组和流式新增组都不会被自动展开", () => {
-  const expandedKeys = new Set();
+test("最新组、上一组和流式新增组默认展开", () => {
+  const collapsedKeys = new Set();
   const isExpanded = (groupKey) => isUserMarkerExpanded({
     groupKey,
     hasUser: true,
     isSearchActive: false,
-    expandedKeys
+    collapsedKeys
   });
   assert.equal(latestUserMarkerKey([
     userGroup("first"),
     userGroup("previous", ["已有 Maker"], true),
     userGroup("latest")
   ]), "latest");
-  assert.equal(isExpanded("previous"), false);
-  assert.equal(isExpanded("latest"), false);
+  assert.equal(isExpanded("previous"), true);
+  assert.equal(isExpanded("latest"), true);
 
   assert.equal(latestUserMarkerKey([
     userGroup("first"),
@@ -33,7 +33,7 @@ test("最新组、上一组和流式新增组都不会被自动展开", () => {
     userGroup("latest"),
     userGroup("streaming")
   ]), "streaming");
-  assert.equal(isExpanded("streaming"), false);
+  assert.equal(isExpanded("streaming"), true);
 });
 
 test("历史空分组仅在没有 AI 消息时提示未加载", () => {
@@ -77,24 +77,24 @@ test("没有用户分组时不存在最新分组 key", () => {
   assert.equal(latestUserMarkerKey([]), "");
 });
 
-test("用户分组只在手动展开或搜索时展开", () => {
-  const expandedKeys = new Set(["manual"]);
+test("用户分组默认展开，手动收起在搜索外保持生效", () => {
+  const collapsedKeys = new Set(["manual"]);
   assert.equal(isUserMarkerExpanded({
     groupKey: "latest",
     hasUser: true,
     isSearchActive: false,
-    expandedKeys
-  }), false);
+    collapsedKeys
+  }), true);
   assert.equal(isUserMarkerExpanded({
     groupKey: "manual",
     hasUser: true,
     isSearchActive: false,
-    expandedKeys
-  }), true);
+    collapsedKeys
+  }), false);
   assert.equal(isUserMarkerExpanded({
-    groupKey: "history",
+    groupKey: "manual",
     hasUser: true,
     isSearchActive: true,
-    expandedKeys
+    collapsedKeys
   }), true);
 });

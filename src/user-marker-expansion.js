@@ -3,8 +3,8 @@ export function latestUserMarkerKey(groups) {
   return userGroups[userGroups.length - 1]?.key || "";
 }
 
-export function isUserMarkerExpanded({ groupKey, hasUser, isSearchActive, expandedKeys }) {
-  return !hasUser || isSearchActive || expandedKeys.has(groupKey);
+export function isUserMarkerExpanded({ groupKey, hasUser, isSearchActive, collapsedKeys }) {
+  return !hasUser || isSearchActive || !collapsedKeys.has(groupKey);
 }
 
 export function shouldShowUserMarkerNotLoadedNotice({

@@ -1,22 +1,12 @@
-export function toggleFoldGroupExpansion({
-  foldKey,
-  expandedKeys,
-  manuallyCollapsedKeys
-}) {
-  if (expandedKeys.has(foldKey)) {
-    expandedKeys.delete(foldKey);
-    manuallyCollapsedKeys.add(foldKey);
+export function isFoldGroupExpanded({ foldKey, collapsedKeys }) {
+  return !collapsedKeys.has(foldKey);
+}
+
+export function toggleFoldGroupExpansion({ foldKey, collapsedKeys }) {
+  if (collapsedKeys.has(foldKey)) {
+    collapsedKeys.delete(foldKey);
     return;
   }
 
-  expandedKeys.add(foldKey);
-  manuallyCollapsedKeys.delete(foldKey);
-}
-
-export function shouldAutoExpandActiveFoldGroup({
-  foldKey,
-  isParentExpanded,
-  manuallyCollapsedKeys
-}) {
-  return isParentExpanded && !manuallyCollapsedKeys.has(foldKey);
+  collapsedKeys.add(foldKey);
 }

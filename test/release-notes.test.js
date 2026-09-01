@@ -111,35 +111,19 @@ test("可选赞赏页分析提供内置更新说明", () => {
   assert.match(note.en.changes[0], /allow analytics/);
 });
 
-test("ChatGPT Maker 临时快照提供内置更新说明", () => {
-  const note = releaseNotesForUpdate("0.40.0", "0.41.0")[0];
-  assert.equal(note.version, "0.41");
+test("Maker 分组默认展开提供内置更新说明", () => {
+  const note = releaseNotesForUpdate("0.43.3", "0.44.0")[0];
+  assert.equal(note.version, "0.44");
   assert.equal(note.isFallback, undefined);
-  assert.match(note.zh.changes[0], /本地快照/);
-  assert.match(note.en.changes[0], /local snapshot/);
-});
-
-test("全平台 Maker 快照提供内置更新说明", () => {
-  const note = releaseNotesForUpdate("0.41.1", "0.42.0")[0];
-  assert.equal(note.version, "0.42");
-  assert.equal(note.isFallback, undefined);
-  assert.match(note.zh.changes[0], /豆包/);
-  assert.match(note.en.changes[0], /memory-only/);
-});
-
-test("主动获取历史 Maker 功能提供内置更新说明", () => {
-  const note = releaseNotesForUpdate("0.42.4", "0.43.0")[0];
-  assert.equal(note.version, "0.43");
-  assert.equal(note.isFallback, undefined);
-  assert.match(note.zh.changes[0], /主动获取/);
-  assert.match(note.en.changes[0], /history/);
+  assert.match(note.zh.changes[0], /默认展开/);
+  assert.match(note.en.changes[0], /expanded by default/);
 });
 
 test("缺失当前功能版本说明时按 0.xx 粒度安全降级", () => {
-  const note = releaseNotesForUpdate("0.43.0", "0.44.2")
+  const note = releaseNotesForUpdate("0.44.0", "0.45.2")
     .find((candidate) => candidate.isFallback);
   assert.ok(note);
-  assert.equal(note.version, "0.44");
+  assert.equal(note.version, "0.45");
   assert.equal(note.isFallback, true);
   assert.match(note.zh.title, /更新说明/);
 });

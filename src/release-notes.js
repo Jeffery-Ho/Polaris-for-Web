@@ -1,35 +1,13 @@
 const RELEASE_NOTES = Object.freeze([
   {
-    version: "0.43.0",
+    version: "0.44.0",
     en: {
-      title: "Load historical Makers on demand",
-      changes: ["A new history card can actively scan earlier conversation content on every supported platform, preserve newly found Makers in the existing local snapshot model, and return to the original reading position when finished or cancelled."]
+      title: "Maker groups expanded by default",
+      changes: ["User groups and Maker stacks now stay expanded by default. You can still collapse either one manually, and scrolling no longer changes that choice."]
     },
     zh: {
-      title: "主动获取历史 Maker",
-      changes: ["六个支持平台现可通过独立历史卡片主动获取更早会话中的 Maker；新发现内容沿用本地快照模型，并在完成或取消后返回原阅读位置。"]
-    }
-  },
-  {
-    version: "0.42.0",
-    en: {
-      title: "Maker snapshots across supported AI chats",
-      changes: ["Doubao, Kimi, Qianwen, Yuanbao, and Xiaohongshu Diandian now share the resilient Maker snapshot model with ChatGPT, while pages without a verified conversation identity stay safely in memory-only mode."]
-    },
-    zh: {
-      title: "Maker 快照扩展到全部支持平台",
-      changes: ["豆包、Kimi、千问、元宝和小红书点点现与 ChatGPT 共用稳定 Maker 快照模型；无法确认会话身份的页面会安全降级为仅当前页面内存模式。"]
-    }
-  },
-  {
-    version: "0.41.0",
-    en: {
-      title: "Resilient ChatGPT Maker snapshots",
-      changes: ["ChatGPT Makers now keep a seven-day local snapshot with stable keys, so DOM recycling no longer removes navigation history and missing targets can be remapped before jumping."]
-    },
-    zh: {
-      title: "ChatGPT Maker 本地快照",
-      changes: ["ChatGPT Maker 现使用保留七天的本地快照和稳定 Key；DOM 回收后仍保留导航记录，并会在跳转前尝试重新映射目标。"]
+      title: "Maker 分组默认展开",
+      changes: ["用户分组和 Maker 堆叠现默认展开；仍可手动收起，滚动不会再改写你的分组状态。"]
     }
   },
   {
