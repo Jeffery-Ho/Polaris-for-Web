@@ -55,6 +55,8 @@ import {
   const NUMBERED_HEADING_SELECTOR = "p, div";
   const ASSISTANT_MESSAGE_SELECTOR = '[data-message-author-role="assistant"]';
   const USER_MESSAGE_SELECTOR = '[data-message-author-role="user"]';
+  const CLAUDE_ASSISTANT_MESSAGE_SELECTOR = 'div[data-cds="Prose"].prose';
+  const CLAUDE_USER_MESSAGE_SELECTOR = '[data-cds="UserMessage"] [data-testid="user-message"]';
   const DOUBAO_ASSISTANT_MESSAGE_SELECTOR = [
     ".receive-message-box",
     ".receive-message-content-block",
@@ -204,10 +206,11 @@ import {
     { key: "foldThreshold", label: t("settings.foldThreshold"), min: 2, max: 80, step: 1, unit: "" },
     { key: "tooltipMaxWidth", label: t("settings.tooltipMaxWidth"), min: 160, max: 720, step: 10, unit: "px" }
   ];
-  const PLATFORM_KEYS = ["chatgpt", "doubao", "kimi", "qianwen", "yuanbao", "xiaohongshu", "default"];
+  const PLATFORM_KEYS = ["chatgpt", "claude", "doubao", "kimi", "qianwen", "yuanbao", "xiaohongshu", "default"];
   const MARKER_LEVEL_OPTIONS = [1, 2, 3, 4];
   const DEFAULT_ENABLED_LEVELS_BY_PLATFORM = Object.freeze({
     chatgpt: [1, 2, 3],
+    claude: [1, 2, 3],
     doubao: [1, 2, 3],
     kimi: [1, 2],
     qianwen: [1, 2, 3],
@@ -217,6 +220,7 @@ import {
   });
   const DEFAULT_UNORDERED_LIST_BY_PLATFORM = Object.freeze({
     chatgpt: true,
+    claude: true,
     doubao: true,
     kimi: true,
     qianwen: true,
@@ -2398,9 +2402,16 @@ import {
       || window.location.hostname.endsWith(".chat.openai.com");
   }
 
+  function isClaudePage() {
+    return window.location.hostname === "claude.ai";
+  }
+
   function currentPlatformKey() {
     if (isChatGPTPage()) {
       return "chatgpt";
+    }
+    if (isClaudePage()) {
+      return "claude";
     }
     if (isDoubaoPage()) {
       return "doubao";
@@ -2432,6 +2443,10 @@ import {
         ASSISTANT_MESSAGE_SELECTOR,
         MARKDOWN_FALLBACK_SELECTOR
       ];
+    }
+
+    if (isClaudePage()) {
+      return [CLAUDE_ASSISTANT_MESSAGE_SELECTOR, ASSISTANT_MESSAGE_SELECTOR, MARKDOWN_FALLBACK_SELECTOR];
     }
 
     if (isYuanbaoPage()) {
@@ -2479,6 +2494,10 @@ import {
         XIAOHONGSHU_USER_MESSAGE_SELECTOR,
         USER_MESSAGE_SELECTOR
       ];
+    }
+
+    if (isClaudePage()) {
+      return [CLAUDE_USER_MESSAGE_SELECTOR];
     }
 
     if (isYuanbaoPage()) {

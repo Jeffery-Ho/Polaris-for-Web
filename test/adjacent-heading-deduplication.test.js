@@ -18,8 +18,8 @@ test("同一用户回复组内连续的相同 H1 只保留首个节点", () => {
   assert.deepEqual(dedupe(headings).map((item) => item.key), ["first"]);
 });
 
-test("六个平台的同一用户回复组均应用相邻标题去重", () => {
-  ["chatgpt", "doubao", "kimi", "qianwen", "yuanbao", "xiaohongshu"].forEach((platform) => {
+test("七个平台的同一用户回复组均应用相邻标题去重", () => {
+  ["chatgpt", "claude", "doubao", "kimi", "qianwen", "yuanbao", "xiaohongshu"].forEach((platform) => {
     const group = { platform };
     const headings = [heading(`${platform}-first`, group), heading(`${platform}-duplicate`, group)];
 

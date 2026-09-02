@@ -55,7 +55,7 @@
 - Only the clicked active marker may use the selected blue state.
 - Active marker matching must use an internal marker key, not the heading DOM id.
 - Marker focus must not add a separate visual highlight.
-- Marker type filtering must be saved per platform with fixed keys `chatgpt`, `doubao`, `kimi`, `qianwen`, `yuanbao`, `xiaohongshu`, and `default`.
+- Marker type filtering must be saved per platform with fixed keys `chatgpt`, `claude`, `doubao`, `kimi`, `qianwen`, `yuanbao`, `xiaohongshu`, and `default`.
 - Marker type filtering is based on supported heading levels for the current platform; Xiaohongshu Diandian includes H4, while other existing platforms keep their prior H1-H3 or H1-H2 limits.
 - Unordered list marker filtering is a separate per-platform boolean and must not affect the heading level filters.
 - Marker type filtering must keep at least one enabled level for the current platform.

@@ -7,6 +7,7 @@ Polaris for Web automatically detects headings and list titles in AI responses a
 ## Supported Platforms
 
 - ChatGPT
+- Claude.ai
 - Doubao
 - Kimi
 - Qianwen
@@ -19,7 +20,7 @@ Polaris for Web automatically detects headings and list titles in AI responses a
 - Detects headings in unordered lists across all supported platforms, controlled by a separate **Unordered Lists** setting.
 - Detects every visible response table across all supported platforms as one H3-level marker, titled from its first row's non-empty cells; every Maker locates the nearest conversation scroll container and preserves space for the fixed header.
 - Kimi and Yuanbao display H1 and H2 markers by default.
-- ChatGPT, Doubao, and Qianwen display H1, H2, and H3 markers by default.
+- ChatGPT, Claude.ai, Doubao, and Qianwen display H1, H2, and H3 markers by default.
 - Xiaohongshu Diandian AI displays H1, H2, H3, and H4 markers by default.
 - Video titles in Qianwen video lists and Yuanbao large video cards can also appear as markers.
 
@@ -59,7 +60,7 @@ Preferences are saved to `chrome.storage.sync`.
 ## Chapter View
 
 - Click **Chapter View** in the control area on the right, or press `Cmd/Ctrl+Shift+F`.
-- Available on every supported platform: ChatGPT, Doubao, Kimi, Qianwen, Yuanbao, and Xiaohongshu Diandian AI.
+- Available on every supported platform: ChatGPT, Claude.ai, Doubao, Kimi, Qianwen, Yuanbao, and Xiaohongshu Diandian AI.
 - Processes only AI response content on the current page; input fields, sidebars, and the extension's own interface are excluded.
 - Rebuilds supported rendered Markdown with a strict element and URL allowlist; images load from existing `http`/`https` page URLs and open in a new tab when clicked.
 - Formats unrendered raw Markdown text safely, including mixed inline styles, nested task lists, code blocks, tables, and Unicode characters; raw image syntax and HTML remain text.
@@ -94,7 +95,7 @@ Load the generated `dist/` directory as an unpacked extension in Chromium-based 
 
 ## Version
 
-Current version: `0.44.1(185)`
+Current version: `0.45.0(189)`
 
 ## License
 

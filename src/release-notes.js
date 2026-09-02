@@ -1,5 +1,16 @@
 const RELEASE_NOTES = Object.freeze([
   {
+    version: "0.45.0",
+    en: {
+      title: "Claude.ai navigation",
+      changes: ["Claude.ai now supports Polaris navigation for user groups, headings, unordered lists, tables, and Chapter View."]
+    },
+    zh: {
+      title: "支持 Claude.ai 导航",
+      changes: ["Claude.ai 现支持用户分组、标题、无序列表、表格 Maker 与章节视图。"]
+    }
+  },
+  {
     version: "0.44.0",
     en: {
       title: "Maker groups expanded by default",

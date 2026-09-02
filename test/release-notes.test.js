@@ -119,11 +119,19 @@ test("Maker 分组默认展开提供内置更新说明", () => {
   assert.match(note.en.changes[0], /expanded by default/);
 });
 
+test("Claude.ai 支持提供内置更新说明", () => {
+  const note = releaseNotesForUpdate("0.44.4", "0.45.0")[0];
+  assert.equal(note.version, "0.45");
+  assert.equal(note.isFallback, undefined);
+  assert.match(note.zh.changes[0], /Claude\.ai/);
+  assert.match(note.en.changes[0], /Claude\.ai/);
+});
+
 test("缺失当前功能版本说明时按 0.xx 粒度安全降级", () => {
-  const note = releaseNotesForUpdate("0.44.0", "0.45.2")
+  const note = releaseNotesForUpdate("0.45.0", "0.46.2")
     .find((candidate) => candidate.isFallback);
   assert.ok(note);
-  assert.equal(note.version, "0.45");
+  assert.equal(note.version, "0.46");
   assert.equal(note.isFallback, true);
   assert.match(note.zh.title, /更新说明/);
 });
