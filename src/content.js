@@ -228,6 +228,16 @@ import {
     xiaohongshu: true,
     default: true
   });
+  const DEFAULT_ENABLED_STRONG_BY_PLATFORM = Object.freeze({
+    chatgpt: false,
+    claude: false,
+    doubao: false,
+    kimi: false,
+    qianwen: false,
+    yuanbao: false,
+    xiaohongshu: false,
+    default: false
+  });
   const DEFAULT_CONFIG = Object.freeze({
     controlPosition: null,
     isControlMinimized: false,
@@ -237,6 +247,7 @@ import {
     tooltipMaxWidth: 360,
     configVersion: CONFIG_SCHEMA_VERSION,
     enabledLevelsByPlatform: DEFAULT_ENABLED_LEVELS_BY_PLATFORM,
+    enabledStrongByPlatform: DEFAULT_ENABLED_STRONG_BY_PLATFORM,
     enabledUnorderedListByPlatform: DEFAULT_UNORDERED_LIST_BY_PLATFORM
   });
   const liquidGlassSignatures = new WeakMap();
@@ -1090,6 +1101,16 @@ import {
     }, {});
   }
 
+  function normalizeEnabledStrongByPlatform(config) {
+    const source = config && config.enabledStrongByPlatform;
+    return PLATFORM_KEYS.reduce((result, platformKey) => {
+      result[platformKey] = source && Object.prototype.hasOwnProperty.call(source, platformKey)
+        ? Boolean(source[platformKey])
+        : DEFAULT_ENABLED_STRONG_BY_PLATFORM[platformKey];
+      return result;
+    }, {});
+  }
+
   function normalizeConfig(config) {
     const result = CONFIG_FIELDS.reduce((normalizedConfig, field) => {
       normalizedConfig[field.key] = normalizeNumber(
@@ -1101,6 +1122,7 @@ import {
       return normalizedConfig;
     }, {});
     result.enabledLevelsByPlatform = normalizeEnabledLevelsByPlatform(config);
+    result.enabledStrongByPlatform = normalizeEnabledStrongByPlatform(config);
     result.enabledUnorderedListByPlatform = normalizeUnorderedListByPlatform(config);
     result.controlPosition = normalizeControlPosition(config && config.controlPosition);
     result.isControlMinimized = Boolean(config && config.isControlMinimized);
@@ -1135,9 +1157,22 @@ import {
     });
   }
 
+  function enabledStrongByPlatformEqual(first, second) {
+    return PLATFORM_KEYS.every((platformKey) => {
+      const firstEnabled = first && Object.prototype.hasOwnProperty.call(first, platformKey)
+        ? Boolean(first[platformKey])
+        : DEFAULT_ENABLED_STRONG_BY_PLATFORM[platformKey];
+      const secondEnabled = second && Object.prototype.hasOwnProperty.call(second, platformKey)
+        ? Boolean(second[platformKey])
+        : DEFAULT_ENABLED_STRONG_BY_PLATFORM[platformKey];
+      return firstEnabled === secondEnabled;
+    });
+  }
+
   function configsEqual(first, second) {
     return CONFIG_FIELDS.every((field) => first[field.key] === second[field.key])
       && enabledLevelsByPlatformEqual(first.enabledLevelsByPlatform, second.enabledLevelsByPlatform)
+      && enabledStrongByPlatformEqual(first.enabledStrongByPlatform, second.enabledStrongByPlatform)
       && enabledUnorderedListByPlatformEqual(first.enabledUnorderedListByPlatform, second.enabledUnorderedListByPlatform)
       && first.controlPosition?.top === second.controlPosition?.top
       && first.controlPosition?.right === second.controlPosition?.right
@@ -1412,6 +1447,7 @@ import {
       settingsTitle: model.settingsTitle,
       showRating: model.showRating,
       supportedPlatformsLabel: model.supportedPlatformsLabel,
+      strong: model.strong,
       unorderedList: model.unorderedList,
       version: model.version
     });
@@ -1507,6 +1543,11 @@ import {
         saveConfig(state.config);
         render();
       },
+      onStrongChange(isEnabled) {
+        updateEnabledStrongForCurrentPlatform(isEnabled);
+        saveConfig(state.config);
+        render();
+      },
       onUnorderedListChange(isEnabled) {
         updateEnabledUnorderedListForCurrentPlatform(isEnabled);
         saveConfig(state.config);
@@ -1524,6 +1565,10 @@ import {
       supportLabel: t("support.aria"),
       supportUrl: "https://jeffery-ho.github.io/polaris-landing/?utm_source=polaris_extension&utm_medium=support_entry&utm_campaign=polaris_support",
       supportedPlatformsLabel: t("settings.supportedPlatforms"),
+      strong: {
+        isSelected: enabledStrongForPlatform(platformKey),
+        label: t("settings.strong")
+      },
       unorderedList: {
         isSelected: enabledUnorderedListForPlatform(platformKey),
         label: t("settings.unorderedList")
@@ -1561,6 +1606,24 @@ import {
     return source && Object.prototype.hasOwnProperty.call(source, platformKey)
       ? Boolean(source[platformKey])
       : DEFAULT_UNORDERED_LIST_BY_PLATFORM[platformKey];
+  }
+
+  function enabledStrongForPlatform(platformKey, config = state.config) {
+    const source = config && config.enabledStrongByPlatform;
+    return source && Object.prototype.hasOwnProperty.call(source, platformKey)
+      ? Boolean(source[platformKey])
+      : DEFAULT_ENABLED_STRONG_BY_PLATFORM[platformKey];
+  }
+
+  function updateEnabledStrongForCurrentPlatform(isEnabled) {
+    const platformKey = currentPlatformKey();
+    state.config = normalizeConfig({
+      ...state.config,
+      enabledStrongByPlatform: {
+        ...state.config.enabledStrongByPlatform,
+        [platformKey]: Boolean(isEnabled)
+      }
+    });
   }
 
   function updateEnabledUnorderedListForCurrentPlatform(isEnabled) {
@@ -2867,16 +2930,22 @@ import {
     return "";
   }
 
-  function unorderedListHeadingTitle(element, container) {
+  function unorderedListHeading(element, container) {
     if (!isTopLevelUnorderedListItem(element, container)) {
-      return "";
+      return null;
     }
 
     if (element.querySelector("ul, ol, table, pre, blockquote")) {
-      return "";
+      return null;
     }
 
-    return titleFromListItemStrong(element) || titleFromListItemText(element);
+    const strongTitle = titleFromListItemStrong(element);
+    if (strongTitle) {
+      return { sourceType: "strong", title: strongTitle };
+    }
+
+    const title = titleFromListItemText(element);
+    return title ? { sourceType: "unordered-list", title } : null;
   }
 
   function titleFromAttribute(element) {
@@ -3008,7 +3077,7 @@ import {
 
         seen.add(heading);
         const markdownLevel = markdownLevelFromText(normalizeTitle(heading.textContent || ""));
-        headings.push(makeHeadingItem(heading, headings.length, markdownLevel || 2));
+        headings.push(makeHeadingItem(heading, headings.length, markdownLevel || 2, "strong"));
       });
     });
 
@@ -3033,8 +3102,8 @@ import {
           return;
         }
 
-        const title = unorderedListHeadingTitle(heading, container);
-        if (!title) {
+        const marker = unorderedListHeading(heading, container);
+        if (!marker) {
           return;
         }
 
@@ -3042,9 +3111,9 @@ import {
         headings.push({
           element: heading,
           level: 3,
-          title,
+          title: marker.title,
           id: heading.id || `gpt-paragraph-heading-${headings.length + 1}`,
-          sourceType: "unordered-list"
+          sourceType: marker.sourceType
         });
       });
     });
@@ -3055,6 +3124,7 @@ import {
     const platformKey = currentPlatformKey();
     const maxHeadingLevel = maxHeadingLevelForPlatform(platformKey);
     const enabledLevels = new Set(enabledLevelsForCurrentPlatform());
+    const strongEnabled = enabledStrongForPlatform(platformKey);
     const unorderedListEnabled = enabledUnorderedListForPlatform(platformKey);
     const usableHeadings = headings.filter((item) => {
       if (item.title.length <= 0) {
@@ -3065,6 +3135,9 @@ import {
       }
       if (item.sourceType === "unordered-list") {
         return unorderedListEnabled;
+      }
+      if (item.sourceType === "strong") {
+        return strongEnabled;
       }
       return item.level <= maxHeadingLevel && enabledLevels.has(item.level);
     });
@@ -3174,6 +3247,9 @@ import {
     const platformKey = currentPlatformKey();
     if (heading.sourceType === "unordered-list") {
       return enabledUnorderedListForPlatform(platformKey);
+    }
+    if (heading.sourceType === "strong") {
+      return enabledStrongForPlatform(platformKey);
     }
     return heading.level <= maxHeadingLevelForPlatform(platformKey)
       && enabledLevelsForCurrentPlatform().includes(heading.level);

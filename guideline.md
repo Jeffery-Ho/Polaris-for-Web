@@ -15,7 +15,9 @@
 - Xiaohongshu Diandian pages may render assistant Markdown body headings up to `H4`.
 - Xiaohongshu Diandian support must cover `diandian.xiaohongshu.com`, `www.xiaohongshu.com/ai_chat`, `www.askdiandian.com`, and `www.diandianlife.top`.
 - Unordered list heading markers must use a separate unordered-list marker option and must not be controlled by the H3 marker filter.
+- Bold-text markers must use a separate per-platform option, default to disabled, and must not be controlled by heading-level or unordered-list filters.
 - Unordered list extraction must only accept clear title items: leading bold title, `标题：正文` style title, or short standalone title text.
+- A leading bold title in an unordered-list item is a bold-text marker and follows the bold-text option; text-derived list titles continue to follow the unordered-list option.
 - Unordered list extraction must ignore nested list items, tables, code blocks, blockquotes, and long body-like list content.
 
 ## Assistant Container Rule

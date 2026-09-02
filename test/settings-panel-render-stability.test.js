@@ -28,6 +28,7 @@ test("设置渲染签名覆盖滑杆、Marker 筛选、评分卡和平台显示�
 
   assert.match(signature, /model\.fields\.map/);
   assert.match(signature, /model\.markerLevels\.map/);
+  assert.match(signature, /model\.strong/);
   assert.match(signature, /model\.unorderedList/);
   assert.match(signature, /model\.showRating/);
 });

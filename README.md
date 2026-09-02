@@ -18,6 +18,7 @@ Polaris for Web automatically detects headings and list titles in AI responses a
 
 - Automatically detects H1, H2, H3, and H4 headings according to platform-specific rules.
 - Detects headings in unordered lists across all supported platforms, controlled by a separate **Unordered Lists** setting.
+- Detects standalone bold text and bold-first list titles when the separate **Bold text** setting is enabled; it is disabled by default on every platform.
 - Detects every visible response table across all supported platforms as one H3-level marker, titled from its first row's non-empty cells; every Maker locates the nearest conversation scroll container and preserves space for the fixed header.
 - Kimi and Yuanbao display H1 and H2 markers by default.
 - ChatGPT, Claude.ai, Doubao, and Qianwen display H1, H2, and H3 markers by default.
@@ -30,7 +31,7 @@ Polaris for Web automatically detects headings and list titles in AI responses a
 - Progressive Maker rendering begins during streaming output as soon as the first non-empty supported marker is available; fixed 120ms render batches reuse existing Maker nodes and update only changed items, preserving list scrolling, focus, hover, and manual collapse state. Wheel, trackpad, or list-drag input on a Maker or group card immediately takes control from temporary Active Maker positioning, so any Maker can remain outside the list viewport while streaming continues.
 - Click-to-jump navigation, active-section highlighting, and a scrollable marker queue.
 - Visible titles inside AI markers, user groups, and the floating active marker are left-aligned; user group capsules remain on the queue's right edge while AI markers and folded stacks remain on the left.
-- Platform-specific marker filters for H1, H2, H3, H4, and unordered lists.
+- Platform-specific marker filters for H1, H2, H3, H4, bold text, and unordered lists.
 - Settings synchronization through `chrome.storage.sync`.
 - Settings preserve their internal scroll position during host-page refreshes, so long conversations do not interrupt access to Marker filters.
 - Light and dark adaptive glass styling, with lightweight blur and saturation on Maker cards and the floating Active Maker while controls and search retain the full displacement effect.
@@ -53,7 +54,7 @@ Open **Settings** from the control area on the right to adjust:
 - User group limit
 - Fold group size
 - Tooltip width
-- H1, H2, H3, H4, and unordered-list marker visibility for the current platform
+- H1, H2, H3, H4, bold-text, and unordered-list marker visibility for the current platform
 
 Preferences are saved to `chrome.storage.sync`.
 
@@ -95,7 +96,7 @@ Load the generated `dist/` directory as an unpacked extension in Chromium-based 
 
 ## Version
 
-Current version: `0.45.0(189)`
+Current version: `0.46.0(190)`
 
 ## License
 

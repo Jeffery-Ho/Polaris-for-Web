@@ -1,5 +1,16 @@
 const RELEASE_NOTES = Object.freeze([
   {
+    version: "0.46.0",
+    en: {
+      title: "Bold-text marker filter",
+      changes: ["Bold text can now generate markers when enabled in settings, and is disabled by default for every platform."]
+    },
+    zh: {
+      title: "加粗文本 Marker 筛选",
+      changes: ["设置现可单独启用加粗文本 Marker；所有平台默认关闭。"]
+    }
+  },
+  {
     version: "0.45.0",
     en: {
       title: "Claude.ai navigation",

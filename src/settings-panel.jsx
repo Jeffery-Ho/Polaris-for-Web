@@ -202,6 +202,12 @@ function createSettingsPanel(model) {
     }));
   });
   checkboxes.appendChild(createCheckbox({
+    label: model.strong.label,
+    isDisabled: false,
+    isSelected: model.strong.isSelected,
+    onChange: model.onStrongChange
+  }));
+  checkboxes.appendChild(createCheckbox({
     label: model.unorderedList.label,
     isDisabled: false,
     isSelected: model.unorderedList.isSelected,

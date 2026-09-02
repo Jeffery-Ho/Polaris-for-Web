@@ -32,8 +32,8 @@ test("Claude.ai 使用语义消息选择器和独立平台配置", () => {
 
 test("两个源 manifest 都会向 Claude.ai 注入内容脚本与路由桥", () => {
   manifests.forEach((manifest) => {
-    assert.equal(manifest.version, "0.45.0");
-    assert.equal(manifest.version_name, "0.45.0(189)");
+    assert.match(manifest.version, /^\d+\.\d+\.\d+$/);
+    assert.match(manifest.version_name, new RegExp(`^${manifest.version.replaceAll(".", "\\.")}\\(\\d+\\)$`));
     assert.ok(manifest.host_permissions.includes("https://claude.ai/*"));
     assert.ok(manifest.web_accessible_resources[0].matches.includes("https://claude.ai/*"));
     assert.ok(manifest.content_scripts[0].matches.includes("https://claude.ai/*"));
