@@ -16,7 +16,7 @@
 - Xiaohongshu Diandian support must cover `diandian.xiaohongshu.com`, `www.xiaohongshu.com/ai_chat`, `www.askdiandian.com`, and `www.diandianlife.top`.
 - Unordered list heading markers must use a separate unordered-list marker option and must not be controlled by the H3 marker filter.
 - Ordered-list markers must use a separate per-platform option, default to disabled, and must not be controlled by heading-level or unordered-list filters.
-- Bold-text markers must use a separate per-platform option, default to disabled, and must not be controlled by heading-level or unordered-list filters.
+- Bold-text markers must use a separate per-platform option, default to enabled, and must not be controlled by heading-level or unordered-list filters.
 - Unordered list extraction must only accept clear title items: leading bold title, `标题：正文` style title, or short standalone title text.
 - A leading bold title in an unordered-list item is a bold-text marker and follows the bold-text option; text-derived list titles continue to follow the unordered-list option.
 - A leading bold title in an ordered-list item is a bold-text marker and follows the bold-text option; text-derived list titles continue to follow the ordered-list option.

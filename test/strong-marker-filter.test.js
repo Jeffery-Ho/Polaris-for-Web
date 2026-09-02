@@ -10,11 +10,11 @@ function functionSource(name, nextName) {
   return contentSource.slice(start, end);
 }
 
-test("加粗文本 Marker 按平台默认关闭且可独立保存", () => {
+test("加粗文本 Marker 按平台默认开启且可独立保存", () => {
   const normalizeConfig = functionSource("normalizeConfig", "enabledLevelsByPlatformEqual");
   const model = functionSource("createSettingsPanelModel", "updateEnabledLevelForCurrentPlatform");
 
-  assert.match(contentSource, /const DEFAULT_ENABLED_STRONG_BY_PLATFORM = Object\.freeze\([\s\S]*?default: false/);
+  assert.match(contentSource, /const DEFAULT_ENABLED_STRONG_BY_PLATFORM = Object\.freeze\([\s\S]*?default: true/);
   assert.match(contentSource, /function normalizeEnabledStrongByPlatform\(config\)/);
   assert.match(normalizeConfig, /result\.enabledStrongByPlatform = normalizeEnabledStrongByPlatform\(config\);/);
   assert.match(model, /strong: \{[\s\S]*?isSelected: enabledStrongForPlatform\(platformKey\)/);

@@ -239,14 +239,14 @@ import {
     default: false
   });
   const DEFAULT_ENABLED_STRONG_BY_PLATFORM = Object.freeze({
-    chatgpt: false,
-    claude: false,
-    doubao: false,
-    kimi: false,
-    qianwen: false,
-    yuanbao: false,
-    xiaohongshu: false,
-    default: false
+    chatgpt: true,
+    claude: true,
+    doubao: true,
+    kimi: true,
+    qianwen: true,
+    yuanbao: true,
+    xiaohongshu: true,
+    default: true
   });
   const DEFAULT_CONFIG = Object.freeze({
     controlPosition: null,

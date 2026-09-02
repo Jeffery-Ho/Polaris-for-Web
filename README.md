@@ -19,7 +19,7 @@ Polaris for Web automatically detects headings and list titles in AI responses a
 - Automatically detects H1, H2, H3, and H4 headings according to platform-specific rules.
 - Detects headings in unordered lists across all supported platforms, controlled by a separate **Unordered Lists** setting.
 - Detects ordered-list titles when the separate **Ordered list** setting is enabled; it is disabled by default on every platform.
-- Detects standalone bold text and bold-first list titles when the separate **Bold text** setting is enabled; it is disabled by default on every platform.
+- Detects standalone bold text and bold-first list titles when the separate **Bold text** setting is enabled; it is enabled by default on every platform.
 - Detects every visible response table across all supported platforms as one H3-level marker, titled from its first row's non-empty cells; every Maker locates the nearest conversation scroll container and preserves space for the fixed header.
 - Kimi and Yuanbao display H1 and H2 markers by default.
 - ChatGPT, Claude.ai, Doubao, and Qianwen display H1, H2, and H3 markers by default.
@@ -97,7 +97,7 @@ Load the generated `dist/` directory as an unpacked extension in Chromium-based 
 
 ## Version
 
-Current version: `0.47.0(191)`
+Current version: `0.47.1(192)`
 
 ## License
 
