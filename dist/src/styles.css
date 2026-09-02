@@ -553,6 +553,18 @@ html.gpt-paragraph-nav--dragging * {
   height: 17px;
 }
 
+.gpt-paragraph-nav__release-notice-action.is-support {
+  border-color: rgba(255, 55, 95, 0.35);
+  color: #ff375f;
+}
+
+.gpt-paragraph-nav__release-notice-action.is-support:hover,
+.gpt-paragraph-nav__release-notice-action.is-support:focus-visible {
+  border-color: #ff375f;
+  background: rgba(255, 55, 95, 0.18);
+  color: #ff2d55;
+}
+
 #gpt-paragraph-nav[data-page-theme="dark"] .gpt-paragraph-nav__release-notice-overlay {
   background: rgba(2, 6, 23, 0.42);
 }

@@ -940,7 +940,7 @@ import {
       email.title = t("releaseNotice.emailAction");
       email.appendChild(createReleaseNoticeMailIcon());
       const support = document.createElement("a");
-      support.className = "gpt-paragraph-nav__release-notice-action is-icon";
+      support.className = "gpt-paragraph-nav__release-notice-action is-icon is-support";
       support.setAttribute("aria-label", t("support.aria"));
       support.href = SUPPORT_URL;
       support.rel = "noreferrer";
@@ -960,7 +960,7 @@ import {
       acknowledge.className = "gpt-paragraph-nav__release-notice-action is-primary";
       acknowledge.textContent = t("releaseNotice.acknowledge");
       acknowledge.addEventListener("click", closeReleaseNotice);
-      actions.append(email, support, issue, acknowledge);
+      actions.append(support, email, issue, acknowledge);
 
       card.append(header, summary, notes, feedback, actions);
       overlay.appendChild(card);

@@ -43,7 +43,7 @@ Polaris for Web automatically detects headings and list titles in AI responses a
 - An active Maker does not change its stack or user group state. Manual collapse keeps the Maker selected, and dragging more than 4px from any Maker or group card scrolls the list without triggering that card's click action.
 - **Chapter View**, which organizes AI response content by marker section for convenient reading and copying on every supported platform.
 - A heart-shaped support entry at the right edge of the About & Settings header, opening the [Polaris support page](https://jeffery-ho.github.io/polaris-landing/) in a new tab with a fixed Polaris source tag. The landing page loads optional GA4 support-interaction analytics only after the visitor explicitly consents.
-- Update notes place the same heart-shaped support entry beside email feedback, opening the support page in a new tab.
+- Update notes place the same heart-shaped support entry as the leftmost feedback action, opening the support page in a new tab.
 - While Chapter View is open, its modal blocks arrow, Home, and End keys from changing the underlying main tab; `Shift + ← / →` continues to switch chapters outside editable fields.
 - Chapter View safely preserves rendered Markdown structure, including headings, nested and task lists, quotes, code, links, images, and wide tables.
 - Complete raw Markdown pipe tables are also formatted in Chapter View when a source page leaves them unrendered.
@@ -98,7 +98,7 @@ Load the generated `dist/` directory as an unpacked extension in Chromium-based 
 
 ## Version
 
-Current version: `0.48.0(193)`
+Current version: `0.48.1(194)`
 
 ## License
 
