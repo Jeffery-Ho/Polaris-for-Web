@@ -115,6 +115,7 @@
 - Do not show sync status in the settings menu; keep synchronization internal to configuration persistence.
 - Show the loaded extension `version_name` in the settings menu as read-only version/build information.
 - Keep the Polaris icon and name in the settings Header; place version/build text and the update-notes entry on the left of the fixed Footer and feedback actions on the right.
+- Update notices must place the heart-shaped support action next to email feedback and open the support page in a new tab.
 - When sync config is empty, migrate valid legacy `localStorage` config without deleting the legacy value.
 - The compact settings reset button hover/focus state must remain visible on light menus and may reuse the marker hover pale blue; place the full-width rating card directly below the supported-platform description, before the settings items. Stack its prompt above a prominent full-width black Rate Now action. Do not use a default black outline on card hover, and align the action width with the upper card content including its dismiss button. The card uses a separate pale-yellow surface, opens the Chrome Web Store in a new tab, and has a dismiss button that hides it locally for 24 hours.
 

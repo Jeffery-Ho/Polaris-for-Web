@@ -143,11 +143,19 @@ test("有序列表筛选提供内置更新说明", () => {
   assert.match(note.en.changes[0], /Ordered lists/);
 });
 
+test("更新说明赞赏入口提供内置更新说明", () => {
+  const note = releaseNotesForUpdate("0.47.1", "0.48.0")[0];
+  assert.equal(note.version, "0.48");
+  assert.equal(note.isFallback, undefined);
+  assert.match(note.zh.changes[0], /赞赏按钮/);
+  assert.match(note.en.changes[0], /support button/);
+});
+
 test("缺失当前功能版本说明时按 0.xx 粒度安全降级", () => {
-  const note = releaseNotesForUpdate("0.47.0", "0.48.2")
+  const note = releaseNotesForUpdate("0.48.0", "0.49.2")
     .find((candidate) => candidate.isFallback);
   assert.ok(note);
-  assert.equal(note.version, "0.48");
+  assert.equal(note.version, "0.49");
   assert.equal(note.isFallback, true);
   assert.match(note.zh.title, /更新说明/);
 });

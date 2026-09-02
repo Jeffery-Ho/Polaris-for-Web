@@ -190,6 +190,7 @@ import {
   const CONFIG_STORAGE_KEY = "gpt-paragraph-nav-config";
   const RATING_DISMISSAL_STORAGE_KEY = "polaris-rating-dismissed-until";
   const RELEASE_NOTICE_STORAGE_KEY = "polaris-release-notice-version";
+  const SUPPORT_URL = "https://jeffery-ho.github.io/polaris-landing/?utm_source=polaris_extension&utm_medium=support_entry&utm_campaign=polaris_support";
   const RATING_DISMISSAL_DURATION_MS = 24 * 60 * 60 * 1000;
   const CONFIG_SCHEMA_VERSION = 7;
   const POINTER_DRAG_THRESHOLD = 4;
@@ -938,6 +939,14 @@ import {
       email.href = "mailto:jefferyho.build@gmail.com";
       email.title = t("releaseNotice.emailAction");
       email.appendChild(createReleaseNoticeMailIcon());
+      const support = document.createElement("a");
+      support.className = "gpt-paragraph-nav__release-notice-action is-icon";
+      support.setAttribute("aria-label", t("support.aria"));
+      support.href = SUPPORT_URL;
+      support.rel = "noreferrer";
+      support.target = "_blank";
+      support.title = t("support.aria");
+      support.appendChild(createReleaseNoticeIcon("M12 21s-7-4.35-9.5-8.5C.38 8.93 2.71 5 6.5 5c2.08 0 4.04 1.08 5.5 2.72C13.46 6.08 15.42 5 17.5 5c3.79 0 6.12 3.93 4 7.5C19 16.65 12 21 12 21Z"));
       const issue = document.createElement("a");
       issue.className = "gpt-paragraph-nav__release-notice-action is-icon";
       issue.setAttribute("aria-label", t("releaseNotice.issueAction"));
@@ -951,7 +960,7 @@ import {
       acknowledge.className = "gpt-paragraph-nav__release-notice-action is-primary";
       acknowledge.textContent = t("releaseNotice.acknowledge");
       acknowledge.addEventListener("click", closeReleaseNotice);
-      actions.append(email, issue, acknowledge);
+      actions.append(email, support, issue, acknowledge);
 
       card.append(header, summary, notes, feedback, actions);
       overlay.appendChild(card);
@@ -1604,7 +1613,7 @@ import {
       settingsTitle: t("settings.title"),
       showRating: state.ratingDismissedUntil <= Date.now(),
       supportLabel: t("support.aria"),
-      supportUrl: "https://jeffery-ho.github.io/polaris-landing/?utm_source=polaris_extension&utm_medium=support_entry&utm_campaign=polaris_support",
+      supportUrl: SUPPORT_URL,
       supportedPlatformsLabel: t("settings.supportedPlatforms"),
       orderedList: {
         isSelected: enabledOrderedListForPlatform(platformKey),

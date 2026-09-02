@@ -1,5 +1,16 @@
 const RELEASE_NOTES = Object.freeze([
   {
+    version: "0.48.0",
+    en: {
+      title: "Support entry in update notes",
+      changes: ["Update notes now include a heart-shaped support button next to email feedback."]
+    },
+    zh: {
+      title: "更新说明新增赞赏入口",
+      changes: ["更新说明的邮件反馈旁新增心形赞赏按钮，可在新标签页打开赞赏页。"]
+    }
+  },
+  {
     version: "0.47.0",
     en: {
       title: "Ordered-list marker filter",

@@ -6,9 +6,10 @@ const contentSource = await readFile(new URL("../src/content.js", import.meta.ur
 const settingsPanelSource = await readFile(new URL("../src/settings-panel.jsx", import.meta.url), "utf8");
 const settingsStyles = await readFile(new URL("../src/settings-panel.css", import.meta.url), "utf8");
 
-test("赞赏入口仅显示在设置面板 Header 右侧", () => {
+test("设置面板 Header 提供赞赏入口", () => {
   assert.match(contentSource, /supportLabel: t\("support\.aria"\)/);
-  assert.match(contentSource, /supportUrl: "https:\/\/jeffery-ho\.github\.io\/polaris-landing\/\?utm_source=polaris_extension&utm_medium=support_entry&utm_campaign=polaris_support"/);
+  assert.match(contentSource, /const SUPPORT_URL = "https:\/\/jeffery-ho\.github\.io\/polaris-landing\/\?utm_source=polaris_extension&utm_medium=support_entry&utm_campaign=polaris_support"/);
+  assert.match(contentSource, /supportUrl: SUPPORT_URL/);
   assert.doesNotMatch(contentSource, /getSupportLink\(/);
   assert.doesNotMatch(contentSource, /SUPPORT_LINK_CLASS/);
   assert.match(settingsPanelSource, /const support = createElement\("a", "polaris-settings-support-link"\)/);
