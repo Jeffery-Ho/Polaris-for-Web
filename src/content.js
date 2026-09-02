@@ -228,6 +228,16 @@ import {
     xiaohongshu: true,
     default: true
   });
+  const DEFAULT_ENABLED_ORDERED_LIST_BY_PLATFORM = Object.freeze({
+    chatgpt: false,
+    claude: false,
+    doubao: false,
+    kimi: false,
+    qianwen: false,
+    yuanbao: false,
+    xiaohongshu: false,
+    default: false
+  });
   const DEFAULT_ENABLED_STRONG_BY_PLATFORM = Object.freeze({
     chatgpt: false,
     claude: false,
@@ -247,6 +257,7 @@ import {
     tooltipMaxWidth: 360,
     configVersion: CONFIG_SCHEMA_VERSION,
     enabledLevelsByPlatform: DEFAULT_ENABLED_LEVELS_BY_PLATFORM,
+    enabledOrderedListByPlatform: DEFAULT_ENABLED_ORDERED_LIST_BY_PLATFORM,
     enabledStrongByPlatform: DEFAULT_ENABLED_STRONG_BY_PLATFORM,
     enabledUnorderedListByPlatform: DEFAULT_UNORDERED_LIST_BY_PLATFORM
   });
@@ -1111,6 +1122,16 @@ import {
     }, {});
   }
 
+  function normalizeEnabledOrderedListByPlatform(config) {
+    const source = config && config.enabledOrderedListByPlatform;
+    return PLATFORM_KEYS.reduce((result, platformKey) => {
+      result[platformKey] = source && Object.prototype.hasOwnProperty.call(source, platformKey)
+        ? Boolean(source[platformKey])
+        : DEFAULT_ENABLED_ORDERED_LIST_BY_PLATFORM[platformKey];
+      return result;
+    }, {});
+  }
+
   function normalizeConfig(config) {
     const result = CONFIG_FIELDS.reduce((normalizedConfig, field) => {
       normalizedConfig[field.key] = normalizeNumber(
@@ -1122,6 +1143,7 @@ import {
       return normalizedConfig;
     }, {});
     result.enabledLevelsByPlatform = normalizeEnabledLevelsByPlatform(config);
+    result.enabledOrderedListByPlatform = normalizeEnabledOrderedListByPlatform(config);
     result.enabledStrongByPlatform = normalizeEnabledStrongByPlatform(config);
     result.enabledUnorderedListByPlatform = normalizeUnorderedListByPlatform(config);
     result.controlPosition = normalizeControlPosition(config && config.controlPosition);
@@ -1169,9 +1191,22 @@ import {
     });
   }
 
+  function enabledOrderedListByPlatformEqual(first, second) {
+    return PLATFORM_KEYS.every((platformKey) => {
+      const firstEnabled = first && Object.prototype.hasOwnProperty.call(first, platformKey)
+        ? Boolean(first[platformKey])
+        : DEFAULT_ENABLED_ORDERED_LIST_BY_PLATFORM[platformKey];
+      const secondEnabled = second && Object.prototype.hasOwnProperty.call(second, platformKey)
+        ? Boolean(second[platformKey])
+        : DEFAULT_ENABLED_ORDERED_LIST_BY_PLATFORM[platformKey];
+      return firstEnabled === secondEnabled;
+    });
+  }
+
   function configsEqual(first, second) {
     return CONFIG_FIELDS.every((field) => first[field.key] === second[field.key])
       && enabledLevelsByPlatformEqual(first.enabledLevelsByPlatform, second.enabledLevelsByPlatform)
+      && enabledOrderedListByPlatformEqual(first.enabledOrderedListByPlatform, second.enabledOrderedListByPlatform)
       && enabledStrongByPlatformEqual(first.enabledStrongByPlatform, second.enabledStrongByPlatform)
       && enabledUnorderedListByPlatformEqual(first.enabledUnorderedListByPlatform, second.enabledUnorderedListByPlatform)
       && first.controlPosition?.top === second.controlPosition?.top
@@ -1447,6 +1482,7 @@ import {
       settingsTitle: model.settingsTitle,
       showRating: model.showRating,
       supportedPlatformsLabel: model.supportedPlatformsLabel,
+      orderedList: model.orderedList,
       strong: model.strong,
       unorderedList: model.unorderedList,
       version: model.version
@@ -1543,6 +1579,11 @@ import {
         saveConfig(state.config);
         render();
       },
+      onOrderedListChange(isEnabled) {
+        updateEnabledOrderedListForCurrentPlatform(isEnabled);
+        saveConfig(state.config);
+        render();
+      },
       onStrongChange(isEnabled) {
         updateEnabledStrongForCurrentPlatform(isEnabled);
         saveConfig(state.config);
@@ -1565,6 +1606,10 @@ import {
       supportLabel: t("support.aria"),
       supportUrl: "https://jeffery-ho.github.io/polaris-landing/?utm_source=polaris_extension&utm_medium=support_entry&utm_campaign=polaris_support",
       supportedPlatformsLabel: t("settings.supportedPlatforms"),
+      orderedList: {
+        isSelected: enabledOrderedListForPlatform(platformKey),
+        label: t("settings.orderedList")
+      },
       strong: {
         isSelected: enabledStrongForPlatform(platformKey),
         label: t("settings.strong")
@@ -1613,6 +1658,24 @@ import {
     return source && Object.prototype.hasOwnProperty.call(source, platformKey)
       ? Boolean(source[platformKey])
       : DEFAULT_ENABLED_STRONG_BY_PLATFORM[platformKey];
+  }
+
+  function enabledOrderedListForPlatform(platformKey, config = state.config) {
+    const source = config && config.enabledOrderedListByPlatform;
+    return source && Object.prototype.hasOwnProperty.call(source, platformKey)
+      ? Boolean(source[platformKey])
+      : DEFAULT_ENABLED_ORDERED_LIST_BY_PLATFORM[platformKey];
+  }
+
+  function updateEnabledOrderedListForCurrentPlatform(isEnabled) {
+    const platformKey = currentPlatformKey();
+    state.config = normalizeConfig({
+      ...state.config,
+      enabledOrderedListByPlatform: {
+        ...state.config.enabledOrderedListByPlatform,
+        [platformKey]: Boolean(isEnabled)
+      }
+    });
   }
 
   function updateEnabledStrongForCurrentPlatform(isEnabled) {
@@ -2901,6 +2964,17 @@ import {
       || !parentList.parentElement.closest("li");
   }
 
+  function isTopLevelOrderedListItem(element, container) {
+    const parentList = element.parentElement;
+    if (!(parentList instanceof HTMLElement) || parentList.tagName !== "OL") {
+      return false;
+    }
+
+    return !parentList.parentElement
+      || parentList.parentElement === container
+      || !parentList.parentElement.closest("li");
+  }
+
   function titleFromListItemStrong(element) {
     const titleElement = getLeadingStrong(element) || (firstListItemBlock(element) && getLeadingStrong(firstListItemBlock(element)));
     if (!titleElement) {
@@ -2946,6 +3020,24 @@ import {
 
     const title = titleFromListItemText(element);
     return title ? { sourceType: "unordered-list", title } : null;
+  }
+
+  function orderedListHeading(element, container) {
+    if (!isTopLevelOrderedListItem(element, container)) {
+      return null;
+    }
+
+    if (element.querySelector("ul, ol, table, pre, blockquote")) {
+      return null;
+    }
+
+    const strongTitle = titleFromListItemStrong(element);
+    if (strongTitle) {
+      return { sourceType: "strong", title: strongTitle };
+    }
+
+    const title = titleFromListItemText(element);
+    return title ? { sourceType: "ordered-list", title } : null;
   }
 
   function titleFromAttribute(element) {
@@ -3118,6 +3210,28 @@ import {
       });
     });
 
+    containers.forEach((container) => {
+      container.querySelectorAll("ol > li").forEach((heading) => {
+        if (!(heading instanceof HTMLElement) || !isVisible(heading) || seen.has(heading)) {
+          return;
+        }
+
+        const marker = orderedListHeading(heading, container);
+        if (!marker) {
+          return;
+        }
+
+        seen.add(heading);
+        headings.push({
+          element: heading,
+          level: 3,
+          title: marker.title,
+          id: heading.id || `gpt-paragraph-heading-${headings.length + 1}`,
+          sourceType: marker.sourceType
+        });
+      });
+    });
+
     collectTableHeadings(containers, seen, headings);
     collectYuanbaoVideoCardHeadings(seen, headings);
     collectQianwenVideoListHeadings(seen, headings);
@@ -3125,6 +3239,7 @@ import {
     const maxHeadingLevel = maxHeadingLevelForPlatform(platformKey);
     const enabledLevels = new Set(enabledLevelsForCurrentPlatform());
     const strongEnabled = enabledStrongForPlatform(platformKey);
+    const orderedListEnabled = enabledOrderedListForPlatform(platformKey);
     const unorderedListEnabled = enabledUnorderedListForPlatform(platformKey);
     const usableHeadings = headings.filter((item) => {
       if (item.title.length <= 0) {
@@ -3135,6 +3250,9 @@ import {
       }
       if (item.sourceType === "unordered-list") {
         return unorderedListEnabled;
+      }
+      if (item.sourceType === "ordered-list") {
+        return orderedListEnabled;
       }
       if (item.sourceType === "strong") {
         return strongEnabled;
@@ -3247,6 +3365,9 @@ import {
     const platformKey = currentPlatformKey();
     if (heading.sourceType === "unordered-list") {
       return enabledUnorderedListForPlatform(platformKey);
+    }
+    if (heading.sourceType === "ordered-list") {
+      return enabledOrderedListForPlatform(platformKey);
     }
     if (heading.sourceType === "strong") {
       return enabledStrongForPlatform(platformKey);

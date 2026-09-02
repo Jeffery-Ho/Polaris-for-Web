@@ -213,6 +213,12 @@ function createSettingsPanel(model) {
     isSelected: model.unorderedList.isSelected,
     onChange: model.onUnorderedListChange
   }));
+  checkboxes.appendChild(createCheckbox({
+    label: model.orderedList.label,
+    isDisabled: false,
+    isSelected: model.orderedList.isSelected,
+    onChange: model.onOrderedListChange
+  }));
   markerTypes.append(markerTypesLabel, checkboxes);
   body.appendChild(markerTypes);
 

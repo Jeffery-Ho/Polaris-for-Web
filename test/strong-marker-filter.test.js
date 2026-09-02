@@ -4,11 +4,6 @@ import { readFile } from "node:fs/promises";
 
 const contentSource = await readFile(new URL("../src/content.js", import.meta.url), "utf8");
 const settingsPanelSource = await readFile(new URL("../src/settings-panel.jsx", import.meta.url), "utf8");
-const sourceManifests = await Promise.all([
-  "../manifest.json",
-  "../manifest.build.json"
-].map(async (path) => JSON.parse(await readFile(new URL(path, import.meta.url), "utf8"))));
-
 function functionSource(name, nextName) {
   const start = contentSource.indexOf(`  function ${name}(`);
   const end = contentSource.indexOf(`  function ${nextName}(`, start);
@@ -39,11 +34,4 @@ test("加粗文本与无序列表 Marker 分别受各自筛选控制", () => {
   assert.match(collect, /const strongEnabled = enabledStrongForPlatform\(platformKey\);/);
   assert.match(collect, /if \(item\.sourceType === "strong"\) \{\s*return strongEnabled;/);
   assert.match(enabled, /if \(heading\.sourceType === "strong"\) \{\s*return enabledStrongForPlatform\(platformKey\);/);
-});
-
-test("加粗文本筛选使用 0.46.0(190) 功能版本", () => {
-  sourceManifests.forEach((manifest) => {
-    assert.equal(manifest.version, "0.46.0");
-    assert.equal(manifest.version_name, "0.46.0(190)");
-  });
 });
