@@ -8,7 +8,7 @@ import { nextControlTabIndex } from "./control-tab-keyboard.js";
 import {
   CONTROL_PLACEMENTS,
   clampHeaderInsertIndex,
-  headerToolbarDropIndex,
+  headerInsertIndexForPointer,
   normalizeControlPlacement,
   normalizeHeaderInsertIndex
 } from "./header-toolbar-placement.js";
@@ -491,15 +491,9 @@ import {
   }
 
   function headerToolbarActions(toolbar) {
-    return Array.from(toolbar.children).filter((child) => {
-      if (!(child instanceof HTMLElement) || child.id === HEADER_TOOLBAR_HOST_ID) {
-        return false;
-      }
-      if (child.matches("button, a")) {
-        return true;
-      }
-      return child.querySelectorAll("button, a").length === 1;
-    });
+    return Array.from(toolbar.children).filter((child) => child instanceof HTMLElement
+      && child.id !== HEADER_TOOLBAR_HOST_ID
+      && Boolean(child.matches("button, a") || child.querySelector("button, a")));
   }
 
   function chatGPTHeaderToolbar() {
@@ -510,15 +504,15 @@ import {
     const headers = Array.from(document.querySelectorAll(CONVERSATION_HEADER_SELECTOR))
       .filter((header) => header instanceof HTMLElement && isVisible(header));
     for (const header of headers) {
-      const groups = Array.from(new Set([
-        ...header.querySelectorAll(CHATGPT_HEADER_ACTIONS_SELECTOR),
-        ...header.querySelectorAll("div")
-      ]))
+      const explicit = Array.from(header.querySelectorAll(CHATGPT_HEADER_ACTIONS_SELECTOR))
+        .find((toolbar) => toolbar instanceof HTMLElement && isVisible(toolbar) && headerToolbarActions(toolbar).length > 0);
+      if (explicit instanceof HTMLElement) {
+        return explicit;
+      }
+
+      const groups = Array.from(header.querySelectorAll("div"))
         .filter((group) => group instanceof HTMLElement && isVisible(group) && headerToolbarActions(group).length > 1)
-        .sort((first, second) => {
-          const actionCountDifference = headerToolbarActions(second).length - headerToolbarActions(first).length;
-          return actionCountDifference || first.getBoundingClientRect().width - second.getBoundingClientRect().width;
-        });
+        .sort((first, second) => first.getBoundingClientRect().width - second.getBoundingClientRect().width);
       if (groups[0] instanceof HTMLElement) {
         return groups[0];
       }
@@ -584,10 +578,6 @@ import {
     syncHeaderToolbarTheme(root, host);
     host.append(getControls(root));
     const insertIndex = placeHeaderToolbarHost(toolbar, host, state.config.chatgptHeaderInsertIndex);
-    if (insertIndex !== state.config.chatgptHeaderInsertIndex) {
-      state.config = normalizeConfig({ ...state.config, chatgptHeaderInsertIndex: insertIndex });
-      saveConfig(state.config);
-    }
     if (!headerToolbarFits(toolbar, host)) {
       restoreFloatingControls(root);
       return false;
@@ -4483,10 +4473,6 @@ import {
   }
 
   function handleDocumentMutations(mutations) {
-    if (isHeaderToolbarMode() && state.headerToolbarHost && !state.headerToolbarHost.isConnected) {
-      scheduleRender();
-      return;
-    }
     if (mutations.every(shouldIgnoreMutation)) {
       return;
     }
@@ -4682,8 +4668,7 @@ import {
         toolbar: headerHost.parentElement,
         startX: event.clientX,
         startY: event.clientY,
-        headerInsertIndex: clampHeaderInsertIndex(state.config.chatgptHeaderInsertIndex, headerToolbarActions(headerHost.parentElement).length),
-        startHeaderInsertIndex: clampHeaderInsertIndex(state.config.chatgptHeaderInsertIndex, headerToolbarActions(headerHost.parentElement).length),
+        headerInsertIndex: state.config.chatgptHeaderInsertIndex,
         didDrag: false
       };
       return;
@@ -4776,12 +4761,7 @@ import {
         drag.headerInsertIndex = placeHeaderToolbarHost(
           drag.toolbar,
           drag.host,
-          headerToolbarDropIndex({
-            actionRects: actions.map((action) => action.getBoundingClientRect()),
-            clientX: event.clientX,
-            savedIndex: drag.startHeaderInsertIndex,
-            wasCancelled: false
-          })
+          headerInsertIndexForPointer(actions.map((action) => action.getBoundingClientRect()), event.clientX)
         );
       }
     } else {
@@ -4833,8 +4813,6 @@ import {
           chatgptHeaderInsertIndex: drag.headerInsertIndex
         });
         saveConfig(state.config);
-      } else if (drag.toolbar instanceof HTMLElement && drag.host instanceof HTMLElement) {
-        placeHeaderToolbarHost(drag.toolbar, drag.host, drag.startHeaderInsertIndex);
       }
       applyConfig(drag.root);
     }

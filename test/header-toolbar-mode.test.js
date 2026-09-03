@@ -22,14 +22,12 @@ test("ChatGPT Header 仅移动 Polaris 容器，并在宿主重绘后可重新�
   assert.match(contentSource, /function restoreFloatingControls\(root\)/);
   assert.match(contentSource, /function headerToolbarFits\(toolbar, host\)/);
   assert.match(contentSource, /syncControlPlacement\(root\);/);
-  assert.match(contentSource, /isHeaderToolbarMode\(\) && state\.headerToolbarHost && !state\.headerToolbarHost\.isConnected[\s\S]*scheduleRender\(\)/);
 });
 
 test("Header 模式通过原最小化按钮拖动，并在完成后隐藏拖动把手", () => {
   assert.match(contentSource, /kind: "header-toolbar"/);
-  assert.match(contentSource, /headerToolbarDropIndex\(/);
+  assert.match(contentSource, /headerInsertIndexForPointer\(/);
   assert.match(contentSource, /chatgptHeaderInsertIndex: drag\.headerInsertIndex/);
-  assert.match(contentSource, /else if \(drag\.toolbar instanceof HTMLElement && drag\.host instanceof HTMLElement\) \{[\s\S]*placeHeaderToolbarHost\(drag\.toolbar, drag\.host, drag\.startHeaderInsertIndex\)/);
   assert.match(contentSource, /data-drag-handle-dismissed/);
   assert.match(stylesSource, /\.gpt-paragraph-nav__header-toolbar-host\.is-dragging::before/);
   assert.match(stylesSource, /\[data-drag-handle-dismissed\] \.gpt-paragraph-nav__control-compact-toggle/);
