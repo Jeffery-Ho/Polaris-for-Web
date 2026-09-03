@@ -147,15 +147,6 @@ function createSettingsPanel(model) {
   supportedPlatforms.textContent = model.supportedPlatformsLabel;
   body.appendChild(supportedPlatforms);
 
-  if (model.headerToolbar) {
-    body.appendChild(createCheckbox({
-      label: model.headerToolbar.label,
-      isDisabled: false,
-      isSelected: model.headerToolbar.isSelected,
-      onChange: model.onHeaderToolbarChange
-    }));
-  }
-
   if (model.showRating) {
     const rating = createElement("section", "polaris-settings-rating");
     const ratingLink = createElement("a", "polaris-settings-rating-link");

@@ -47,48 +47,6 @@
   pointer-events: auto;
 }
 
-.gpt-paragraph-nav__header-toolbar-host {
-  position: relative;
-  display: inline-flex;
-  flex: 0 0 auto;
-  align-items: center;
-  isolation: isolate;
-}
-
-.gpt-paragraph-nav__header-toolbar-host .gpt-paragraph-nav__control-capsule {
-  cursor: default;
-  touch-action: auto;
-}
-
-.gpt-paragraph-nav__header-toolbar-host .gpt-paragraph-nav__control-compact-toggle {
-  cursor: grab;
-}
-
-.gpt-paragraph-nav__header-toolbar-host[data-drag-handle-dismissed] .gpt-paragraph-nav__control-compact-toggle {
-  opacity: 0 !important;
-  pointer-events: none !important;
-}
-
-.gpt-paragraph-nav__header-toolbar-host.is-dragging::before {
-  position: absolute;
-  top: 4px;
-  bottom: 4px;
-  left: -5px;
-  z-index: 3;
-  width: 2px;
-  border-radius: 999px;
-  background: var(--gpt-highlight-bg);
-  box-shadow: 0 0 0 2px var(--gpt-glass-bg);
-  content: "";
-  pointer-events: none;
-}
-
-.gpt-paragraph-nav__header-toolbar-host.is-dragging,
-.gpt-paragraph-nav__header-toolbar-host.is-dragging * {
-  cursor: grabbing !important;
-  user-select: none;
-}
-
 .gpt-paragraph-nav__list {
   position: relative;
   z-index: 0;
@@ -289,8 +247,7 @@
   outline-offset: 1px;
 }
 
-#gpt-paragraph-nav .gpt-paragraph-nav__control-tab-indicator,
-.gpt-paragraph-nav__header-toolbar-host .gpt-paragraph-nav__control-tab-indicator {
+#gpt-paragraph-nav .gpt-paragraph-nav__control-tab-indicator {
   position: absolute;
   top: 3px;
   bottom: 3px;
@@ -356,10 +313,6 @@ html.gpt-paragraph-nav--dragging * {
 }
 
 #gpt-paragraph-nav.is-collapsed .gpt-paragraph-nav__control-tab-chevron {
-  transform: rotate(45deg);
-}
-
-.gpt-paragraph-nav__control-capsule.is-collapsed .gpt-paragraph-nav__control-tab-chevron {
   transform: rotate(45deg);
 }
 
