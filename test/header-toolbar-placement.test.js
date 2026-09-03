@@ -6,7 +6,8 @@ import {
   headerInsertIndexForPointer,
   headerToolbarDropIndex,
   normalizeControlPlacement,
-  normalizeHeaderInsertIndex
+  normalizeHeaderInsertIndex,
+  shouldEnterHeaderToolbar
 } from "../src/header-toolbar-placement.js";
 
 test("Header 模式配置仅接受已支持的位置", () => {
@@ -42,4 +43,12 @@ test("拖动取消时恢复已保存间隙，完成时才采用当前落点", ()
 
   assert.equal(headerToolbarDropIndex({ actionRects: actions, clientX: 88, savedIndex: 1, wasCancelled: true }), 1);
   assert.equal(headerToolbarDropIndex({ actionRects: actions, clientX: 88, savedIndex: 1, wasCancelled: false }), 3);
+});
+
+test("悬浮导航只有拖入原生工具栏范围时才切换为 Header 排序", () => {
+  const toolbarRect = { left: 1400, right: 2000, top: 12, bottom: 76 };
+
+  assert.equal(shouldEnterHeaderToolbar({ toolbarRect, clientX: 1650, clientY: 44 }), true);
+  assert.equal(shouldEnterHeaderToolbar({ toolbarRect, clientX: 1399, clientY: 44 }), false);
+  assert.equal(shouldEnterHeaderToolbar({ toolbarRect, clientX: 1650, clientY: 77 }), false);
 });

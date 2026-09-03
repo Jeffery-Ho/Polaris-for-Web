@@ -10,7 +10,8 @@ import {
   clampHeaderInsertIndex,
   headerToolbarDropIndex,
   normalizeControlPlacement,
-  normalizeHeaderInsertIndex
+  normalizeHeaderInsertIndex,
+  shouldEnterHeaderToolbar
 } from "./header-toolbar-placement.js";
 import {
   hasExceededMarkerListDragThreshold,
@@ -594,6 +595,54 @@ import {
     }
     root.classList.add("is-header-toolbar-mounted");
     root.style.setProperty("--gpt-header-toolbar-insert-index", String(insertIndex));
+    return true;
+  }
+
+  function dockFloatingDragInHeader(drag, event) {
+    if (!isChatGPTPage() || drag.kind !== "controls") {
+      return false;
+    }
+
+    const toolbar = chatGPTHeaderToolbar();
+    if (!(toolbar instanceof HTMLElement) || !shouldEnterHeaderToolbar({
+      toolbarRect: toolbar.getBoundingClientRect(),
+      clientX: event.clientX,
+      clientY: event.clientY
+    })) {
+      return false;
+    }
+
+    const startConfig = state.config;
+    state.config = normalizeConfig({
+      ...state.config,
+      controlPlacement: CONTROL_PLACEMENTS.CHATGPT_HEADER
+    });
+    if (!syncControlPlacement(drag.root)) {
+      state.config = startConfig;
+      syncControlPlacement(drag.root);
+      return false;
+    }
+
+    const host = state.headerToolbarHost;
+    if (!(host instanceof HTMLElement) || host.parentElement !== toolbar) {
+      state.config = startConfig;
+      syncControlPlacement(drag.root);
+      return false;
+    }
+
+    const startHeaderInsertIndex = clampHeaderInsertIndex(
+      startConfig.chatgptHeaderInsertIndex,
+      headerToolbarActions(toolbar).length
+    );
+    drag.kind = "header-toolbar";
+    drag.host = host;
+    drag.toolbar = toolbar;
+    drag.headerInsertIndex = startHeaderInsertIndex;
+    drag.startHeaderInsertIndex = startHeaderInsertIndex;
+    drag.startConfig = startConfig;
+    drag.root.classList.remove("has-custom-control-position");
+    host.classList.add("is-dragging");
+    syncControlTabs(drag.root);
     return true;
   }
 
@@ -4760,6 +4809,10 @@ import {
     }
 
     if (drag.kind === "controls") {
+      dockFloatingDragInHeader(drag, event);
+    }
+
+    if (drag.kind === "controls") {
       const controls = getControls(drag.root);
       if (controls instanceof HTMLElement) {
         drag.controlPosition = clampedControlPosition({
@@ -4830,9 +4883,15 @@ import {
       if (persistPosition) {
         state.config = normalizeConfig({
           ...state.config,
+          controlPlacement: CONTROL_PLACEMENTS.CHATGPT_HEADER,
           chatgptHeaderInsertIndex: drag.headerInsertIndex
         });
         saveConfig(state.config);
+      } else if (drag.startConfig) {
+        state.config = drag.startConfig;
+        restoreFloatingControls(drag.root);
+        syncControlTabs(drag.root);
+        drag.root.classList.toggle("has-custom-control-position", Boolean(state.config.controlPosition));
       } else if (drag.toolbar instanceof HTMLElement && drag.host instanceof HTMLElement) {
         placeHeaderToolbarHost(drag.toolbar, drag.host, drag.startHeaderInsertIndex);
       }

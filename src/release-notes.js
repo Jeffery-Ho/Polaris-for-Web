@@ -3,11 +3,11 @@ const RELEASE_NOTES = Object.freeze([
     version: "0.49.0",
     en: {
       title: "ChatGPT header controls",
-      changes: ["You can place Polaris controls in the ChatGPT header and drag the handle to position them between native toolbar actions."]
+      changes: ["Drag floating Polaris controls into the ChatGPT header, then drag the handle to position them between native toolbar actions."]
     },
     zh: {
       title: "ChatGPT Header 导航",
-      changes: ["现在可将 Polaris 控制面板放入 ChatGPT Header，并拖动把手在原生工具栏按钮之间定位。"]
+      changes: ["现在可将悬浮 Polaris 控制面板拖入 ChatGPT Header，并拖动把手在原生工具栏按钮之间定位。"]
     }
   },
   {
