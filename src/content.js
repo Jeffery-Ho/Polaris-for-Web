@@ -6,6 +6,13 @@ import { pageThemeFromColors } from "./page-theme.js";
 import { releaseNotesForUpdate } from "./release-notes.js";
 import { nextControlTabIndex } from "./control-tab-keyboard.js";
 import {
+  CONTROL_PLACEMENTS,
+  clampHeaderInsertIndex,
+  headerInsertIndexForPointer,
+  normalizeControlPlacement,
+  normalizeHeaderInsertIndex
+} from "./header-toolbar-placement.js";
+import {
   hasExceededMarkerListDragThreshold,
   preserveMarkerListDragPosition
 } from "./marker-list-drag.js";
@@ -168,6 +175,9 @@ import {
     ".ProseMirror"
   ].join(", ");
   const CONTROLS_CLASS = "gpt-paragraph-nav__controls";
+  const CONTROLS_ID = "gpt-paragraph-nav-controls";
+  const HEADER_TOOLBAR_HOST_ID = "gpt-paragraph-nav-header-controls";
+  const HEADER_TOOLBAR_HOST_CLASS = "gpt-paragraph-nav__header-toolbar-host";
   const CONTROL_CAPSULE_CLASS = "gpt-paragraph-nav__control-capsule";
   const CONTROL_TAB_INDICATOR_CLASS = "gpt-paragraph-nav__control-tab-indicator";
   const CONTROL_COMPACT_TOGGLE_CLASS = "gpt-paragraph-nav__control-compact-toggle";
@@ -192,7 +202,7 @@ import {
   const RELEASE_NOTICE_STORAGE_KEY = "polaris-release-notice-version";
   const SUPPORT_URL = "https://jeffery-ho.github.io/polaris-landing/?utm_source=polaris_extension&utm_medium=support_entry&utm_campaign=polaris_support";
   const RATING_DISMISSAL_DURATION_MS = 24 * 60 * 60 * 1000;
-  const CONFIG_SCHEMA_VERSION = 7;
+  const CONFIG_SCHEMA_VERSION = 8;
   const POINTER_DRAG_THRESHOLD = 4;
   const EXPLOSION_EMPTY_TEXT = t("chapters.empty");
   const EXPLOSION_BLOCK_SELECTOR = CHAPTER_BLOCK_SELECTOR;
@@ -201,6 +211,27 @@ import {
     '[data-testid="chat-header"]',
     "main header"
   ].join(", ");
+  const CHATGPT_HEADER_ACTIONS_SELECTOR = [
+    '[data-testid="conversation-header-actions"]',
+    '[data-testid="chat-header-actions"]',
+    '[data-testid*="header-actions"]'
+  ].join(", ");
+  const HEADER_TOOLBAR_STYLE_VARIABLES = [
+    "--gpt-glass-blur",
+    "--gpt-glass-saturate",
+    "--gpt-glass-bg",
+    "--gpt-glass-border",
+    "--gpt-glass-shadow",
+    "--gpt-highlight-bg",
+    "--gpt-highlight-text",
+    "--gpt-glass-hover-bg",
+    "--gpt-glass-dark-button-bg",
+    "--gpt-arco-text-1",
+    "--gpt-arco-text-2",
+    "--gpt-arco-text-3",
+    "--gpt-arco-primary",
+    "--gpt-arco-fill-3"
+  ];
   const CONFIG_FIELDS = [
     { key: "maxVisible", label: t("settings.maxVisible"), min: 1, max: 80, step: 1, unit: "" },
     { key: "maxVisibleUserGroups", label: t("settings.maxVisibleUserGroups"), min: 1, max: 80, step: 1, unit: "" },
@@ -250,7 +281,9 @@ import {
     default: true
   });
   const DEFAULT_CONFIG = Object.freeze({
+    controlPlacement: CONTROL_PLACEMENTS.FLOATING,
     controlPosition: null,
+    chatgptHeaderInsertIndex: 0,
     isControlMinimized: false,
     maxVisible: QUEUE_MAX_VISIBLE,
     maxVisibleUserGroups: 20,
@@ -315,6 +348,7 @@ import {
     lastExplosionRenderSignature: "",
     scrollLock: null,
     routeKey: "",
+    headerToolbarHost: null,
     isExtensionContextInvalidated: false
   };
   const markerMotionSuppressor = createMarkerMotionSuppressor({
@@ -436,13 +470,121 @@ import {
   }
 
   function getControls(root = getRoot()) {
-    let controls = root.querySelector(`.${CONTROLS_CLASS}`);
+    let controls = root.querySelector(`.${CONTROLS_CLASS}`)
+      || state.headerToolbarHost?.querySelector(`.${CONTROLS_CLASS}`)
+      || document.getElementById(CONTROLS_ID);
     if (!controls) {
       controls = document.createElement("div");
+      controls.id = CONTROLS_ID;
       controls.className = CONTROLS_CLASS;
       root.prepend(controls);
     }
     return controls;
+  }
+
+  function isHeaderToolbarMode() {
+    return isChatGPTPage() && state.config.controlPlacement === CONTROL_PLACEMENTS.CHATGPT_HEADER;
+  }
+
+  function isHeaderToolbarMounted() {
+    return Boolean(state.headerToolbarHost?.isConnected && state.headerToolbarHost.querySelector(`.${CONTROLS_CLASS}`));
+  }
+
+  function headerToolbarActions(toolbar) {
+    return Array.from(toolbar.children).filter((child) => child instanceof HTMLElement
+      && child.id !== HEADER_TOOLBAR_HOST_ID
+      && Boolean(child.matches("button, a") || child.querySelector("button, a")));
+  }
+
+  function chatGPTHeaderToolbar() {
+    if (!isChatGPTPage()) {
+      return null;
+    }
+
+    const headers = Array.from(document.querySelectorAll(CONVERSATION_HEADER_SELECTOR))
+      .filter((header) => header instanceof HTMLElement && isVisible(header));
+    for (const header of headers) {
+      const explicit = Array.from(header.querySelectorAll(CHATGPT_HEADER_ACTIONS_SELECTOR))
+        .find((toolbar) => toolbar instanceof HTMLElement && isVisible(toolbar) && headerToolbarActions(toolbar).length > 0);
+      if (explicit instanceof HTMLElement) {
+        return explicit;
+      }
+
+      const groups = Array.from(header.querySelectorAll("div"))
+        .filter((group) => group instanceof HTMLElement && isVisible(group) && headerToolbarActions(group).length > 1)
+        .sort((first, second) => first.getBoundingClientRect().width - second.getBoundingClientRect().width);
+      if (groups[0] instanceof HTMLElement) {
+        return groups[0];
+      }
+    }
+    return null;
+  }
+
+  function syncHeaderToolbarTheme(root, host) {
+    const style = window.getComputedStyle(root);
+    host.dataset.pageTheme = root.dataset.pageTheme || "dark";
+    HEADER_TOOLBAR_STYLE_VARIABLES.forEach((name) => {
+      host.style.setProperty(name, style.getPropertyValue(name));
+    });
+  }
+
+  function headerToolbarFits(toolbar, host) {
+    const toolbarRect = toolbar.getBoundingClientRect();
+    const hostRect = host.getBoundingClientRect();
+    return toolbar.clientWidth > 0
+      && toolbar.scrollWidth <= toolbar.clientWidth + 1
+      && hostRect.left >= toolbarRect.left - 1
+      && hostRect.right <= toolbarRect.right + 1;
+  }
+
+  function restoreFloatingControls(root) {
+    const controls = getControls(root);
+    if (controls.parentElement !== root) {
+      root.prepend(controls);
+    }
+    state.headerToolbarHost?.remove();
+    state.headerToolbarHost = null;
+    root.classList.remove("is-header-toolbar-mounted");
+  }
+
+  function placeHeaderToolbarHost(toolbar, host, insertIndex) {
+    const actions = headerToolbarActions(toolbar);
+    const index = clampHeaderInsertIndex(insertIndex, actions.length);
+    toolbar.insertBefore(host, actions[index] || null);
+    return index;
+  }
+
+  function syncControlPlacement(root) {
+    if (!isHeaderToolbarMode()) {
+      restoreFloatingControls(root);
+      return false;
+    }
+
+    const toolbar = chatGPTHeaderToolbar();
+    if (!(toolbar instanceof HTMLElement)) {
+      restoreFloatingControls(root);
+      return false;
+    }
+
+    let host = state.headerToolbarHost;
+    if (!(host instanceof HTMLElement)) {
+      host = document.createElement("div");
+      host.id = HEADER_TOOLBAR_HOST_ID;
+      host.className = HEADER_TOOLBAR_HOST_CLASS;
+      host.addEventListener("pointerenter", () => host.removeAttribute("data-drag-handle-dismissed"));
+      host.addEventListener("focusin", () => host.removeAttribute("data-drag-handle-dismissed"));
+      state.headerToolbarHost = host;
+    }
+    syncHeaderToolbarTheme(root, host);
+    host.append(getControls(root));
+    const insertIndex = placeHeaderToolbarHost(toolbar, host, state.config.chatgptHeaderInsertIndex);
+    if (!headerToolbarFits(toolbar, host)) {
+      restoreFloatingControls(root);
+      return false;
+    }
+    root.classList.add("is-header-toolbar-mounted");
+    root.style.setProperty("--gpt-header-toolbar-insert-index", String(insertIndex));
+    return true;
   }
 
   function getList(root = getRoot()) {
@@ -553,7 +695,7 @@ import {
   }
 
   function syncControlTabIndicator(root = getRoot()) {
-    const capsule = root.querySelector(`.${CONTROL_CAPSULE_CLASS}`);
+    const capsule = getControls(root).querySelector(`.${CONTROL_CAPSULE_CLASS}`);
     if (!(capsule instanceof HTMLElement)) {
       return;
     }
@@ -569,8 +711,10 @@ import {
   }
 
   function syncControlTabs(root = getRoot()) {
-    const capsule = root.querySelector(`.${CONTROL_CAPSULE_CLASS}`);
-    const isMinimized = state.config.isControlMinimized;
+    const controls = getControls(root);
+    const capsule = controls.querySelector(`.${CONTROL_CAPSULE_CLASS}`);
+    const isHeaderMounted = Boolean(state.headerToolbarHost?.isConnected && controls.parentElement === state.headerToolbarHost);
+    const isMinimized = !isHeaderMounted && state.config.isControlMinimized;
     if (!(capsule instanceof HTMLElement)) {
       return;
     }
@@ -579,11 +723,12 @@ import {
     root.classList.toggle("is-control-minimized", isMinimized);
     root.classList.toggle("has-custom-control-position", Boolean(activeControlPosition()));
     capsule.classList.toggle("is-minimized", isMinimized);
+    capsule.classList.toggle("is-collapsed", state.isCollapsed);
     capsule.setAttribute("role", isMinimized ? "group" : "tablist");
     capsule.setAttribute("aria-label", isMinimized
       ? `${t("controls.label")}: ${t(`tab.${state.activeControlTab}`)}`
       : t("controls.label"));
-    root.querySelectorAll("[data-control-tab]").forEach((tab) => {
+    controls.querySelectorAll("[data-control-tab]").forEach((tab) => {
       const isActive = tab.dataset.controlTab === state.activeControlTab;
       tab.classList.toggle("is-active", isActive);
       tab.setAttribute("aria-selected", String(isActive));
@@ -600,12 +745,13 @@ import {
     }
     const toggle = capsule.querySelector(`.${CONTROL_COMPACT_TOGGLE_CLASS}`);
     if (toggle instanceof HTMLButtonElement) {
-      toggle.setAttribute("aria-label", t(isMinimized ? "controls.maximize" : "controls.minimize"));
-      toggle.replaceChildren(createControlCompactIcon(isMinimized));
+      toggle.hidden = false;
+      toggle.setAttribute("aria-label", t(isHeaderMounted ? "controls.reposition" : (isMinimized ? "controls.maximize" : "controls.minimize")));
+      toggle.replaceChildren(createControlCompactIcon(isHeaderMounted ? null : isMinimized));
     }
     syncControlTabIndicator(root);
 
-    const settings = root.querySelector(`.${SETTINGS_CLASS}`);
+    const settings = controls.querySelector(`.${SETTINGS_CLASS}`);
     if (settings instanceof HTMLElement) {
       settings.hidden = state.activeControlTab !== "settings";
       settings.setAttribute("aria-labelledby", "gpt-paragraph-nav-tab-settings");
@@ -639,10 +785,12 @@ import {
     const path = document.createElementNS(namespace, "path");
     path.setAttribute("fill", "none");
     path.setAttribute("stroke", "currentColor");
-    path.setAttribute("stroke-width", isMinimized ? "1.8" : "1.5");
+    path.setAttribute("stroke-width", isMinimized === null ? "1.7" : (isMinimized ? "1.8" : "1.5"));
     path.setAttribute("stroke-linecap", "round");
     path.setAttribute("stroke-linejoin", "round");
-    path.setAttribute("d", isMinimized
+    path.setAttribute("d", isMinimized === null
+      ? "M8 7h8M8 12h8M8 17h8"
+      : isMinimized
       ? "M8 16L16 8M11 8h5v5M13 16H8v-5"
       : "M5 12H19");
     icon.appendChild(path);
@@ -671,7 +819,11 @@ import {
       const compactToggle = document.createElement("button");
       compactToggle.type = "button";
       compactToggle.className = CONTROL_COMPACT_TOGGLE_CLASS;
-      compactToggle.addEventListener("click", () => {
+      compactToggle.addEventListener("click", (event) => {
+        if (isHeaderToolbarMounted()) {
+          event.preventDefault();
+          return;
+        }
         setControlMinimized(!state.config.isControlMinimized);
       });
       capsule.appendChild(compactToggle);
@@ -1155,7 +1307,9 @@ import {
     result.enabledOrderedListByPlatform = normalizeEnabledOrderedListByPlatform(config);
     result.enabledStrongByPlatform = normalizeEnabledStrongByPlatform(config);
     result.enabledUnorderedListByPlatform = normalizeUnorderedListByPlatform(config);
+    result.controlPlacement = normalizeControlPlacement(config && config.controlPlacement);
     result.controlPosition = normalizeControlPosition(config && config.controlPosition);
+    result.chatgptHeaderInsertIndex = normalizeHeaderInsertIndex(config && config.chatgptHeaderInsertIndex);
     result.isControlMinimized = Boolean(config && config.isControlMinimized);
     if ((Number(config && config.configVersion) || 1) < 2) {
       result.enabledLevelsByPlatform.xiaohongshu = normalizeEnabledLevels(
@@ -1220,6 +1374,8 @@ import {
       && enabledUnorderedListByPlatformEqual(first.enabledUnorderedListByPlatform, second.enabledUnorderedListByPlatform)
       && first.controlPosition?.top === second.controlPosition?.top
       && first.controlPosition?.right === second.controlPosition?.right
+      && first.controlPlacement === second.controlPlacement
+      && first.chatgptHeaderInsertIndex === second.chatgptHeaderInsertIndex
       && first.isControlMinimized === second.isControlMinimized;
   }
 
@@ -1483,6 +1639,7 @@ import {
       contactLabel: model.contactLabel,
       emailLabel: model.emailLabel,
       fields: model.fields.map(({ key, label, min, max, step, unit, value }) => [key, label, min, max, step, unit, value]),
+      headerToolbar: model.headerToolbar,
       issueLabel: model.issueLabel,
       markerLevels: model.markerLevels.map(({ key, label, level, isDisabled, isSelected }) => [key, label, level, isDisabled, isSelected]),
       markerTypesLabel: model.markerTypesLabel,
@@ -1535,6 +1692,10 @@ import {
       emailLabel: t("contact.email"),
       emailUrl: "mailto:jefferyho.build@gmail.com",
       fields: CONFIG_FIELDS.map((field) => ({ ...field, value: state.config[field.key] })),
+      headerToolbar: isChatGPTPage() ? {
+        isSelected: state.config.controlPlacement === CONTROL_PLACEMENTS.CHATGPT_HEADER,
+        label: t("settings.headerToolbar")
+      } : null,
       iconUrl: extensionMetadata.iconUrl,
       issueLabel: t("contact.issue"),
       issueUrl: "https://github.com/Jeffery-Ho/Polaris-for-Web/issues",
@@ -1564,6 +1725,14 @@ import {
       },
       onDismissRating() {
         dismissRating();
+      },
+      onHeaderToolbarChange(isEnabled) {
+        state.config = normalizeConfig({
+          ...state.config,
+          controlPlacement: isEnabled ? CONTROL_PLACEMENTS.CHATGPT_HEADER : CONTROL_PLACEMENTS.FLOATING
+        });
+        saveConfig(state.config);
+        render();
       },
       onMarkerLevelChange(level, isEnabled) {
         updateEnabledLevelForCurrentPlatform(level, isEnabled);
@@ -1724,15 +1893,22 @@ import {
   }
 
   function applyConfig(root, controlPosition = activeControlPosition()) {
-    const controls = root.querySelector(`.${CONTROLS_CLASS}`);
+    const controls = getControls(root);
+    const isHeaderMounted = Boolean(state.headerToolbarHost?.isConnected && controls.parentElement === state.headerToolbarHost);
+    const headerRect = isHeaderMounted ? controls.getBoundingClientRect() : null;
     const position = controlPosition && controls instanceof HTMLElement
       ? clampedControlPosition(controlPosition, controls)
       : null;
-    root.style.setProperty("--gpt-nav-top", position
+    root.style.setProperty("--gpt-nav-top", headerRect
+      ? `${Math.round(headerRect.bottom + DEFAULT_TOP_GAP)}px`
+      : position
       ? `${position.top}px`
       : `calc(var(--gpt-conversation-header-height, ${DEFAULT_HEADER_HEIGHT}px) + ${DEFAULT_TOP_GAP}px)`);
-    root.style.setProperty("--gpt-nav-right", position ? `${position.right}px` : `${DEFAULT_RIGHT_OFFSET}px`);
-    root.style.setProperty("--gpt-nav-width", position
+    const right = headerRect ? Math.max(0, Math.round(window.innerWidth - headerRect.right)) : position?.right;
+    root.style.setProperty("--gpt-nav-right", right !== undefined ? `${right}px` : `${DEFAULT_RIGHT_OFFSET}px`);
+    root.style.setProperty("--gpt-nav-width", right !== undefined
+      ? `calc(100vw - ${right}px)`
+      : position
       ? `calc(100vw - ${position.right}px)`
       : `calc(100vw - ${DEFAULT_RIGHT_OFFSET * 2}px)`);
     root.style.setProperty("--gpt-nav-tooltip-max-width", `${state.config.tooltipMaxWidth}px`);
@@ -2459,7 +2635,10 @@ import {
 
   function isInsideNavigationRoot(node) {
     const root = document.getElementById(ROOT_ID);
-    return root instanceof HTMLElement && node instanceof Node && root.contains(node);
+    return node instanceof Node && (
+      (root instanceof HTMLElement && root.contains(node))
+      || Boolean(state.headerToolbarHost?.contains(node))
+    );
   }
 
   function isUserInputContext(node) {
@@ -3612,7 +3791,7 @@ import {
 
   function syncLiquidGlassElements(root = getRoot()) {
     state.liquidGlassElements.forEach((element) => {
-      if (!element.isConnected || !root.contains(element)) {
+      if (!element.isConnected || (!root.contains(element) && !state.headerToolbarHost?.contains(element))) {
         const observer = getLiquidGlassObserver();
         if (observer) {
           observer.unobserve(element);
@@ -3621,11 +3800,12 @@ import {
         liquidGlassSignatures.delete(element);
       }
     });
-    root.querySelectorAll(LIQUID_GLASS_SELECTOR).forEach((element) => {
+    const liquidGlassRoots = [root, state.headerToolbarHost].filter((element) => element instanceof HTMLElement);
+    liquidGlassRoots.forEach((liquidGlassRoot) => liquidGlassRoot.querySelectorAll(LIQUID_GLASS_SELECTOR).forEach((element) => {
       if (element instanceof HTMLElement) {
         observeLiquidGlassElement(element);
       }
-    });
+    }));
   }
 
   function observeLiquidGlassElement(element) {
@@ -4086,6 +4266,8 @@ import {
     updateHeaderOffset(root);
     getControlCapsule(root);
     getSettings(root);
+    syncControlPlacement(root);
+    syncControlTabs(root);
     applyConfig(root);
     const controls = getControls(root);
     const controlWidth = controls.getBoundingClientRect().width;
@@ -4192,6 +4374,7 @@ import {
     state.markerNoticeTimer = 0;
     if (state.pointerDrag) {
       state.pointerDrag.root.classList.remove("is-dragging");
+      state.pointerDrag.host?.classList.remove("is-dragging");
       state.pointerDrag = null;
     }
     document.documentElement.classList.remove("gpt-paragraph-nav--dragging");
@@ -4220,14 +4403,19 @@ import {
 
   function removeNavigationRoot() {
     const root = document.getElementById(ROOT_ID);
+    const controls = root?.querySelector(`.${CONTROLS_CLASS}`)
+      || state.headerToolbarHost?.querySelector(`.${CONTROLS_CLASS}`)
+      || document.getElementById(CONTROLS_ID);
+    const settings = controls?.querySelector(`.${SETTINGS_CLASS}`);
+    const controller = settings && settingsPanelControllers.get(settings);
+    if (controller) {
+      controller.unmount();
+      settingsPanelControllers.delete(settings);
+      settingsPanelRenderSignatures.delete(settings);
+    }
+    state.headerToolbarHost?.remove();
+    state.headerToolbarHost = null;
     if (root) {
-      const settings = root.querySelector(`.${SETTINGS_CLASS}`);
-      const controller = settings && settingsPanelControllers.get(settings);
-      if (controller) {
-        controller.unmount();
-        settingsPanelControllers.delete(settings);
-        settingsPanelRenderSignatures.delete(settings);
-      }
       root.remove();
     }
     document.documentElement.removeAttribute(DEBUG_ATTR);
@@ -4270,10 +4458,10 @@ import {
     if (!(node instanceof Node)) {
       return false;
     }
-    if (node instanceof HTMLElement && node.id === ROOT_ID) {
+    if (node instanceof HTMLElement && (node.id === ROOT_ID || node.id === HEADER_TOOLBAR_HOST_ID)) {
       return true;
     }
-    return node.parentElement?.closest(`#${ROOT_ID}`) instanceof HTMLElement;
+    return node.parentElement?.closest(`#${ROOT_ID}, #${HEADER_TOOLBAR_HOST_ID}`) instanceof HTMLElement;
   }
 
   function shouldIgnoreMutation(mutation) {
@@ -4463,9 +4651,34 @@ import {
       return;
     }
 
-    const capsule = root.querySelector(`.${CONTROL_CAPSULE_CLASS}`);
+    const controls = getControls(root);
+    const capsule = controls.querySelector(`.${CONTROL_CAPSULE_CLASS}`);
+    const compactToggle = capsule?.querySelector(`.${CONTROL_COMPACT_TOGGLE_CLASS}`);
+    const headerHost = state.headerToolbarHost;
+    if (headerHost instanceof HTMLElement
+      && headerHost.isConnected
+      && compactToggle instanceof HTMLElement
+      && event.target instanceof Node
+      && compactToggle.contains(event.target)) {
+      state.pointerDrag = {
+        kind: "header-toolbar",
+        pointerId: event.pointerId,
+        root,
+        host: headerHost,
+        toolbar: headerHost.parentElement,
+        startX: event.clientX,
+        startY: event.clientY,
+        headerInsertIndex: state.config.chatgptHeaderInsertIndex,
+        didDrag: false
+      };
+      return;
+    }
+
+    if (headerHost instanceof HTMLElement && headerHost.isConnected && capsule instanceof HTMLElement && headerHost.contains(capsule)) {
+      return;
+    }
+
     if (capsule instanceof HTMLElement && event.target instanceof Node && capsule.contains(event.target)) {
-      const controls = root.querySelector(`.${CONTROLS_CLASS}`);
       const rect = controls instanceof HTMLElement ? controls.getBoundingClientRect() : capsule.getBoundingClientRect();
       state.pointerDrag = {
         kind: "controls",
@@ -4519,15 +4732,20 @@ import {
     if (!drag.didDrag) {
       drag.didDrag = true;
       drag.root.classList.add("is-dragging");
-      drag.root.classList.add("has-custom-control-position");
+      if (drag.kind === "controls") {
+        drag.root.classList.add("has-custom-control-position");
+      }
       document.documentElement.classList.add("gpt-paragraph-nav--dragging");
+      if (drag.kind === "header-toolbar") {
+        drag.host.classList.add("is-dragging");
+      }
       if (drag.kind === "list") {
         markerListScrollPersistence.cancel();
       }
     }
 
     if (drag.kind === "controls") {
-      const controls = drag.root.querySelector(`.${CONTROLS_CLASS}`);
+      const controls = getControls(drag.root);
       if (controls instanceof HTMLElement) {
         drag.controlPosition = clampedControlPosition({
           top: drag.controlPosition.top + deltaY,
@@ -4536,6 +4754,15 @@ import {
         drag.startX = event.clientX;
         drag.startY = event.clientY;
         applyConfig(drag.root, drag.controlPosition);
+      }
+    } else if (drag.kind === "header-toolbar") {
+      if (drag.toolbar instanceof HTMLElement && drag.host instanceof HTMLElement && drag.host.parentElement === drag.toolbar) {
+        const actions = headerToolbarActions(drag.toolbar);
+        drag.headerInsertIndex = placeHeaderToolbarHost(
+          drag.toolbar,
+          drag.host,
+          headerInsertIndexForPointer(actions.map((action) => action.getBoundingClientRect()), event.clientX)
+        );
       }
     } else {
       drag.list.scrollTop = Math.min(
@@ -4559,6 +4786,9 @@ import {
     state.pointerDrag = null;
     drag.root.classList.remove("is-dragging");
     document.documentElement.classList.remove("gpt-paragraph-nav--dragging");
+    if (drag.kind === "header-toolbar") {
+      drag.host.classList.remove("is-dragging");
+    }
     if (!drag.didDrag) {
       return;
     }
@@ -4572,6 +4802,18 @@ import {
         saveConfig(state.config);
       }
       drag.root.classList.toggle("has-custom-control-position", Boolean(state.config.controlPosition));
+      applyConfig(drag.root);
+    }
+
+    if (drag.kind === "header-toolbar") {
+      drag.host.setAttribute("data-drag-handle-dismissed", "true");
+      if (persistPosition) {
+        state.config = normalizeConfig({
+          ...state.config,
+          chatgptHeaderInsertIndex: drag.headerInsertIndex
+        });
+        saveConfig(state.config);
+      }
       applyConfig(drag.root);
     }
 
@@ -4686,7 +4928,7 @@ import {
     if (releaseNotice instanceof HTMLElement && releaseNotice.contains(event.target)) {
       return;
     }
-    const controls = root && root.querySelector(`.${CONTROLS_CLASS}`);
+    const controls = root instanceof HTMLElement ? getControls(root) : null;
     if (controls instanceof HTMLElement && controls.contains(event.target)) {
       return;
     }

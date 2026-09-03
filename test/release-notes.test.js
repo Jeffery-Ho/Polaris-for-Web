@@ -152,10 +152,10 @@ test("更新说明赞赏入口提供内置更新说明", () => {
 });
 
 test("缺失当前功能版本说明时按 0.xx 粒度安全降级", () => {
-  const note = releaseNotesForUpdate("0.48.0", "0.49.2")
+  const note = releaseNotesForUpdate("0.49.0", "0.50.2")
     .find((candidate) => candidate.isFallback);
   assert.ok(note);
-  assert.equal(note.version, "0.49");
+  assert.equal(note.version, "0.50");
   assert.equal(note.isFallback, true);
   assert.match(note.zh.title, /更新说明/);
 });
