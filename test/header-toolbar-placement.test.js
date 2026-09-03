@@ -4,6 +4,7 @@ import {
   CONTROL_PLACEMENTS,
   clampHeaderInsertIndex,
   headerInsertIndexForPointer,
+  headerToolbarDropIndex,
   normalizeControlPlacement,
   normalizeHeaderInsertIndex
 } from "../src/header-toolbar-placement.js";
@@ -30,4 +31,15 @@ test("指针位置按原生动作按钮中点映射为首端、中间与末端�
   assert.equal(headerInsertIndexForPointer(actions, 12), 0);
   assert.equal(headerInsertIndexForPointer(actions, 45), 1);
   assert.equal(headerInsertIndexForPointer(actions, 88), 3);
+});
+
+test("拖动取消时恢复已保存间隙，完成时才采用当前落点", () => {
+  const actions = [
+    { left: 10, width: 20 },
+    { left: 40, width: 20 },
+    { left: 70, width: 20 }
+  ];
+
+  assert.equal(headerToolbarDropIndex({ actionRects: actions, clientX: 88, savedIndex: 1, wasCancelled: true }), 1);
+  assert.equal(headerToolbarDropIndex({ actionRects: actions, clientX: 88, savedIndex: 1, wasCancelled: false }), 3);
 });

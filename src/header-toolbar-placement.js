@@ -22,3 +22,9 @@ export function headerInsertIndexForPointer(actionRects, clientX) {
   const index = actionRects.findIndex((rect) => clientX < rect.left + (rect.width / 2));
   return index < 0 ? actionRects.length : index;
 }
+
+export function headerToolbarDropIndex({ actionRects, clientX, savedIndex, wasCancelled }) {
+  return wasCancelled
+    ? clampHeaderInsertIndex(savedIndex, actionRects.length)
+    : clampHeaderInsertIndex(headerInsertIndexForPointer(actionRects, clientX), actionRects.length);
+}
