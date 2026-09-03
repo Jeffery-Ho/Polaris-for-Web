@@ -35,13 +35,6 @@ test("Header 模式通过原最小化按钮拖动，并在完成后隐藏拖动�
   assert.match(stylesSource, /\[data-drag-handle-dismissed\] \.gpt-paragraph-nav__control-compact-toggle/);
 });
 
-test("悬浮胶囊拖入 ChatGPT 工具栏后会切换为 Header 拖动", () => {
-  assert.match(contentSource, /function dockFloatingDragInHeader\(drag, event\)/);
-  assert.match(contentSource, /shouldEnterHeaderToolbar\(\{[\s\S]*toolbarRect: toolbar\.getBoundingClientRect\(\)/);
-  assert.match(contentSource, /if \(drag\.kind === "controls"\) \{\s*dockFloatingDragInHeader\(drag, event\);/);
-  assert.match(contentSource, /controlPlacement: CONTROL_PLACEMENTS\.CHATGPT_HEADER/);
-});
-
 test("设置页仅通过 ChatGPT 模型暴露 Header 工具栏开关", () => {
   assert.match(contentSource, /headerToolbar: isChatGPTPage\(\) \?/);
   assert.match(contentSource, /onHeaderToolbarChange\(isEnabled\)/);

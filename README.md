@@ -34,7 +34,7 @@ Polaris for Web automatically detects headings and list titles in AI responses a
 - Visible titles inside AI markers, user groups, and the floating active marker are left-aligned; user group capsules remain on the queue's right edge while AI markers and folded stacks remain on the left.
 - Platform-specific marker filters for H1, H2, H3, H4, bold text, unordered lists, and ordered lists.
 - Settings synchronization through `chrome.storage.sync`.
-- On ChatGPT, drag the floating Polaris control capsule into the Header toolbar, or enable the optional Header toolbar mode in settings. Drag its handle to save a position between native actions without reordering the host controls.
+- On ChatGPT, an optional Header toolbar mode places the full Polaris control capsule beside native actions. Drag its handle to save a position between those actions without reordering the host controls.
 - Settings preserve their internal scroll position during host-page refreshes, so long conversations do not interrupt access to Marker filters.
 - Light and dark adaptive glass styling, with lightweight blur and saturation on Maker cards and the floating Active Maker while controls and search retain the full displacement effect.
 - Native browser scrolling on Maker, user-group, and fold cards, without custom wheel animation or a transparent extended hit area.

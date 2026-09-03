@@ -28,10 +28,3 @@ export function headerToolbarDropIndex({ actionRects, clientX, savedIndex, wasCa
     ? clampHeaderInsertIndex(savedIndex, actionRects.length)
     : clampHeaderInsertIndex(headerInsertIndexForPointer(actionRects, clientX), actionRects.length);
 }
-
-export function shouldEnterHeaderToolbar({ toolbarRect, clientX, clientY }) {
-  return clientX >= toolbarRect.left
-    && clientX <= toolbarRect.right
-    && clientY >= toolbarRect.top
-    && clientY <= toolbarRect.bottom;
-}
