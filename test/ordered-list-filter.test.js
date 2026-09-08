@@ -32,7 +32,7 @@ test("有序列表与编号标题使用不同筛选规则", () => {
   const collect = functionSource("collectHeadings", "debugCollection");
   const enabled = functionSource("isHeadingEnabledForCurrentConfig", "filteredHeadings");
 
-  assert.match(collect, /container\.querySelectorAll\("ol > li"\)/);
+  assert.match(collect, /heading\.matches\("ol > li"\)/);
   assert.match(collect, /sourceType: marker\.sourceType/);
   assert.match(collect, /if \(item\.sourceType === "ordered-list"\) \{\s*return orderedListEnabled;/);
   assert.match(enabled, /if \(heading\.sourceType === "ordered-list"\) \{\s*return enabledOrderedListForPlatform\(platformKey\);/);

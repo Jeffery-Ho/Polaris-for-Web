@@ -10,6 +10,20 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 196
+
+- Date: 2026-09-08
+- Version: 0.48.3
+- Summary: Reduces long-conversation Maker scan and streaming-update work.
+- Notes: The scan reuses visibility and layout reads, queries heading candidates once per assistant container, resolves headings through the nearest assistant ancestor, skips unrelated host mutations, and keeps the existing Maker recognition priority. `pnpm test` passed 146/146, `pnpm check` passed, and the final single `pnpm build` will be recorded after verification; live signed-in Performance validation remains pending.
+
+## 195
+
+- Date: 2026-09-08
+- Version: 0.48.2
+- Summary: Isolates Maker-list overscroll from the host conversation scroll container.
+- Notes: The native Maker-list scroll remains unchanged, while vertical overscroll containment prevents wheel and trackpad input over Maker cards from chaining into the conversation at the list boundaries. `pnpm test` passed 141/141, `pnpm check` passed, and the final single `pnpm build` completed successfully; generated `dist/manifest.json` is `0.48.2(195)`. Live signed-in validation remains pending.
+
 ## 188
 
 - Date: 2026-09-01

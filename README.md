@@ -98,7 +98,7 @@ Load the generated `dist/` directory as an unpacked extension in Chromium-based 
 
 ## Version
 
-Current version: `0.48.1(194)`
+Current version: `0.48.3(196)`
 
 ## License
 

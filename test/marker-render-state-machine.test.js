@@ -59,7 +59,7 @@ test("连续变更不会推迟首个窗口且起点出现后立即输出最新�
   stateMachine.request();
 
   assert.equal(timerHarness.timers.length, 1);
-  assert.equal(timerHarness.timers[0].delay, 120);
+  assert.equal(timerHarness.timers[0].delay, 200);
   timerHarness.run(timerHarness.timers[0]);
   assert.deepEqual(renderedSnapshots, [snapshot]);
 });

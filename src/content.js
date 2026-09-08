@@ -14,8 +14,10 @@ import {
   createMarkerListNativeWheelHandler,
   markerListCardForTarget
 } from "./marker-list-native-scroll.js";
+import { hasRelevantMarkerMutation } from "./marker-mutation-relevance.js";
 import { createMarkerListReconciler } from "./marker-list-reconciler.js";
 import { createMarkerListScrollPersistence } from "./marker-list-scroll-persistence.js";
+import { createMarkerScanContext } from "./marker-scan-context.js";
 import { limitMarkerGroups } from "./marker-group-limit.js";
 import { createMarkerMotionSuppressor } from "./marker-motion-suppression.js";
 import { createMarkerRenderStateMachine } from "./marker-render-state-machine.js";
@@ -53,6 +55,14 @@ import {
   const ROLE_HEADING_SELECTOR = '[role="heading"][aria-level]';
   const STRONG_HEADING_SELECTOR = "p, li";
   const NUMBERED_HEADING_SELECTOR = "p, div";
+  const MARKER_CANDIDATE_SELECTOR = [
+    HEADING_SELECTOR,
+    ROLE_HEADING_SELECTOR,
+    STRONG_HEADING_SELECTOR,
+    NUMBERED_HEADING_SELECTOR,
+    "ul > li",
+    "ol > li"
+  ].join(", ");
   const ASSISTANT_MESSAGE_SELECTOR = '[data-message-author-role="assistant"]';
   const USER_MESSAGE_SELECTOR = '[data-message-author-role="user"]';
   const CLAUDE_ASSISTANT_MESSAGE_SELECTOR = 'div[data-cds="Prose"].prose';
@@ -315,7 +325,8 @@ import {
     lastExplosionRenderSignature: "",
     scrollLock: null,
     routeKey: "",
-    isExtensionContextInvalidated: false
+    isExtensionContextInvalidated: false,
+    markerSourceContainers: []
   };
   const markerMotionSuppressor = createMarkerMotionSuppressor({
     setSuppressed: (isSuppressed) => {
@@ -1738,7 +1749,10 @@ import {
     root.style.setProperty("--gpt-nav-tooltip-max-width", `${state.config.tooltipMaxWidth}px`);
   }
 
-  function isVisible(element) {
+  function isVisible(element, scanContext = null) {
+    if (scanContext) {
+      return scanContext.isVisible(element);
+    }
     const rect = element.getBoundingClientRect();
     const style = window.getComputedStyle(element);
     return rect.width > 0 && rect.height > 0 && style.visibility !== "hidden" && style.display !== "none";
@@ -2603,11 +2617,11 @@ import {
     return [ASSISTANT_MESSAGE_SELECTOR, MARKDOWN_FALLBACK_SELECTOR];
   }
 
-  function getAssistantContainers() {
+  function getAssistantContainers(scanContext = null) {
     for (const selector of getAssistantContainerSelectors()) {
       const containers = Array.from(document.querySelectorAll(selector))
         .filter((node) => node instanceof HTMLElement
-          && isVisible(node)
+          && isVisible(node, scanContext)
           && !isInsideNavigationRoot(node)
           && !isUserInputContext(node));
       if (containers.length > 0) {
@@ -2664,11 +2678,11 @@ import {
     return container.matches(USER_MESSAGE_SELECTOR) ? "user" : "";
   }
 
-  function getUserContainers() {
+  function getUserContainers(scanContext = null) {
     for (const selector of getUserContainerSelectors()) {
       const containers = Array.from(document.querySelectorAll(selector))
         .filter((node) => node instanceof HTMLElement
-          && isVisible(node)
+          && isVisible(node, scanContext)
           && !isInsideNavigationRoot(node)
           && !isUserInputContext(node)
           && (!isDoubaoPage() || doubaoMessageRoleForContainer(node) === "user"));
@@ -2678,16 +2692,16 @@ import {
     }
 
     if (isXiaohongshuMainChatPage()) {
-      return getXiaohongshuUserFallbackContainers();
+      return getXiaohongshuUserFallbackContainers(scanContext);
     }
 
     return [];
   }
 
-  function getXiaohongshuUserFallbackContainers() {
+  function getXiaohongshuUserFallbackContainers(scanContext = null) {
     const candidates = Array.from(document.querySelectorAll(XIAOHONGSHU_MESSAGE_ITEM_SELECTOR))
       .filter((node) => node instanceof HTMLElement
-        && isVisible(node)
+        && isVisible(node, scanContext)
         && !isInsideNavigationRoot(node)
         && !isUserInputContext(node)
         && !node.matches(XIAOHONGSHU_ASSISTANT_MARKDOWN_SELECTOR)
@@ -2714,9 +2728,9 @@ import {
     return left.compareDocumentPosition(right) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1;
   }
 
-  function compareConversationPosition(left, right) {
-    const leftTop = left.getBoundingClientRect().top + window.scrollY;
-    const rightTop = right.getBoundingClientRect().top + window.scrollY;
+  function compareConversationPosition(left, right, scanContext = null) {
+    const leftTop = scanContext ? scanContext.topFor(left) : left.getBoundingClientRect().top + window.scrollY;
+    const rightTop = scanContext ? scanContext.topFor(right) : right.getBoundingClientRect().top + window.scrollY;
     if (Math.abs(leftTop - rightTop) > 1) {
       return leftTop - rightTop;
     }
@@ -2733,41 +2747,33 @@ import {
     };
   }
 
-  function assistantContainerForHeading(heading, assistantContainers) {
-    let matchedContainer = null;
-    assistantContainers.forEach((container) => {
-      if (!container.contains(heading.element)) {
-        return;
+  function assistantContainerForHeading(heading, assistantContainerSet) {
+    for (let element = heading.element; element instanceof HTMLElement; element = element.parentElement) {
+      if (assistantContainerSet.has(element)) {
+        return element;
       }
-      if (!matchedContainer || matchedContainer.contains(container)) {
-        matchedContainer = container;
-      }
-    });
-    return matchedContainer;
+    }
+    return null;
   }
 
-  function collectMarkerGroups(userContainers, assistantContainers, headings) {
+  function collectMarkerGroups(userContainers, assistantContainers, headings, scanContext = null) {
     const userItems = userContainers
       .map((element) => makeUserMarkerItem(element))
       .filter((user) => Boolean(user.title))
-      .sort((left, right) => compareConversationPosition(left.element, right.element));
+      .sort((left, right) => compareConversationPosition(left.element, right.element, scanContext));
     const userItemByElement = new Map(userItems.map((user) => [user.element, user]));
+    const assistantContainerSet = new Set(assistantContainers);
     const headingToAssistant = new Map();
     headings.forEach((heading) => {
-      assistantContainers.forEach((container) => {
-        if (!container.contains(heading.element)) {
-          return;
-        }
-        const currentContainer = headingToAssistant.get(heading);
-        if (!currentContainer || currentContainer.contains(container)) {
-          headingToAssistant.set(heading, container);
-        }
-      });
+      const container = assistantContainerForHeading(heading, assistantContainerSet);
+      if (container) {
+        headingToAssistant.set(heading, container);
+      }
     });
     const entries = [
       ...userContainers.map((element) => ({ type: "user", element })),
       ...assistantContainers.map((element) => ({ type: "assistant", element }))
-    ].sort((left, right) => compareConversationPosition(left.element, right.element));
+    ].sort((left, right) => compareConversationPosition(left.element, right.element, scanContext));
     const groupsByKey = new Map();
     const orphanGroup = { key: "orphan", user: null, headings: [] };
     const assistantToUser = new Map();
@@ -2800,7 +2806,7 @@ import {
       let user = assistantToUser.get(assistantContainer);
       if (!user && isXiaohongshuMainChatPage()) {
         user = userItems
-          .filter((item) => compareConversationPosition(item.element, heading.element) <= 0)
+          .filter((item) => compareConversationPosition(item.element, heading.element, scanContext) <= 0)
           .pop() || null;
       }
       const group = user ? groupsByKey.get(user.markerKey) : orphanGroup;
@@ -2812,7 +2818,7 @@ import {
       .sort((left, right) => {
         const leftElement = left.user ? left.user.element : left.headings[0].element;
         const rightElement = right.user ? right.user.element : right.headings[0].element;
-        return compareConversationPosition(leftElement, rightElement);
+        return compareConversationPosition(leftElement, rightElement, scanContext);
       });
     return rawGroups;
   }
@@ -2852,9 +2858,9 @@ import {
     };
   }
 
-  function tableMarkerCandidates(containers) {
+  function tableMarkerCandidates(containers, scanContext = null) {
     return containers.flatMap((container) => Array.from(container.querySelectorAll("table"))
-      .filter((table) => table instanceof HTMLTableElement && isVisible(table))
+      .filter((table) => table instanceof HTMLTableElement && isVisible(table, scanContext))
       .map((table) => ({
         element: table,
         fingerprint: normalizeTitle(table.innerText || table.textContent || ""),
@@ -2864,8 +2870,8 @@ import {
       })));
   }
 
-  function collectTableHeadings(containers, seen, headings) {
-    const tables = tableMarkerCandidates(containers);
+  function collectTableHeadings(containers, seen, headings, scanContext = null) {
+    const tables = tableMarkerCandidates(containers, scanContext);
 
     tableMarkerEntries(tables).forEach(({ element, title, fingerprint }, tableMarkerIndex) => {
       if (seen.has(element)) {
@@ -3091,13 +3097,13 @@ import {
     return null;
   }
 
-  function collectYuanbaoVideoCardHeadings(seen, headings) {
+  function collectYuanbaoVideoCardHeadings(seen, headings, scanContext = null) {
     if (!isYuanbaoPage()) {
       return;
     }
 
     document.querySelectorAll(YUANBAO_VIDEO_CARD_SELECTOR).forEach((card) => {
-      if (!(card instanceof HTMLElement) || !isVisible(card) || seen.has(card)) {
+      if (!(card instanceof HTMLElement) || !isVisible(card, scanContext) || seen.has(card)) {
         return;
       }
 
@@ -3118,18 +3124,18 @@ import {
     });
   }
 
-  function collectQianwenVideoListHeadings(seen, headings) {
+  function collectQianwenVideoListHeadings(seen, headings, scanContext = null) {
     if (!isQianwenPage()) {
       return;
     }
 
     document.querySelectorAll(QIANWEN_VIDEO_LIST_SELECTOR).forEach((card) => {
-      if (!(card instanceof HTMLElement) || !isVisible(card) || seen.has(card)) {
+      if (!(card instanceof HTMLElement) || !isVisible(card, scanContext) || seen.has(card)) {
         return;
       }
 
       const titleElement = Array.from(card.querySelectorAll(QIANWEN_VIDEO_TITLE_SELECTOR))
-        .find((node) => node instanceof HTMLElement && isVisible(node) && normalizeTitle(node.textContent || ""));
+        .find((node) => node instanceof HTMLElement && isVisible(node, scanContext) && normalizeTitle(node.textContent || ""));
       if (!(titleElement instanceof HTMLElement) || seen.has(titleElement)) {
         return;
       }
@@ -3151,99 +3157,76 @@ import {
     });
   }
 
-  function collectHeadings(containers = getAssistantContainers(), { applyConfig = true } = {}) {
+  function collectHeadings(containers = getAssistantContainers(), { applyConfig = true, scanContext = null } = {}) {
     const seen = new Set();
     const headings = [];
 
     containers.forEach((container) => {
-      container.querySelectorAll(`${HEADING_SELECTOR}, ${ROLE_HEADING_SELECTOR}`).forEach((heading) => {
-        if (heading instanceof HTMLElement && isVisible(heading) && !seen.has(heading)) {
+      container.querySelectorAll(MARKER_CANDIDATE_SELECTOR).forEach((heading) => {
+        if (!(heading instanceof HTMLElement) || !isVisible(heading, scanContext) || seen.has(heading)) {
+          return;
+        }
+
+        if (heading.matches(`${HEADING_SELECTOR}, ${ROLE_HEADING_SELECTOR}`)) {
           seen.add(heading);
           headings.push(makeHeadingItem(heading, headings.length, headingLevelFor(heading)));
+          return;
+        }
+
+        if (heading.matches(STRONG_HEADING_SELECTOR)
+          && !(heading.tagName === "LI" && isUnorderedListItem(heading))
+          && isStandaloneStrongHeading(heading)) {
+          seen.add(heading);
+          const markdownLevel = markdownLevelFromText(normalizeTitle(heading.textContent || ""));
+          headings.push(makeHeadingItem(heading, headings.length, markdownLevel || 2, "strong"));
+          return;
+        }
+
+        if (heading.matches(NUMBERED_HEADING_SELECTOR) && isStandaloneNumberedHeading(heading)) {
+          seen.add(heading);
+          const level = numberedHeadingLevelFromText(normalizeTitle(heading.textContent || ""));
+          headings.push(makeHeadingItem(heading, headings.length, level || 2));
+          return;
+        }
+
+        if (heading.matches("ul > li")) {
+          const marker = unorderedListHeading(heading, container);
+          if (!marker) {
+            return;
+          }
+
+          seen.add(heading);
+          headings.push({
+            element: heading,
+            level: 3,
+            title: marker.title,
+            id: heading.id || `gpt-paragraph-heading-${headings.length + 1}`,
+            sourceType: marker.sourceType
+          });
+          return;
+        }
+
+        if (heading.matches("ol > li")) {
+          const marker = orderedListHeading(heading, container);
+          if (!marker) {
+            return;
+          }
+
+          seen.add(heading);
+          headings.push({
+            element: heading,
+            level: 3,
+            title: marker.title,
+            id: heading.id || `gpt-paragraph-heading-${headings.length + 1}`,
+            sourceType: marker.sourceType
+          });
         }
       });
     });
 
-    containers.forEach((container) => {
-      container.querySelectorAll(STRONG_HEADING_SELECTOR).forEach((heading) => {
-        if (!(heading instanceof HTMLElement) || !isVisible(heading) || seen.has(heading)) {
-          return;
-        }
-        if (heading.tagName === "LI" && isUnorderedListItem(heading)) {
-          return;
-        }
-        if (!isStandaloneStrongHeading(heading)) {
-          return;
-        }
-
-        seen.add(heading);
-        const markdownLevel = markdownLevelFromText(normalizeTitle(heading.textContent || ""));
-        headings.push(makeHeadingItem(heading, headings.length, markdownLevel || 2, "strong"));
-      });
-    });
-
-    containers.forEach((container) => {
-      container.querySelectorAll(NUMBERED_HEADING_SELECTOR).forEach((heading) => {
-        if (!(heading instanceof HTMLElement) || !isVisible(heading) || seen.has(heading)) {
-          return;
-        }
-        if (!isStandaloneNumberedHeading(heading)) {
-          return;
-        }
-
-        seen.add(heading);
-        const level = numberedHeadingLevelFromText(normalizeTitle(heading.textContent || ""));
-        headings.push(makeHeadingItem(heading, headings.length, level || 2));
-      });
-    });
-
-    containers.forEach((container) => {
-      container.querySelectorAll("ul > li").forEach((heading) => {
-        if (!(heading instanceof HTMLElement) || !isVisible(heading) || seen.has(heading)) {
-          return;
-        }
-
-        const marker = unorderedListHeading(heading, container);
-        if (!marker) {
-          return;
-        }
-
-        seen.add(heading);
-        headings.push({
-          element: heading,
-          level: 3,
-          title: marker.title,
-          id: heading.id || `gpt-paragraph-heading-${headings.length + 1}`,
-          sourceType: marker.sourceType
-        });
-      });
-    });
-
-    containers.forEach((container) => {
-      container.querySelectorAll("ol > li").forEach((heading) => {
-        if (!(heading instanceof HTMLElement) || !isVisible(heading) || seen.has(heading)) {
-          return;
-        }
-
-        const marker = orderedListHeading(heading, container);
-        if (!marker) {
-          return;
-        }
-
-        seen.add(heading);
-        headings.push({
-          element: heading,
-          level: 3,
-          title: marker.title,
-          id: heading.id || `gpt-paragraph-heading-${headings.length + 1}`,
-          sourceType: marker.sourceType
-        });
-      });
-    });
-
-    collectTableHeadings(containers, seen, headings);
-    collectYuanbaoVideoCardHeadings(seen, headings);
-    collectQianwenVideoListHeadings(seen, headings);
+    collectTableHeadings(containers, seen, headings, scanContext);
+    collectYuanbaoVideoCardHeadings(seen, headings, scanContext);
+    collectQianwenVideoListHeadings(seen, headings, scanContext);
     const platformKey = currentPlatformKey();
     const maxHeadingLevel = maxHeadingLevelForPlatform(platformKey);
     const enabledLevels = new Set(enabledLevelsForCurrentPlatform());
@@ -3268,15 +3251,12 @@ import {
       }
       return item.level <= maxHeadingLevel && enabledLevels.has(item.level);
     });
-    return usableHeadings.sort((left, right) => compareConversationPosition(left.element, right.element));
+    return usableHeadings.sort((left, right) => compareConversationPosition(left.element, right.element, scanContext));
   }
 
-  function debugCollection(containers, headings) {
-    const metrics = getConversationMetrics(containers);
+  function debugCollection(containers, headings, metrics) {
     const signature = [
       containers.length,
-      document.querySelectorAll(HEADING_SELECTOR).length,
-      document.querySelectorAll(ROLE_HEADING_SELECTOR).length,
       headings.length,
       Math.round(metrics.length)
     ].join(":");
@@ -3288,8 +3268,6 @@ import {
     state.lastDebugSignature = signature;
     console.info("[Polaris for Web] scan", {
       assistantContainers: containers.length,
-      domHeadings: document.querySelectorAll(HEADING_SELECTOR).length,
-      roleHeadings: document.querySelectorAll(ROLE_HEADING_SELECTOR).length,
       usableHeadings: headings.length,
       conversationLength: Math.round(metrics.length),
       titles: headings.slice(0, 8).map((heading) => heading.title)
@@ -3304,14 +3282,14 @@ import {
     });
   }
 
-  function getConversationMetrics(containers) {
-    const visibleContainers = containers.filter(isVisible);
+  function getConversationMetrics(containers, scanContext = null) {
+    const visibleContainers = containers.filter((container) => isVisible(container, scanContext));
     if (!visibleContainers.length) {
       return getDocumentMetrics();
     }
 
     const positions = visibleContainers.map((container) => {
-      const rect = container.getBoundingClientRect();
+      const rect = scanContext ? scanContext.rectFor(container) : container.getBoundingClientRect();
       return {
         top: rect.top + window.scrollY,
         bottom: rect.bottom + window.scrollY
@@ -4019,8 +3997,12 @@ import {
         metrics: null
       };
     }
-    const assistantContainers = getAssistantContainers();
-    const userContainers = getUserContainers();
+    const scanContext = createMarkerScanContext({
+      getComputedStyle: (element) => window.getComputedStyle(element),
+      scrollY: window.scrollY
+    });
+    const assistantContainers = getAssistantContainers(scanContext);
+    const userContainers = getUserContainers(scanContext);
     const hasConversation = assistantContainers.length > 0
       || userContainers.length > 0;
     if (!hasConversation) {
@@ -4034,21 +4016,22 @@ import {
       };
     }
 
-    const headings = collectHeadings(assistantContainers, { applyConfig: false });
+    const headings = collectHeadings(assistantContainers, { applyConfig: false, scanContext });
     const markerGroups = dedupeAdjacentGroupHeadings(
-      collectMarkerGroups(userContainers, assistantContainers, headings)
+      collectMarkerGroups(userContainers, assistantContainers, headings, scanContext)
     );
     const renderHeadings = markerGroups
       .flatMap((group) => group.headings)
       .filter(isHeadingEnabledForCurrentConfig);
-    debugCollection(assistantContainers, renderHeadings);
+    const metrics = getConversationMetrics([...assistantContainers, ...userContainers], scanContext);
+    debugCollection(assistantContainers, renderHeadings, metrics);
     return {
       assistantContainers,
       userContainers,
       hasConversation,
       headings: renderHeadings,
       markerGroups,
-      metrics: getConversationMetrics([...assistantContainers, ...userContainers])
+      metrics
     };
   }
 
@@ -4068,6 +4051,10 @@ import {
     }
 
     const renderSnapshot = snapshot || collectMarkerRenderSnapshot();
+    state.markerSourceContainers = [
+      ...renderSnapshot.assistantContainers,
+      ...renderSnapshot.userContainers
+    ];
     const root = getRoot();
     updatePageTheme(root);
     getReleaseNoticeOverlay(root);
@@ -4216,6 +4203,7 @@ import {
     resetCollapsedGroups();
     state.latestUserMarkerKey = "";
     state.areEarlierUserGroupsExpanded = false;
+    state.markerSourceContainers = [];
   }
 
   function removeNavigationRoot() {
@@ -4286,6 +4274,16 @@ import {
 
   function handleDocumentMutations(mutations) {
     if (mutations.every(shouldIgnoreMutation)) {
+      return;
+    }
+    if (!hasRelevantMarkerMutation({
+      mutations,
+      knownContainers: state.markerSourceContainers,
+      sourceSelectors: [
+        ...getAssistantContainerSelectors(),
+        ...getUserContainerSelectors()
+      ]
+    })) {
       return;
     }
     state.awaitingRouteDom = false;

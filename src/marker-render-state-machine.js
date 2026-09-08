@@ -1,4 +1,4 @@
-const MARKER_RENDER_INTERVAL_MS = 120;
+const MARKER_RENDER_INTERVAL_MS = 200;
 
 export function createMarkerRenderStateMachine({
   readSnapshot,
