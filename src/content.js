@@ -2,7 +2,11 @@ import { mountSettingsPanel } from "./settings-panel.jsx";
 import { cleanupLegacyMakerSnapshots } from "./legacy-maker-snapshot-cleanup.js";
 import { doubaoMessageRoleFromClassNames } from "./doubao-message-role.js";
 import { dedupeAdjacentTextHeadings } from "./adjacent-heading-deduplication.js";
-import { pageThemeFromColors } from "./page-theme.js";
+import {
+  createPageThemeWatcher,
+  pageThemeFromColors,
+  PAGE_THEME_MEDIA_QUERY
+} from "./page-theme.js";
 import { releaseNotesForUpdate } from "./release-notes.js";
 import { nextControlTabIndex } from "./control-tab-keyboard.js";
 import {
@@ -326,7 +330,8 @@ import {
     scrollLock: null,
     routeKey: "",
     isExtensionContextInvalidated: false,
-    markerSourceContainers: []
+    markerSourceContainers: [],
+    pageThemeWatcher: null
   };
   const markerMotionSuppressor = createMarkerMotionSuppressor({
     setSuppressed: (isSuppressed) => {
@@ -409,6 +414,8 @@ import {
     markerListScrollPersistence.reset();
     window.clearTimeout(state.markerNoticeTimer);
     state.observer?.disconnect();
+    state.pageThemeWatcher?.dispose();
+    state.pageThemeWatcher = null;
     state.liquidGlassObserver?.disconnect();
     closeExplosionOverlay();
     state.isReleaseNoticeOpen = false;
@@ -428,8 +435,19 @@ import {
     return root;
   }
 
+  function applyPageTheme(root, theme) {
+    if (root.dataset.pageTheme !== theme) {
+      root.dataset.pageTheme = theme;
+    }
+
+    const settings = root.querySelector(`#${SETTINGS_PANEL_ID}`);
+    if (settings instanceof HTMLElement && settings.dataset.pageTheme !== theme) {
+      settings.dataset.pageTheme = theme;
+    }
+  }
+
   function updatePageTheme(root) {
-    const fallbackTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    const fallbackTheme = window.matchMedia(PAGE_THEME_MEDIA_QUERY).matches ? "dark" : "light";
     const pageSurfaces = [
       document.querySelector("main"),
       document.querySelector('[role="main"]'),
@@ -441,9 +459,8 @@ import {
       fallbackTheme
     );
 
-    if (root.dataset.pageTheme !== theme) {
-      root.dataset.pageTheme = theme;
-    }
+    applyPageTheme(root, theme);
+    state.pageThemeWatcher?.refresh();
   }
 
   function getControls(root = getRoot()) {
@@ -780,6 +797,7 @@ import {
       controls.appendChild(settings);
     }
 
+    settings.dataset.pageTheme = root.dataset.pageTheme || "dark";
     syncSettingsInputs(settings);
     settings.hidden = state.activeControlTab !== "settings";
     return settings;
@@ -4719,6 +4737,21 @@ import {
       console.warn("[Polaris for Web] Legacy Maker snapshot cleanup unavailable", error);
     }
     watchRouteChanges();
+    state.pageThemeWatcher = createPageThemeWatcher({
+      document,
+      onChange() {
+        if (!isExtensionContextValid()) {
+          disposeInvalidExtensionContext();
+          return;
+        }
+
+        const root = document.getElementById(ROOT_ID);
+        if (root instanceof HTMLElement) {
+          updatePageTheme(root);
+        }
+      },
+      window
+    });
     render();
 
     state.observer = new MutationObserver(handleDocumentMutations);

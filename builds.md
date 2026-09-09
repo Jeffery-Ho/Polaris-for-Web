@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 197
+
+- Date: 2026-09-09
+- Version: 0.48.4
+- Summary: 即时同步页面、系统和浏览器主题变化。
+- Notes: `prefers-color-scheme` 和页面主题属性变化现在通过独立的可销毁监听器在下一帧更新导航根节点与设置面板，不触发 Maker 重扫；保留页面实色背景优先、系统主题透明背景回退的判定顺序。主题测试通过 8/8，`pnpm test` 通过 151/151，`pnpm check` 通过，最终 `pnpm build` 完成；`dist/manifest.json` 为 `0.48.4(197)`。支持平台的登录态浏览器手动切换验收仍待执行。
+
 ## 196
 
 - Date: 2026-09-08
