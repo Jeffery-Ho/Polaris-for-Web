@@ -48,6 +48,13 @@ import {
   CHAPTER_BLOCK_SELECTOR,
   parseChapterMarkdown
 } from "./chapter-markdown.js";
+import { createPointerDragLifecycle } from "./pointer-drag-lifecycle.js";
+import { createDiagnosticLog } from "./diagnostic-log.js";
+import {
+  diagnosticFilename,
+  downloadDiagnosticLog,
+  openDiagnosticEmail
+} from "./diagnostic-export.js";
 
 (() => {
   const { locale, t } = globalThis.PolarisI18n;
@@ -286,6 +293,8 @@ import {
     version: ""
   };
   const runtimeMarkerKeySequence = createRuntimeMarkerKeySequence();
+  const pointerDragLifecycle = createPointerDragLifecycle({ threshold: POINTER_DRAG_THRESHOLD });
+  const diagnosticLog = createDiagnosticLog();
 
   const state = {
     headings: [],
@@ -331,7 +340,8 @@ import {
     routeKey: "",
     isExtensionContextInvalidated: false,
     markerSourceContainers: [],
-    pageThemeWatcher: null
+    pageThemeWatcher: null,
+    diagnosticStatus: ""
   };
   const markerMotionSuppressor = createMarkerMotionSuppressor({
     setSuppressed: (isSuppressed) => {
@@ -399,6 +409,142 @@ import {
     }
   }
 
+  function diagnosticBrowserSummary() {
+    const userAgent = String(globalThis.navigator?.userAgent || "");
+    const browserMatch = [
+      [/Edg\/(\d+)/i, "Edge"],
+      [/Firefox\/(\d+)/i, "Firefox"],
+      [/Chrome\/(\d+)/i, "Chrome"],
+      [/Version\/(\d+).*Safari\//i, "Safari"]
+    ].map(([pattern, name]) => ({ match: userAgent.match(pattern), name }))
+      .find(({ match }) => match);
+    const browser = browserMatch ? [browserMatch.name, browserMatch.match[1]] : ["Unknown", ""];
+    return browser.filter(Boolean).join(" ");
+  }
+
+  function diagnosticOsSummary() {
+    const userAgent = String(globalThis.navigator?.userAgent || "");
+    const platform = String(globalThis.navigator?.platform || "");
+    if (/iPhone|iPad|iPod/i.test(userAgent)) {
+      return "iOS";
+    }
+    if (/Android/i.test(userAgent)) {
+      return "Android";
+    }
+    if (/Mac/i.test(platform) || /Mac OS X/i.test(userAgent)) {
+      return "macOS";
+    }
+    if (/Win/i.test(platform) || /Windows/i.test(userAgent)) {
+      return "Windows";
+    }
+    if (/Linux/i.test(platform) || /Linux/i.test(userAgent)) {
+      return "Linux";
+    }
+    return "Unknown";
+  }
+
+  function diagnosticContext() {
+    return {
+      version: extensionMetadata.version || "unknown",
+      platform: currentPlatformKey(),
+      locale,
+      browser: diagnosticBrowserSummary(),
+      os: diagnosticOsSummary(),
+      viewportWidth: Math.round(window.innerWidth),
+      viewportHeight: Math.round(window.innerHeight),
+      devicePixelRatio: Number(globalThis.devicePixelRatio || 1)
+    };
+  }
+
+  function recordDiagnosticEvent(type, details = {}) {
+    if (!isTopLevelFrame()) {
+      return;
+    }
+    try {
+      diagnosticLog.record(type, {
+        platform: currentPlatformKey(),
+        ...details
+      });
+    } catch {
+      // Diagnostics must never interrupt navigation or settings actions.
+    }
+  }
+
+  function diagnosticErrorName(value) {
+    if (value && typeof value.name === "string" && value.name.trim()) {
+      return value.name.trim().slice(0, 80);
+    }
+    if (value && value.constructor && typeof value.constructor.name === "string" && value.constructor.name) {
+      return value.constructor.name.slice(0, 80);
+    }
+    return "UnknownError";
+  }
+
+  function handleDiagnosticError(event) {
+    recordDiagnosticEvent("extension_error", {
+      source: "window-error",
+      errorName: diagnosticErrorName(event.error)
+    });
+  }
+
+  function handleDiagnosticUnhandledRejection(event) {
+    recordDiagnosticEvent("extension_error", {
+      source: "unhandled-rejection",
+      errorName: diagnosticErrorName(event.reason)
+    });
+  }
+
+  function registerDiagnosticErrorListeners() {
+    if (!isTopLevelFrame()) {
+      return;
+    }
+    window.addEventListener("error", handleDiagnosticError);
+    window.addEventListener("unhandledrejection", handleDiagnosticUnhandledRejection);
+  }
+
+  function exportDiagnosticLog(operation = "download") {
+    const filename = diagnosticFilename();
+    recordDiagnosticEvent("diagnostic_export_requested", { operation, filename });
+    const downloaded = downloadDiagnosticLog({
+      text: diagnosticLog.serialize(diagnosticContext()),
+      filename
+    });
+    recordDiagnosticEvent("diagnostic_export_result", {
+      operation,
+      filename,
+      downloaded
+    });
+    return { filename, downloaded };
+  }
+
+  function handleDownloadDiagnostics() {
+    const { downloaded } = exportDiagnosticLog("download");
+    state.diagnosticStatus = downloaded
+      ? t("settings.diagnostics.downloadSuccess")
+      : t("settings.diagnostics.failure");
+    render();
+  }
+
+  function handleSendDiagnostics() {
+    const { filename, downloaded } = exportDiagnosticLog("send");
+    if (!downloaded) {
+      state.diagnosticStatus = t("settings.diagnostics.failure");
+      render();
+      return;
+    }
+
+    const mailOpened = openDiagnosticEmail({
+      email: "jefferyho.build@gmail.com",
+      subject: t("settings.diagnostics.emailSubject"),
+      body: t("settings.diagnostics.emailBody", { filename })
+    });
+    recordDiagnosticEvent("diagnostic_email_result", { filename, mailOpened });
+    state.diagnosticStatus = mailOpened
+      ? t("settings.diagnostics.sendSuccess")
+      : t("settings.diagnostics.mailFailure");
+    render();
+  }
+
   function disposeInvalidExtensionContext() {
     if (state.isExtensionContextInvalidated) {
       return;
@@ -420,6 +566,7 @@ import {
     closeExplosionOverlay();
     state.isReleaseNoticeOpen = false;
     unlockPageScroll();
+    cancelPointerDrag("extension-context-invalidated");
     removeNavigationRoot();
   }
 
@@ -1510,6 +1657,11 @@ import {
     return JSON.stringify({
       appName: model.appName,
       contactLabel: model.contactLabel,
+      diagnosticDescription: model.diagnosticDescription,
+      diagnosticDownloadLabel: model.diagnosticDownloadLabel,
+      diagnosticSendLabel: model.diagnosticSendLabel,
+      diagnosticStatus: model.diagnosticStatus,
+      diagnosticTitle: model.diagnosticTitle,
       emailLabel: model.emailLabel,
       fields: model.fields.map(({ key, label, min, max, step, unit, value }) => [key, label, min, max, step, unit, value]),
       issueLabel: model.issueLabel,
@@ -1561,6 +1713,11 @@ import {
     return {
       appName: t("settings.appName"),
       contactLabel: t("contact.label"),
+      diagnosticDescription: t("settings.diagnostics.description"),
+      diagnosticDownloadLabel: t("settings.diagnostics.download"),
+      diagnosticSendLabel: t("settings.diagnostics.send"),
+      diagnosticStatus: state.diagnosticStatus,
+      diagnosticTitle: t("settings.diagnostics.title"),
       emailLabel: t("contact.email"),
       emailUrl: "mailto:jefferyho.build@gmail.com",
       fields: CONFIG_FIELDS.map((field) => ({ ...field, value: state.config[field.key] })),
@@ -1587,7 +1744,8 @@ import {
           resetCollapsedFoldGroups();
         }
       },
-      onConfigCommit() {
+      onConfigCommit(key) {
+        recordDiagnosticEvent("setting_change", { settingKey: key });
         saveConfig(state.config);
         render();
       },
@@ -1596,6 +1754,7 @@ import {
       },
       onMarkerLevelChange(level, isEnabled) {
         updateEnabledLevelForCurrentPlatform(level, isEnabled);
+        recordDiagnosticEvent("setting_change", { settingKey: `heading-level-${level}` });
         saveConfig(state.config);
         render();
       },
@@ -1614,24 +1773,30 @@ import {
         state.config = normalizeConfig(DEFAULT_CONFIG);
         state.areEarlierUserGroupsExpanded = false;
         resetCollapsedGroups();
+        recordDiagnosticEvent("setting_change", { settingKey: "reset" });
         saveConfig(state.config);
         render();
       },
       onOrderedListChange(isEnabled) {
         updateEnabledOrderedListForCurrentPlatform(isEnabled);
+        recordDiagnosticEvent("setting_change", { settingKey: "ordered-list" });
         saveConfig(state.config);
         render();
       },
       onStrongChange(isEnabled) {
         updateEnabledStrongForCurrentPlatform(isEnabled);
+        recordDiagnosticEvent("setting_change", { settingKey: "strong-text" });
         saveConfig(state.config);
         render();
       },
       onUnorderedListChange(isEnabled) {
         updateEnabledUnorderedListForCurrentPlatform(isEnabled);
+        recordDiagnosticEvent("setting_change", { settingKey: "unordered-list" });
         saveConfig(state.config);
         render();
       },
+      onDownloadDiagnostics: handleDownloadDiagnostics,
+      onSendDiagnostics: handleSendDiagnostics,
       resetLabel: t("settings.reset"),
       ratingAction: t("settings.ratingAction"),
       ratingAriaLabel: t("settings.ratingAria"),
@@ -1746,9 +1911,11 @@ import {
 
   function clampedControlPosition(position, controls) {
     const rect = controls.getBoundingClientRect();
+    const maxTop = Math.max(0, window.innerHeight - rect.height - 16);
+    const maxRight = Math.max(0, window.innerWidth - rect.width);
     return {
-      top: Math.min(position.top, Math.max(0, window.innerHeight - rect.height - 16)),
-      right: Math.min(position.right, Math.max(0, window.innerWidth - rect.width))
+      top: Math.max(0, Math.min(position.top, maxTop)),
+      right: Math.max(0, Math.min(position.right, maxRight))
     };
   }
 
@@ -3284,6 +3451,11 @@ import {
     }
 
     state.lastDebugSignature = signature;
+    recordDiagnosticEvent("scan_summary", {
+      assistantContainers: containers.length,
+      usableHeadings: headings.length,
+      conversationLength: Math.round(metrics.length)
+    });
     console.info("[Polaris for Web] scan", {
       assistantContainers: containers.length,
       usableHeadings: headings.length,
@@ -4120,6 +4292,13 @@ import {
     state.headings = headings;
     state.markerGroups = markerGroups;
     state.conversationMetrics = metrics;
+    if (state.lastRenderedHeadingCount !== headings.length) {
+      recordDiagnosticEvent("render_summary", {
+        usableHeadings: headings.length,
+        userContainers: renderSnapshot.userContainers.length,
+        activeControlTab: state.activeControlTab
+      });
+    }
     document.documentElement.setAttribute(DEBUG_ATTR, `loaded:${headings.length}:${Math.round(metrics.length)}`);
     const displayedCount = visibleGroups.reduce((count, group) => {
       const isSearchActive = Boolean(normalizeSearchQuery(state.markerSearchQuery));
@@ -4195,10 +4374,7 @@ import {
     runtimeMarkerKeySequence.reset();
     window.clearTimeout(state.markerNoticeTimer);
     state.markerNoticeTimer = 0;
-    if (state.pointerDrag) {
-      state.pointerDrag.root.classList.remove("is-dragging");
-      state.pointerDrag = null;
-    }
+    cancelPointerDrag("route-change");
     document.documentElement.classList.remove("gpt-paragraph-nav--dragging");
     state.suppressNextClick = false;
     window.clearTimeout(state.suppressNextClickTimer);
@@ -4225,6 +4401,7 @@ import {
   }
 
   function removeNavigationRoot() {
+    cancelPointerDrag("navigation-root-removed");
     const root = document.getElementById(ROOT_ID);
     if (root) {
       const settings = root.querySelector(`.${SETTINGS_CLASS}`);
@@ -4246,6 +4423,7 @@ import {
     }
 
     state.routeKey = nextRouteKey;
+    recordDiagnosticEvent("route_change", { source: "route-bridge" });
     closeExplosionOverlay();
     resetRouteState();
     state.awaitingRouteDom = true;
@@ -4438,10 +4616,11 @@ import {
     if (maxScrollTop <= 0) {
       return null;
     }
-    if (!markerListCardForTarget(event.target, list)) {
+    const captureTarget = markerListCardForTarget(event.target, list);
+    if (!captureTarget) {
       return null;
     }
-    return { root, list, maxScrollTop };
+    return { root, list, maxScrollTop, captureTarget };
   }
 
   function isPrimaryPointer(event) {
@@ -4469,6 +4648,33 @@ import {
     event.stopImmediatePropagation();
   }
 
+  function capturePointerForDrag(drag, pointerId) {
+    const target = drag?.captureTarget;
+    if (!(target instanceof HTMLElement) || typeof target.setPointerCapture !== "function") {
+      return false;
+    }
+    try {
+      target.setPointerCapture(pointerId);
+      return typeof target.hasPointerCapture === "function" ? target.hasPointerCapture(pointerId) : true;
+    } catch {
+      return false;
+    }
+  }
+
+  function releasePointerForDrag(drag) {
+    const target = drag?.captureTarget;
+    if (!(target instanceof HTMLElement) || typeof target.releasePointerCapture !== "function") {
+      return;
+    }
+    try {
+      if (typeof target.hasPointerCapture !== "function" || target.hasPointerCapture(drag.pointerId)) {
+        target.releasePointerCapture(drag.pointerId);
+      }
+    } catch {
+      // The browser may already have released capture during a route or page transition.
+    }
+  }
+
   function handlePointerDown(event) {
     if (state.pointerDrag || state.isExplosionOpen || !isPrimaryPointer(event)) {
       return;
@@ -4483,18 +4689,28 @@ import {
     if (capsule instanceof HTMLElement && event.target instanceof Node && capsule.contains(event.target)) {
       const controls = root.querySelector(`.${CONTROLS_CLASS}`);
       const rect = controls instanceof HTMLElement ? controls.getBoundingClientRect() : capsule.getBoundingClientRect();
-      state.pointerDrag = {
+      const drag = pointerDragLifecycle.begin({
         kind: "controls",
         pointerId: event.pointerId,
         root,
+        captureTarget: capsule,
         startX: event.clientX,
         startY: event.clientY,
         controlPosition: {
           top: rect.top,
           right: Math.max(0, window.innerWidth - rect.right)
         },
-        didDrag: false
-      };
+      });
+      if (!drag) {
+        return;
+      }
+      state.pointerDrag = drag;
+      const hasPointerCapture = capturePointerForDrag(drag, event.pointerId);
+      recordDiagnosticEvent("drag_pointerdown", {
+        kind: drag.kind,
+        pointerType: event.pointerType,
+        hasPointerCapture
+      });
       return;
     }
 
@@ -4503,17 +4719,28 @@ import {
       return;
     }
 
-    state.pointerDrag = {
+    const drag = pointerDragLifecycle.begin({
       kind: "list",
       pointerId: event.pointerId,
       root: target.root,
       list: target.list,
+      captureTarget: target.captureTarget,
       maxScrollTop: target.maxScrollTop,
       startX: event.clientX,
       startY: event.clientY,
       startScrollTop: target.list.scrollTop,
-      didDrag: false
-    };
+    });
+    if (!drag) {
+      return;
+    }
+    state.pointerDrag = drag;
+    const hasPointerCapture = capturePointerForDrag(drag, event.pointerId);
+    recordDiagnosticEvent("drag_pointerdown", {
+      kind: drag.kind,
+      pointerType: event.pointerType,
+      hasPointerCapture,
+      scrollable: true
+    });
   }
 
   function handlePointerMove(event) {
@@ -4522,8 +4749,11 @@ import {
       return;
     }
 
-    const deltaX = event.clientX - drag.startX;
-    const deltaY = event.clientY - drag.startY;
+    const movement = pointerDragLifecycle.move(event);
+    if (!movement) {
+      return;
+    }
+    const { deltaX, deltaY, didStart } = movement;
     if (!drag.didDrag && !hasExceededMarkerListDragThreshold({
       deltaX,
       deltaY,
@@ -4532,11 +4762,16 @@ import {
       return;
     }
 
-    if (!drag.didDrag) {
+    if (didStart) {
       drag.didDrag = true;
       drag.root.classList.add("is-dragging");
       drag.root.classList.add("has-custom-control-position");
       document.documentElement.classList.add("gpt-paragraph-nav--dragging");
+      recordDiagnosticEvent("drag_activated", {
+        kind: drag.kind,
+        deltaX: Math.round(deltaX),
+        deltaY: Math.round(deltaY)
+      });
       if (drag.kind === "list") {
         markerListScrollPersistence.cancel();
       }
@@ -4566,15 +4801,22 @@ import {
     }
   }
 
-  function finishPointerDrag(event, persistPosition) {
-    const drag = state.pointerDrag;
-    if (!drag || drag.pointerId !== event.pointerId) {
+  function completePointerDrag(result) {
+    if (!result) {
       return;
     }
 
+    const { drag, persistPosition, reason } = result;
     state.pointerDrag = null;
+    releasePointerForDrag(drag);
     drag.root.classList.remove("is-dragging");
     document.documentElement.classList.remove("gpt-paragraph-nav--dragging");
+    recordDiagnosticEvent("drag_end", {
+      kind: drag.kind,
+      reason,
+      didDrag: drag.didDrag,
+      persisted: persistPosition
+    });
     if (!drag.didDrag) {
       return;
     }
@@ -4590,18 +4832,53 @@ import {
       drag.root.classList.toggle("has-custom-control-position", Boolean(state.config.controlPosition));
       applyConfig(drag.root);
     }
+  }
 
-    if (persistPosition) {
+  function finishPointerDrag(pointerId, persistPosition, reason) {
+    const drag = pointerDragLifecycle.active;
+    const shouldSuppressClick = Boolean(drag && drag.didDrag && persistPosition);
+    const result = pointerDragLifecycle.finish({
+      pointerId,
+      persistPosition,
+      reason
+    });
+    completePointerDrag(result);
+    if (result && drag && drag.didDrag && shouldSuppressClick) {
       suppressNextClick();
     }
   }
 
+  function cancelPointerDrag(reason, pointerId) {
+    const result = pointerId === undefined
+      ? pointerDragLifecycle.cancel(reason)
+      : pointerDragLifecycle.finish({ pointerId, persistPosition: false, reason });
+    completePointerDrag(result);
+  }
+
   function handlePointerUp(event) {
-    finishPointerDrag(event, true);
+    finishPointerDrag(event.pointerId, true, "pointerup");
   }
 
   function handlePointerCancel(event) {
-    finishPointerDrag(event, false);
+    finishPointerDrag(event.pointerId, false, "pointercancel");
+  }
+
+  function handleLostPointerCapture(event) {
+    cancelPointerDrag("lostpointercapture", event.pointerId);
+  }
+
+  function handleWindowBlur() {
+    cancelPointerDrag("window-blur");
+  }
+
+  function handleVisibilityChange() {
+    if (document.visibilityState === "hidden") {
+      cancelPointerDrag("document-hidden");
+    }
+  }
+
+  function handlePageHide() {
+    cancelPointerDrag("pagehide");
   }
 
   function handleKeydown(event) {
@@ -4766,10 +5043,16 @@ import {
     window.addEventListener("pointermove", handlePointerMove, { passive: false, capture: true });
     window.addEventListener("pointerup", handlePointerUp, { capture: true });
     window.addEventListener("pointercancel", handlePointerCancel, { capture: true });
+    window.addEventListener("lostpointercapture", handleLostPointerCapture, { capture: true });
+    window.addEventListener("blur", handleWindowBlur);
+    window.addEventListener("pagehide", handlePageHide);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
     window.addEventListener("click", handlePointerDragClick, { capture: true });
     window.addEventListener("resize", () => scheduleRender(), { passive: true });
     window.addEventListener("keydown", handleKeydown, { capture: true });
     document.addEventListener("click", handleDocumentClick);
+    registerDiagnosticErrorListeners();
+    recordDiagnosticEvent("extension_loaded");
     console.info("[Polaris for Web] loaded");
   }
 

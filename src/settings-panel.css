@@ -169,6 +169,63 @@
   font: 500 12px/1.5 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
+.polaris-settings-diagnostics {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 16px;
+  padding: 12px;
+  border: 1px solid var(--polaris-control-border);
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.06), transparent), var(--polaris-control-surface);
+}
+
+.polaris-settings-diagnostics-description,
+.polaris-settings-diagnostics-status {
+  margin: 0;
+  color: var(--polaris-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.polaris-settings-diagnostics-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.polaris-settings-diagnostics-actions button {
+  min-height: 30px;
+  flex: 1 1 130px;
+  padding: 6px 10px;
+  border: 1px solid var(--polaris-control-border);
+  border-radius: 999px;
+  color: var(--polaris-text);
+  font: 600 12px/1.2 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+
+.polaris-settings-diagnostics-send {
+  background: var(--polaris-highlight);
+  color: var(--polaris-highlight-text) !important;
+}
+
+.polaris-settings-diagnostics-download {
+  background: transparent;
+}
+
+.polaris-settings-diagnostics-actions button:hover,
+.polaris-settings-diagnostics-actions button:focus-visible {
+  border-color: var(--polaris-highlight);
+  background: var(--polaris-highlight);
+  color: var(--polaris-highlight-text);
+}
+
+.polaris-settings-diagnostics-actions button:focus-visible {
+  outline: 2px solid var(--polaris-highlight);
+  outline-offset: 2px;
+}
+
 .polaris-settings-section-header {
   display: flex;
   align-items: center;

@@ -110,6 +110,24 @@
         synchronized settings.
       </p>
 
+      <h3>Diagnostic Logs</h3>
+      <p>
+        If the user explicitly selects a diagnostic action in About &amp; Settings, Polaris for Web
+        records a bounded session-only log for the current tab. The log contains the extension
+        version, coarse platform and browser summaries, viewport measurements, pointer-drag
+        lifecycle outcomes, route and render counts, and error type names. It is designed to
+        exclude AI response text, marker titles, full URLs, account information, prompts, cookies,
+        tokens, error messages, and stack traces.
+      </p>
+      <p>
+        The log is stored only in the current tab's session storage until the tab is closed or the
+        session is cleared. "Download only" saves a redacted JSON file locally. "Send diagnostic
+        log" also opens a pre-addressed email draft to
+        <a href="mailto:jefferyho.build@gmail.com">jefferyho.build@gmail.com</a>; the browser does
+        not automatically attach the local file, so the user chooses whether to attach and send it.
+        Polaris for Web does not upload diagnostic logs or add a background upload service.
+      </p>
+
       <h3>Clipboard</h3>
       <p>
         When the user explicitly selects text and activates the copy function, Polaris for Web
@@ -140,9 +158,11 @@
       </p>
       <p>
         The only external processing performed by the extension is the optional synchronization
-        of non-personal extension settings through Chrome Storage Sync. The settings synchronization service is provided
-        and controlled by Google. The extension does not include third-party analytics, telemetry,
-        or advertising services.
+        of non-personal extension settings through Chrome Storage Sync and the user's explicit
+        choice to open a local diagnostic file or an email draft. The settings synchronization
+        service is provided and controlled by Google. The extension does not include third-party
+        analytics, telemetry, or advertising services, and it does not automatically transmit
+        diagnostic logs.
       </p>
       <p>
         Polaris also links to a separate support webpage. That webpage loads Google Analytics only
@@ -161,6 +181,12 @@
         Extension settings remain in Chrome storage until they are reset or removed by the user
         through the browser or extension settings. Synced settings may also be managed through
         the user's Google Chrome synchronization settings.
+      </p>
+      <p>
+        Diagnostic events remain in session storage for the current tab, are bounded in count and
+        size, and are cleared when the tab session ends or when the browser clears session storage.
+        A downloaded copy remains under the user's control, and any email retention is governed by
+        the user's mail provider and choices.
       </p>
 
       <h2>5. Browser Permissions</h2>
@@ -194,8 +220,10 @@
       <h2>8. User Choices</h2>
       <p>
         Users may stop all processing by disabling or uninstalling Polaris for Web. Users may reset
-        extension preferences from the extension's settings interface and may manage synchronized
-        data through their Chrome synchronization settings.
+        extension preferences from the extension's settings interface, clear the current tab's
+        diagnostic session by closing the tab or clearing session storage, and may manage
+        synchronized data through their Chrome synchronization settings. Diagnostic export is
+        optional and user initiated.
       </p>
 
       <h2>9. Changes to This Privacy Policy</h2>

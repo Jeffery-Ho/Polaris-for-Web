@@ -23,3 +23,9 @@ These rules apply to the shared Maker navigation UI on every supported platform:
 
 - Host-page mutations that do not change the visible settings model must not rebuild the settings panel.
 - When a real settings update requires rebuilding the panel, its body scroll position is restored so Marker filter controls remain reachable in long conversations.
+
+## Diagnostic Export
+
+- The Diagnostics section uses one primary action for “send” and one secondary action for download-only.
+- Both actions first create the same redacted JSON file. The send action then opens a pre-addressed `mailto:` draft and clearly tells the user to attach the file manually.
+- Export status is rendered as an accessible status message without leaving the settings panel or resetting its scroll position.

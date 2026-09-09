@@ -41,6 +41,8 @@ Polaris for Web automatically detects headings and list titles in AI responses a
 - Long marker queues are grouped into stacks of `N` markers (default 20). Each stack starts expanded and shows its first title with the remaining count; clicking its card manually collapses or expands the Maker rows.
 - Currently mounted user maker groups show the latest 20 groups by default, with search covering those mounted groups. Every group starts expanded, including the latest, previous, and newly streamed groups; an explicit click can manually collapse its contents.
 - An active Maker does not change its stack or user group state. Manual collapse keeps the Maker selected, and dragging more than 4px from any Maker or group card scrolls the list without triggering that card's click action.
+- Pointer dragging captures the active pointer and recovers after window blur, page hiding, lost capture, route changes, or a narrow-viewport boundary; an interrupted control drag rolls back its unsaved position.
+- About & Settings provides redacted, current-tab diagnostic log export. **Send diagnostic log** downloads the JSON and opens a pre-addressed email; attach the downloaded file manually. **Download only** saves the file without opening email.
 - **Chapter View**, which organizes AI response content by marker section for convenient reading and copying on every supported platform.
 - A heart-shaped support entry at the right edge of the About & Settings header, opening the [Polaris support page](https://jeffery-ho.github.io/polaris-landing/) in a new tab with a fixed Polaris source tag. The landing page loads optional GA4 support-interaction analytics only after the visitor explicitly consents.
 - Update notes place the same heart-shaped support entry as the leftmost feedback action, opening the support page in a new tab.
@@ -60,6 +62,8 @@ Open **Settings** from the control area on the right to adjust:
 
 Preferences are saved to `chrome.storage.sync`.
 
+The Diagnostics section keeps a bounded session-only event log in the current tab. It records version, coarse platform/browser information, viewport and DPR, drag lifecycle, route/render counts, and error names. It excludes AI text, titles, full URLs, account information, prompts, and stack traces.
+
 ## Chapter View
 
 - Click **Chapter View** in the control area on the right, or press `Cmd/Ctrl+Shift+F`.
@@ -76,7 +80,7 @@ Preferences are saved to `chrome.storage.sync`.
 
 ## Privacy
 
-Polaris for Web processes only currently mounted AI response content locally in your browser and does not transmit it to the developer or third-party servers. It does not retain Maker conversation history across page refreshes, routes, or DOM removal. The separate support page only loads optional Google Analytics after the visitor explicitly consents, and never sends AI conversation content or extension settings. See the [Privacy Policy](https://jeffery-ho.github.io/Polaris-for-Web/privacy-policy.html) for details.
+Polaris for Web processes only currently mounted AI response content locally in your browser and does not transmit it to the developer or third-party servers. It does not retain Maker conversation history across page refreshes, routes, or DOM removal. Diagnostic export is user-initiated: the extension keeps only a bounded, redacted current-tab session log, downloads it locally, and opens a `mailto:` draft only when requested; it does not upload the log or attach it automatically. The separate support page only loads optional Google Analytics after the visitor explicitly consents, and never sends AI conversation content or extension settings. See the [Privacy Policy](https://jeffery-ho.github.io/Polaris-for-Web/privacy-policy.html) for details.
 
 ## Support
 
@@ -98,7 +102,7 @@ Load the generated `dist/` directory as an unpacked extension in Chromium-based 
 
 ## Version
 
-Current version: `0.48.4(197)`
+Current version: `0.49.0(198)`
 
 ## License
 

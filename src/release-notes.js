@@ -1,5 +1,16 @@
 const RELEASE_NOTES = Object.freeze([
   {
+    version: "0.49.0",
+    en: {
+      title: "Drag recovery and diagnostic export",
+      changes: ["Pointer dragging now recovers after lost capture, window or page transitions, and route changes. About & Settings can download a redacted session log and open a pre-addressed email for manual attachment."]
+    },
+    zh: {
+      title: "导航拖动恢复与诊断日志导出",
+      changes: ["导航拖动现在会在指针捕获丢失、窗口或页面切换以及路由变化后自动清理并恢复。关于与设置新增脱敏会话日志下载和邮件入口，附件需要手动添加。"]
+    }
+  },
+  {
     version: "0.48.0",
     en: {
       title: "Support entry in update notes",

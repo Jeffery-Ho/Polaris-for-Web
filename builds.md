@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 198
+
+- Date: 2026-09-09
+- Version: 0.49.0
+- Summary: 恢复窄视口导航拖动并增加脱敏诊断日志导出。
+- Notes: 抽离可测试的指针拖动生命周期，按 4px 阈值保留点击与列表原生滚动；控制胶囊和 Maker 卡片在 `pointerdown` 后捕获指针，并由 `pointerup`、`pointercancel`、`lostpointercapture`、窗口失焦、页面隐藏、`pagehide`、路由重置和根节点移除共享清理路径。异常结束回滚未保存的控制位置。诊断日志使用当前标签页 `sessionStorage`，最多 200 条事件和 128 KiB 事件数据，字段白名单排除正文、标题、完整 URL、账号信息、提示词和堆栈；设置页支持下载或下载后打开 `mailto:` 草稿，附件需手动添加。新增 8 项生命周期/导出/脱敏测试和 3 项接入测试；`pnpm check` 通过。最终 `pnpm test` 与单次 `pnpm build` 将在验收阶段记录，真机窄视口和七个平台手动验证仍待解锁后执行。
+
 ## 197
 
 - Date: 2026-09-09

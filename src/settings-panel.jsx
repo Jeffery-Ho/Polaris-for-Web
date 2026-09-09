@@ -118,6 +118,34 @@ function createSeparator() {
   return separator;
 }
 
+function createDiagnosticsSection(model) {
+  const section = createElement("section", "polaris-settings-diagnostics");
+  const title = createElement("h2", "polaris-settings-section-title");
+  title.textContent = model.diagnosticTitle;
+  const description = createElement("p", "polaris-settings-diagnostics-description");
+  description.textContent = model.diagnosticDescription;
+
+  const actions = createElement("div", "polaris-settings-diagnostics-actions");
+  const send = createElement("button", "polaris-settings-diagnostics-send");
+  send.type = "button";
+  send.textContent = model.diagnosticSendLabel;
+  send.addEventListener("click", model.onSendDiagnostics);
+  const download = createElement("button", "polaris-settings-diagnostics-download");
+  download.type = "button";
+  download.textContent = model.diagnosticDownloadLabel;
+  download.addEventListener("click", model.onDownloadDiagnostics);
+  actions.append(send, download);
+
+  section.append(title, description, actions);
+  if (model.diagnosticStatus) {
+    const status = createElement("p", "polaris-settings-diagnostics-status");
+    status.setAttribute("role", "status");
+    status.textContent = model.diagnosticStatus;
+    section.appendChild(status);
+  }
+  return section;
+}
+
 function createSettingsPanel(model) {
   const shell = createElement("div", "polaris-settings-shell");
   const card = createElement("section", "polaris-settings-card");
@@ -145,7 +173,7 @@ function createSettingsPanel(model) {
   const body = createElement("div", "polaris-settings-body");
   const supportedPlatforms = createElement("p", "polaris-settings-supported-platforms");
   supportedPlatforms.textContent = model.supportedPlatformsLabel;
-  body.appendChild(supportedPlatforms);
+  body.append(supportedPlatforms, createDiagnosticsSection(model));
 
   if (model.showRating) {
     const rating = createElement("section", "polaris-settings-rating");
