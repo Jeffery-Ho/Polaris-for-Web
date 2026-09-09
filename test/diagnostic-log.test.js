@@ -35,7 +35,7 @@ test("诊断日志只保留白名单字段并移除正文、标题、URL 与账�
   });
 
   const snapshot = log.snapshot({
-    version: "0.49.0(198)",
+    version: "0.49.1(199)",
     viewportWidth: 320,
     viewportHeight: 640,
     dpr: 2,
@@ -48,7 +48,7 @@ test("诊断日志只保留白名单字段并移除正文、标题、URL 与账�
   assert.equal(snapshot.events[0].kind, "list");
   assert.equal(snapshot.events[0].didDrag, true);
   assert.doesNotMatch(serialized, /不要保存|example\.com|user@example\.com/);
-  assert.equal(snapshot.context.version, "0.49.0(198)");
+  assert.equal(snapshot.context.version, "0.49.1(199)");
   assert.equal(snapshot.context.viewportWidth, 320);
   assert.equal(snapshot.context.dpr, undefined);
 });

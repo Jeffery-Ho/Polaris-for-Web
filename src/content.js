@@ -49,6 +49,7 @@ import {
   parseChapterMarkdown
 } from "./chapter-markdown.js";
 import { createPointerDragLifecycle } from "./pointer-drag-lifecycle.js";
+import { pointerCaptureTargetForEvent } from "./pointer-capture-target.js";
 import { createDiagnosticLog } from "./diagnostic-log.js";
 import {
   diagnosticFilename,
@@ -4693,7 +4694,7 @@ import {
         kind: "controls",
         pointerId: event.pointerId,
         root,
-        captureTarget: capsule,
+        captureTarget: pointerCaptureTargetForEvent({ target: event.target, capsule }),
         startX: event.clientX,
         startY: event.clientY,
         controlPosition: {

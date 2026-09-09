@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 199
+
+- Date: 2026-09-09
+- Version: 0.49.1
+- Summary: 修复指针捕获导致的主导航按钮无法点击。
+- Notes: 控制拖动现在按下后捕获最近的交互按钮/链接，避免 `click` 目标被重定向到整个控制胶囊；点击胶囊空白仍捕获胶囊本身。新增主导航指针捕获目标回归测试；`pnpm check` 通过，`pnpm test` 通过 164/164，最终 `pnpm build` 完成；`dist/manifest.json` 为 `0.49.1(199)`。登录态浏览器中的窄视口和七个平台手动验收仍待执行。
+
 ## 198
 
 - Date: 2026-09-09
