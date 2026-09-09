@@ -44,7 +44,7 @@ Polaris for Web automatically detects headings and list titles in AI responses a
 - Pointer dragging captures the active pointer and recovers after window blur, page hiding, lost capture, route changes, or a narrow-viewport boundary; an interrupted control drag rolls back its unsaved position.
 - About & Settings provides redacted, current-tab diagnostic log export. **Send diagnostic log** downloads the JSON and opens a pre-addressed email; attach the downloaded file manually. **Download only** saves the file without opening email.
 - **Chapter View**, which organizes AI response content by marker section for convenient reading and copying on every supported platform.
-- A heart-shaped support entry at the right edge of the About & Settings header, opening the [Polaris support page](https://jeffery-ho.github.io/polaris-landing/) in a new tab with a fixed Polaris source tag. The landing page loads optional GA4 support-interaction analytics only after the visitor explicitly consents.
+- A heart-shaped support entry at the right edge of the About & Settings header, opening the same-origin [Polaris support entry](https://jeffery-ho.github.io/polaris-landing/entry/extension/) in a new tab. The entry preserves the fixed `polaris_extension` source without relying on UTM parameters; the landing page loads optional GA4 and SLS analytics only after the visitor explicitly consents.
 - Update notes place the same heart-shaped support entry as the leftmost feedback action, opening the support page in a new tab.
 - While Chapter View is open, its modal blocks arrow, Home, and End keys from changing the underlying main tab; `Shift + ← / →` continues to switch chapters outside editable fields.
 - Chapter View safely preserves rendered Markdown structure, including headings, nested and task lists, quotes, code, links, images, and wide tables.
@@ -80,11 +80,11 @@ The Diagnostics section keeps a bounded session-only event log in the current ta
 
 ## Privacy
 
-Polaris for Web processes only currently mounted AI response content locally in your browser and does not transmit it to the developer or third-party servers. It does not retain Maker conversation history across page refreshes, routes, or DOM removal. Diagnostic export is user-initiated: the extension keeps only a bounded, redacted current-tab session log, downloads it locally, and opens a `mailto:` draft only when requested; it does not upload the log or attach it automatically. The separate support page only loads optional Google Analytics after the visitor explicitly consents, and never sends AI conversation content or extension settings. See the [Privacy Policy](https://jeffery-ho.github.io/Polaris-for-Web/privacy-policy.html) for details.
+Polaris for Web processes only currently mounted AI response content locally in your browser and does not transmit it to the developer or third-party servers. It does not retain Maker conversation history across page refreshes, routes, or DOM removal. Diagnostic export is user-initiated: the extension keeps only a bounded, redacted current-tab session log, downloads it locally, and opens a `mailto:` draft only when requested; it does not upload the log or attach it automatically. The separate support page only loads optional Google Analytics and Aliyun SLS after the visitor explicitly consents, and never sends AI conversation content or extension settings. See the [Privacy Policy](https://jeffery-ho.github.io/Polaris-for-Web/privacy-policy.html) for details.
 
 ## Support
 
-Visit the [Polaris support page](https://jeffery-ho.github.io/polaris-landing/) for the extension, issue tracker, and optional PayPal support link.
+Visit the [Polaris support page](https://jeffery-ho.github.io/polaris-landing/entry/extension/) for the extension, issue tracker, and optional PayPal support link.
 
 ## Build on another device
 
@@ -102,7 +102,7 @@ Load the generated `dist/` directory as an unpacked extension in Chromium-based 
 
 ## Version
 
-Current version: `0.49.1(199)`
+Current version: `0.49.2(200)`
 
 ## License
 

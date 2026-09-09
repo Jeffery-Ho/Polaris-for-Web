@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 200
+
+- Date: 2026-09-09
+- Version: 0.49.2
+- Summary: Replaces UTM-only support attribution with a same-origin landing entry.
+- Notes: The settings and update-note support links now open `/entry/extension/`, allowing the landing page to pass `polaris_extension` through tab-scoped session storage when browsers remove UTM parameters. The extension itself sends no analytics. Run `pnpm check`, `pnpm test`, and one final `pnpm build`; confirm `dist/manifest.json` is `0.49.2(200)` and the existing support-page destination remains available.
+
 ## 199
 
 - Date: 2026-09-09

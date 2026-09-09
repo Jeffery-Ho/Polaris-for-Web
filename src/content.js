@@ -212,7 +212,7 @@ import {
   const CONFIG_STORAGE_KEY = "gpt-paragraph-nav-config";
   const RATING_DISMISSAL_STORAGE_KEY = "polaris-rating-dismissed-until";
   const RELEASE_NOTICE_STORAGE_KEY = "polaris-release-notice-version";
-  const SUPPORT_URL = "https://jeffery-ho.github.io/polaris-landing/?utm_source=polaris_extension&utm_medium=support_entry&utm_campaign=polaris_support";
+  const SUPPORT_URL = "https://jeffery-ho.github.io/polaris-landing/entry/extension/";
   const RATING_DISMISSAL_DURATION_MS = 24 * 60 * 60 * 1000;
   const CONFIG_SCHEMA_VERSION = 7;
   const POINTER_DRAG_THRESHOLD = 4;

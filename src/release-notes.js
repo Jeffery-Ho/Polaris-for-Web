@@ -1,5 +1,16 @@
 const RELEASE_NOTES = Object.freeze([
   {
+    version: "0.49.2",
+    en: {
+      title: "Reliable support attribution",
+      changes: ["The support link now uses a same-origin entry path so the landing page can retain the Polaris source when browsers remove UTM parameters."]
+    },
+    zh: {
+      title: "更可靠的赞赏页来源记录",
+      changes: ["赞赏入口现在使用同源入口路径；即使浏览器移除 UTM 参数，Landing 页面仍可保留 Polaris 来源。"]
+    }
+  },
+  {
     version: "0.49.0",
     en: {
       title: "Drag recovery and diagnostic export",
