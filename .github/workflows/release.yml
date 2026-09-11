@@ -1,0 +1,100 @@
+name: Build extension release
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: extension-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.19.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check source
+        run: pnpm check
+
+      - name: Run tests
+        run: pnpm test
+
+      - name: Build extension
+        run: pnpm build
+
+      - name: Validate build metadata
+        id: metadata
+        run: |
+          node <<'NODE'
+          const fs = require("node:fs");
+
+          const files = ["manifest.json", "manifest.build.json", "dist/manifest.json"];
+          const manifests = files.map((file) => JSON.parse(fs.readFileSync(file, "utf8")));
+          const [first, ...rest] = manifests;
+          for (const manifest of rest) {
+            if (manifest.version !== first.version || manifest.version_name !== first.version_name) {
+              throw new Error(`Manifest mismatch in ${files[manifests.indexOf(manifest)]}`);
+            }
+          }
+
+          const match = /^(\d+)$/.exec(first.version_name.match(/\((\d+)\)$/)?.[1] || "");
+          if (!match || first.version_name !== `${first.version}(${match[1]})`) {
+            throw new Error(`Invalid version_name: ${first.version_name}`);
+          }
+
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, [
+            `version=${first.version}`,
+            `version_name=${first.version_name}`,
+            `build=${match[1]}`
+          ].join("\n") + "\n");
+          NODE
+
+      - name: Package release assets
+        env:
+          VERSION: ${{ steps.metadata.outputs.version }}
+          BUILD: ${{ steps.metadata.outputs.build }}
+        run: |
+          mkdir -p release
+          archive="Polaris-AI-${VERSION}-build-${BUILD}.zip"
+          (cd dist && zip -qr "../release/${archive}" . -x '*.DS_Store')
+          cp "release/${archive}" release/Polaris-AI.zip
+          unzip -Z1 "release/${archive}" | grep -qx 'manifest.json'
+
+      - name: Create or update GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.metadata.outputs.version }}
+          BUILD: ${{ steps.metadata.outputs.build }}
+          TAG: v${{ steps.metadata.outputs.version }}-build.${{ steps.metadata.outputs.build }}
+        run: |
+          archive="release/Polaris-AI-${VERSION}-build-${BUILD}.zip"
+          alias="release/Polaris-AI.zip"
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$archive" "$alias" --clobber --repo "$GITHUB_REPOSITORY"
+          else
+            gh release create "$TAG" "$archive" "$alias" \
+              --title "Polaris AI ${VERSION} build ${BUILD}" \
+              --generate-notes \
+              --repo "$GITHUB_REPOSITORY"
+          fi
