@@ -40,6 +40,13 @@ test("缩小模式为用户 Maker 的标题、内边距和折叠箭头分别预�
   );
 });
 
+test("用户 Maker 默认以单行末尾省略长标题，并保留折叠箭头", () => {
+  assert.match(
+    styles,
+    /\.gpt-paragraph-nav__marker--user \.gpt-paragraph-nav__preview \{[\s\S]*?flex: 1 1 auto;[\s\S]*?min-width: 0;[\s\S]*?overflow: hidden;[\s\S]*?text-overflow: ellipsis;[\s\S]*?white-space: nowrap;/
+  );
+});
+
 test("缩小模式为折叠分组的标题、余量和箭头扩展宽度", () => {
   assert.match(
     styles,

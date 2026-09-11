@@ -7,7 +7,8 @@ Polaris 支持 `https://gemini.google.com/*` 上已挂载的 Gemini 对话内容
 ## DOM 接入
 
 - 助手回答：`model-response message-content`
-- 用户消息：`user-query user-query-content`
+- 用户消息容器：`user-query`
+- 用户正文：`user-query .query-content`，并按 `.query-text-line`、`.query-text` 顺序回退
 
 实现依赖 Gemini 的语义自定义元素和标准 Markdown 子节点，不依赖运行时生成的哈希样式类名。现有 Maker 管线因此继续处理 H1/H2/H3、无序列表、表格、用户分组、流式更新、搜索、跳转和 Chapter View。
 

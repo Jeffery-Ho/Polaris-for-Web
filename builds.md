@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 204
+
+- Date: 2026-09-11
+- Version: 0.51.2
+- Summary: Keeps navigation Tab widths at their English-label baseline and truncates long user Maker titles.
+- Notes: Navigation, Chapters, and About & Settings retain English-label minimum widths in Chinese. Long user Maker titles now use single-line ellipsis while retaining the expand/collapse chevron. Updated the current version to `0.51.2(204)`.
+
 ## 203
 
 - Date: 2026-09-11

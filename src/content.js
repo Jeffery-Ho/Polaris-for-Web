@@ -80,7 +80,10 @@ import {
   const CLAUDE_ASSISTANT_MESSAGE_SELECTOR = 'div[data-cds="Prose"].prose';
   const CLAUDE_USER_MESSAGE_SELECTOR = '[data-cds="UserMessage"] [data-testid="user-message"]';
   const GEMINI_ASSISTANT_MESSAGE_SELECTOR = "model-response message-content";
-  const GEMINI_USER_MESSAGE_SELECTOR = "user-query user-query-content";
+  const GEMINI_USER_MESSAGE_SELECTOR = "user-query";
+  const GEMINI_USER_MESSAGE_FALLBACK_SELECTOR = "user-query-content, .user-query-content, .user-query-container";
+  const GEMINI_USER_TEXT_SELECTOR = ".query-content, .query-text-line, .query-text";
+  const GEMINI_USER_ROLE_PREFIX_PATTERN = /^\s*(?:You said|你说|你話|你话)\s*[:：]?\s*/i;
   const GROK_ASSISTANT_MESSAGE_SELECTOR = "main [data-testid=\"assistant-message\"] .response-content-markdown.markdown";
   const GROK_USER_MESSAGE_SELECTOR = "main [data-testid=\"user-message\"]";
   const DOUBAO_ASSISTANT_MESSAGE_SELECTOR = [
@@ -2870,7 +2873,7 @@ import {
     }
 
     if (isGeminiPage()) {
-      return [GEMINI_USER_MESSAGE_SELECTOR, USER_MESSAGE_SELECTOR];
+      return [GEMINI_USER_MESSAGE_SELECTOR, GEMINI_USER_MESSAGE_FALLBACK_SELECTOR, USER_MESSAGE_SELECTOR];
     }
 
     if (isGrokPage()) {
@@ -2949,6 +2952,26 @@ import {
     return firstLine.slice(0, MAX_USER_PREVIEW_LENGTH);
   }
 
+  function userMessageText(element) {
+    if (isGeminiPage()) {
+      for (const selector of GEMINI_USER_TEXT_SELECTOR.split(", ")) {
+        const textElements = Array.from(element.querySelectorAll(selector))
+          .filter((candidate) => candidate instanceof HTMLElement);
+        if (textElements.length === 0) {
+          continue;
+        }
+        const text = textElements
+          .map((textElement) => textElement.innerText || textElement.textContent || "")
+          .join("\n");
+        if (text.trim()) {
+          return text.replace(GEMINI_USER_ROLE_PREFIX_PATTERN, "");
+        }
+      }
+    }
+    return (element.innerText || element.textContent || "")
+      .replace(GEMINI_USER_ROLE_PREFIX_PATTERN, "");
+  }
+
   function compareDocumentOrder(left, right) {
     if (left === right) {
       return 0;
@@ -2966,11 +2989,12 @@ import {
   }
 
   function makeUserMarkerItem(element) {
-    const title = normalizeTitle(element.innerText || element.textContent || "");
+    const text = userMessageText(element);
+    const title = normalizeTitle(text);
     return {
       element,
       title,
-      previewTitle: firstLineMarkerTitle(element.innerText || element.textContent || "") || title,
+      previewTitle: firstLineMarkerTitle(text) || title,
       markerKey: markerKeyFor(element)
     };
   }
