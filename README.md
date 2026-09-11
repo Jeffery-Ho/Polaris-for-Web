@@ -7,14 +7,14 @@ Polaris for Web automatically detects headings and list titles in AI responses a
 ## Supported Platforms
 
 - ChatGPT
-- Claude.ai
-- Google Gemini
+- Claude
+- Gemini
 - Grok
 - Doubao
 - Kimi
-- Qianwen
+- Qwen
 - Yuanbao
-- Xiaohongshu Diandian AI
+- Diandian AI
 
 ## Marker Rules
 
@@ -24,9 +24,9 @@ Polaris for Web automatically detects headings and list titles in AI responses a
 - Detects standalone bold text and bold-first list titles when the separate **Bold text** setting is enabled; it is enabled by default on every platform.
 - Detects every visible response table across all supported platforms as one H3-level marker, titled from its first row's non-empty cells; every Maker locates the nearest conversation scroll container and preserves space for the fixed header.
 - Kimi and Yuanbao display H1 and H2 markers by default.
-- ChatGPT, Claude.ai, Google Gemini, Grok, Doubao, and Qianwen display H1, H2, and H3 markers by default.
-- Xiaohongshu Diandian AI displays H1, H2, H3, and H4 markers by default.
-- Video titles in Qianwen video lists and Yuanbao large video cards can also appear as markers.
+- ChatGPT, Claude, Gemini, Grok, Doubao, and Qwen display H1, H2, and H3 markers by default.
+- Diandian AI displays H1, H2, H3, and H4 markers by default.
+- Video titles in Qwen video lists and Yuanbao large video cards can also appear as markers.
 
 ## Features
 
@@ -69,7 +69,7 @@ The Diagnostics section keeps a bounded session-only event log in the current ta
 ## Chapter View
 
 - Click **Chapter View** in the control area on the right, or press `Cmd/Ctrl+Shift+F`.
-- Available on every supported platform: ChatGPT, Claude.ai, Google Gemini, Grok, Doubao, Kimi, Qianwen, Yuanbao, and Xiaohongshu Diandian AI.
+- Available on every supported platform: ChatGPT, Claude, Gemini, Grok, Doubao, Kimi, Qwen, Yuanbao, and Diandian AI.
 - Processes only AI response content on the current page; input fields, sidebars, and the extension's own interface are excluded.
 - Rebuilds supported rendered Markdown with a strict element and URL allowlist; images load from existing `http`/`https` page URLs and open in a new tab when clicked.
 - Formats unrendered raw Markdown text safely, including mixed inline styles, nested task lists, code blocks, tables, and Unicode characters; raw image syntax and HTML remain text.
@@ -104,7 +104,7 @@ Load the generated `dist/` directory as an unpacked extension in Chromium-based 
 
 ## Version
 
-Current version: `0.51.0(202)`
+Current version: `0.51.1(203)`
 
 ## License
 

@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 203
+
+- Date: 2026-09-11
+- Version: 0.51.1
+- Summary: Uses concise supported platform names without company prefixes.
+- Notes: README and Settings now display Claude, Gemini, Grok, Doubao, Kimi, Qwen, Yuanbao, and Diandian AI as concise platform names. Updated the current version to `0.51.1(203)` and regenerated `dist/` after `pnpm check` and `pnpm test`.
+
 ## 202
 
 - Date: 2026-09-11
