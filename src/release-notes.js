@@ -1,5 +1,16 @@
 const RELEASE_NOTES = Object.freeze([
   {
+    version: "0.50.0",
+    en: {
+      title: "Google Gemini navigation",
+      changes: ["Google Gemini now supports Polaris navigation for user groups, headings, lists, tables, streaming updates, search, and Chapter View."]
+    },
+    zh: {
+      title: "支持 Google Gemini 导航",
+      changes: ["Google Gemini 现支持用户分组、标题、列表、表格、流式更新、搜索与章节视图。"]
+    }
+  },
+  {
     version: "0.49.2",
     en: {
       title: "Reliable support attribution",

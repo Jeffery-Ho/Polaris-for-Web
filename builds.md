@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 201
+
+- Date: 2026-09-11
+- Version: 0.50.0
+- Summary: Adds Google Gemini navigation support.
+- Notes: Gemini pages now use semantic `model-response message-content` and `user-query user-query-content` containers for user grouping, headings, lists, tables, streaming updates, search, navigation, and Chapter View. Gemini defaults to H1-H3, unordered-list, and bold-text markers; ordered lists remain disabled by default. Added `Doc/gemini-support.md` and platform/Manifest regression tests. Run `pnpm check`, `pnpm test`, and one final `pnpm build`; confirm `dist/manifest.json` is `0.50.0(201)`. Signed-in Gemini live interaction validation remains a separate acceptance step.
+
 ## 200
 
 - Date: 2026-09-09

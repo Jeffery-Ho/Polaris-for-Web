@@ -79,6 +79,8 @@ import {
   const USER_MESSAGE_SELECTOR = '[data-message-author-role="user"]';
   const CLAUDE_ASSISTANT_MESSAGE_SELECTOR = 'div[data-cds="Prose"].prose';
   const CLAUDE_USER_MESSAGE_SELECTOR = '[data-cds="UserMessage"] [data-testid="user-message"]';
+  const GEMINI_ASSISTANT_MESSAGE_SELECTOR = "model-response message-content";
+  const GEMINI_USER_MESSAGE_SELECTOR = "user-query user-query-content";
   const DOUBAO_ASSISTANT_MESSAGE_SELECTOR = [
     ".receive-message-box",
     ".receive-message-content-block",
@@ -229,11 +231,12 @@ import {
     { key: "foldThreshold", label: t("settings.foldThreshold"), min: 2, max: 80, step: 1, unit: "" },
     { key: "tooltipMaxWidth", label: t("settings.tooltipMaxWidth"), min: 160, max: 720, step: 10, unit: "px" }
   ];
-  const PLATFORM_KEYS = ["chatgpt", "claude", "doubao", "kimi", "qianwen", "yuanbao", "xiaohongshu", "default"];
+  const PLATFORM_KEYS = ["chatgpt", "claude", "gemini", "doubao", "kimi", "qianwen", "yuanbao", "xiaohongshu", "default"];
   const MARKER_LEVEL_OPTIONS = [1, 2, 3, 4];
   const DEFAULT_ENABLED_LEVELS_BY_PLATFORM = Object.freeze({
     chatgpt: [1, 2, 3],
     claude: [1, 2, 3],
+    gemini: [1, 2, 3],
     doubao: [1, 2, 3],
     kimi: [1, 2],
     qianwen: [1, 2, 3],
@@ -244,6 +247,7 @@ import {
   const DEFAULT_UNORDERED_LIST_BY_PLATFORM = Object.freeze({
     chatgpt: true,
     claude: true,
+    gemini: true,
     doubao: true,
     kimi: true,
     qianwen: true,
@@ -254,6 +258,7 @@ import {
   const DEFAULT_ENABLED_ORDERED_LIST_BY_PLATFORM = Object.freeze({
     chatgpt: false,
     claude: false,
+    gemini: false,
     doubao: false,
     kimi: false,
     qianwen: false,
@@ -264,6 +269,7 @@ import {
   const DEFAULT_ENABLED_STRONG_BY_PLATFORM = Object.freeze({
     chatgpt: true,
     claude: true,
+    gemini: true,
     doubao: true,
     kimi: true,
     qianwen: true,
@@ -2741,12 +2747,19 @@ import {
     return window.location.hostname === "claude.ai";
   }
 
+  function isGeminiPage() {
+    return window.location.hostname === "gemini.google.com";
+  }
+
   function currentPlatformKey() {
     if (isChatGPTPage()) {
       return "chatgpt";
     }
     if (isClaudePage()) {
       return "claude";
+    }
+    if (isGeminiPage()) {
+      return "gemini";
     }
     if (isDoubaoPage()) {
       return "doubao";
@@ -2782,6 +2795,10 @@ import {
 
     if (isClaudePage()) {
       return [CLAUDE_ASSISTANT_MESSAGE_SELECTOR, ASSISTANT_MESSAGE_SELECTOR, MARKDOWN_FALLBACK_SELECTOR];
+    }
+
+    if (isGeminiPage()) {
+      return [GEMINI_ASSISTANT_MESSAGE_SELECTOR, ASSISTANT_MESSAGE_SELECTOR, MARKDOWN_FALLBACK_SELECTOR];
     }
 
     if (isYuanbaoPage()) {
@@ -2833,6 +2850,10 @@ import {
 
     if (isClaudePage()) {
       return [CLAUDE_USER_MESSAGE_SELECTOR];
+    }
+
+    if (isGeminiPage()) {
+      return [GEMINI_USER_MESSAGE_SELECTOR, USER_MESSAGE_SELECTOR];
     }
 
     if (isYuanbaoPage()) {

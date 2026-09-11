@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-09-11
+
+- 功能：新增 Google Gemini 支持，覆盖用户分组、标题、列表、表格、流式更新、搜索、跳转和章节视图；Gemini 默认启用 H1/H2/H3、无序列表和加粗文本 Marker，有序列表默认关闭。
+- 文档：新增 `Doc/gemini-support.md`，并同步更新平台筛选键规范，记录 Gemini DOM 接入和验证边界。
+- 版本：功能更新到 `0.50.0(201)`。
+
 ## 2026-09-09
 
 - 归因：设置页和更新说明中的赞赏入口改为同源 `/entry/extension/`，浏览器移除 UTM 参数时仍可向 Landing 传递 `polaris_extension` 来源。
