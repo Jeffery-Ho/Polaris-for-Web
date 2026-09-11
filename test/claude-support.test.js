@@ -20,7 +20,7 @@ test("Claude.ai 使用语义消息选择器和独立平台配置", () => {
   const userSelectors = functionSource("getUserContainerSelectors", "doubaoMessageRoleForContainer");
 
   assert.match(contentSource, /function isClaudePage\(\) \{\s*return window\.location\.hostname === "claude\.ai";/);
-  assert.match(contentSource, /\["chatgpt", "claude", "gemini", "doubao"/);
+  assert.match(contentSource, /\["chatgpt", "claude", "gemini", "grok", "doubao"/);
   assert.match(contentSource, /claude: \[1, 2, 3\]/);
   assert.match(contentSource, /claude: true/);
   assert.match(platform, /isClaudePage\(\).*?return "claude"/s);

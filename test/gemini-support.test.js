@@ -22,7 +22,7 @@ test("Gemini 使用语义消息选择器和独立平台配置", () => {
   const userSelectors = functionSource("getUserContainerSelectors", "doubaoMessageRoleForContainer");
 
   assert.match(contentSource, /function isGeminiPage\(\) \{\s*return window\.location\.hostname === "gemini\.google\.com";/);
-  assert.match(contentSource, /\["chatgpt", "claude", "gemini", "doubao"/);
+  assert.match(contentSource, /\["chatgpt", "claude", "gemini", "grok", "doubao"/);
   assert.match(contentSource, /gemini: \[1, 2, 3\]/);
   assert.match(contentSource, /const GEMINI_ASSISTANT_MESSAGE_SELECTOR = "model-response message-content";/);
   assert.match(contentSource, /const GEMINI_USER_MESSAGE_SELECTOR = "user-query user-query-content";/);
@@ -39,8 +39,8 @@ test("Gemini 默认启用 H1-H3、无序列表和加粗标题，仅默认关闭�
 
 test("两个源 manifest 都会向 Gemini 注入内容脚本与路由桥", () => {
   manifests.forEach((manifest) => {
-    assert.equal(manifest.version, "0.50.0");
-    assert.equal(manifest.version_name, "0.50.0(201)");
+    assert.equal(manifest.version, "0.51.0");
+    assert.equal(manifest.version_name, "0.51.0(202)");
     assert.ok(manifest.host_permissions.includes("https://gemini.google.com/*"));
     assert.ok(manifest.web_accessible_resources[0].matches.includes("https://gemini.google.com/*"));
     assert.ok(manifest.content_scripts[0].matches.includes("https://gemini.google.com/*"));

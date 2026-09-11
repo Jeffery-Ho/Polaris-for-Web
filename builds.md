@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 202
+
+- Date: 2026-09-11
+- Version: 0.51.0
+- Summary: Adds Grok navigation support.
+- Notes: Grok pages use semantic `main [data-testid="assistant-message"] .response-content-markdown.markdown` and `main [data-testid="user-message"]` containers for user grouping, headings, lists, tables, streaming updates, search, navigation, and Chapter View. Grok defaults to H1-H3, unordered-list, and bold-text markers; ordered lists remain disabled by default. Added `Doc/grok-support.md` and platform/Manifest regression tests. Run `pnpm check`, `pnpm test`, and one final `pnpm build`; confirm `dist/manifest.json` is `0.51.0(202)`. Signed-in Grok live interaction validation remains a separate acceptance step.
+
 ## 201
 
 - Date: 2026-09-11

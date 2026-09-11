@@ -1,5 +1,16 @@
 const RELEASE_NOTES = Object.freeze([
   {
+    version: "0.51.0",
+    en: {
+      title: "Grok navigation",
+      changes: ["Grok now supports Polaris navigation for user groups, headings, lists, tables, streaming updates, search, and Chapter View."]
+    },
+    zh: {
+      title: "支持 Grok 导航",
+      changes: ["Grok 现支持用户分组、标题、列表、表格、流式更新、搜索与章节视图。"]
+    }
+  },
+  {
     version: "0.50.0",
     en: {
       title: "Google Gemini navigation",

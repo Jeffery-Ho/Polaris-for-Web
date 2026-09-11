@@ -135,6 +135,14 @@ test("Google Gemini 支持提供内置更新说明", () => {
   assert.match(note.en.changes[0], /Google Gemini/);
 });
 
+test("Grok 支持提供内置更新说明", () => {
+  const note = releaseNotesForUpdate("0.50.0", "0.51.0")[0];
+  assert.equal(note.version, "0.51");
+  assert.equal(note.isFallback, undefined);
+  assert.match(note.zh.changes[0], /Grok/);
+  assert.match(note.en.changes[0], /Grok/);
+});
+
 test("加粗文本筛选提供内置更新说明", () => {
   const note = releaseNotesForUpdate("0.45.0", "0.46.0")[0];
   assert.equal(note.version, "0.46");
@@ -160,10 +168,10 @@ test("更新说明赞赏入口提供内置更新说明", () => {
 });
 
 test("缺失当前功能版本说明时按 0.xx 粒度安全降级", () => {
-  const note = releaseNotesForUpdate("0.49.0", "0.51.2")
+  const note = releaseNotesForUpdate("0.50.0", "0.52.2")
     .find((candidate) => candidate.isFallback);
   assert.ok(note);
-  assert.equal(note.version, "0.51");
+  assert.equal(note.version, "0.52");
   assert.equal(note.isFallback, true);
   assert.match(note.zh.title, /更新说明/);
 });
