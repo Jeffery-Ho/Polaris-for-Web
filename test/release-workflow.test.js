@@ -25,7 +25,8 @@ test("发布 workflow 校验、构建并打包当前 dist", () => {
   assert.match(workflowSource, /zip -qr/);
   assert.match(workflowSource, /-x '\*\.DS_Store'/);
   assert.match(workflowSource, /Polaris-AI-\$\{VERSION\}-build-\$\{BUILD\}\.zip/);
-  assert.match(workflowSource, /Polaris-AI\.zip/);
+  assert.doesNotMatch(workflowSource, /cp .*Polaris-AI\.zip/);
+  assert.doesNotMatch(workflowSource, /gh release upload[\s\S]*Polaris-AI\.zip/);
 });
 
 test("发布 workflow 使用版本和 build 生成幂等 Release 标签", () => {
@@ -34,6 +35,7 @@ test("发布 workflow 使用版本和 build 生成幂等 Release 标签", () => 
     /TAG: v\$\{\{ steps\.metadata\.outputs\.version \}\}-build\.\$\{\{ steps\.metadata\.outputs\.build \}\}/
   );
   assert.match(workflowSource, /gh release view/);
+  assert.match(workflowSource, /gh release delete-asset/);
   assert.match(workflowSource, /gh release upload[\s\S]*?--clobber/);
   assert.match(workflowSource, /gh release create/);
 });
