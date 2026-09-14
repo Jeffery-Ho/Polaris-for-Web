@@ -885,6 +885,23 @@ import {
     return icon;
   }
 
+  function createImagePreviewZoomIcon() {
+    const namespace = "http://www.w3.org/2000/svg";
+    const icon = document.createElementNS(namespace, "svg");
+    icon.setAttribute("viewBox", "0 0 24 24");
+    icon.setAttribute("aria-hidden", "true");
+    icon.setAttribute("focusable", "false");
+    const path = document.createElementNS(namespace, "path");
+    path.setAttribute("fill", "none");
+    path.setAttribute("stroke", "currentColor");
+    path.setAttribute("stroke-width", "1.8");
+    path.setAttribute("stroke-linecap", "round");
+    path.setAttribute("stroke-linejoin", "round");
+    path.setAttribute("d", "m14.5 14.5 4 4M10.8 16.3a5.5 5.5 0 1 1 0-11 5.5 5.5 0 0 1 0 11Z");
+    icon.appendChild(path);
+    return icon;
+  }
+
   function setControlMinimized(isMinimized) {
     state.config = normalizeConfig({
       ...state.config,
@@ -4398,6 +4415,9 @@ import {
         const label = document.createElement("span");
         label.className = `gpt-paragraph-nav__label${item.type === "user" ? " gpt-paragraph-nav__label--user" : ""}`;
         if (item.type === "user") {
+          const labelThumbnailWrap = document.createElement("span");
+          labelThumbnailWrap.className = "gpt-paragraph-nav__label-thumbnail-wrap";
+
           const labelThumbnail = document.createElement("img");
           labelThumbnail.className = "gpt-paragraph-nav__label-thumbnail";
           labelThumbnail.alt = "";
@@ -4426,8 +4446,14 @@ import {
             }
             labelThumbnail.hidden = true;
             labelThumbnail.tabIndex = -1;
+            labelThumbnailWrap.hidden = true;
           });
-          label.appendChild(labelThumbnail);
+          const zoomIcon = document.createElement("span");
+          zoomIcon.className = "gpt-paragraph-nav__label-thumbnail-zoom";
+          zoomIcon.setAttribute("aria-hidden", "true");
+          zoomIcon.appendChild(createImagePreviewZoomIcon());
+          labelThumbnailWrap.append(labelThumbnail, zoomIcon);
+          label.appendChild(labelThumbnailWrap);
 
           const labelText = document.createElement("span");
           labelText.className = "gpt-paragraph-nav__label-text";
@@ -4504,6 +4530,10 @@ import {
         delete labelThumbnail.dataset.failedSrc;
       }
       labelThumbnail.hidden = !item.thumbnailSrc || labelThumbnail.dataset.failedSrc === item.thumbnailSrc;
+      const labelThumbnailWrap = labelThumbnail.closest(".gpt-paragraph-nav__label-thumbnail-wrap");
+      if (labelThumbnailWrap instanceof HTMLElement) {
+        labelThumbnailWrap.hidden = labelThumbnail.hidden;
+      }
       if (item.thumbnailSrc && previousLabelSrc !== item.thumbnailSrc) {
         labelThumbnail.src = item.thumbnailSrc;
       } else if (!item.thumbnailSrc && previousLabelSrc) {

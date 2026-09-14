@@ -108,10 +108,16 @@ test("当前 Maker 提示条所在行在 Maker 列表中保持最高层级", () 
 
 test("提示条图片独立响应点击，并支持键盘打开页内画廊", () => {
   assert.match(contentSource, /gpt-paragraph-nav__marker-shell/);
+  assert.match(contentSource, /function createImagePreviewZoomIcon\(\)/);
+  assert.match(contentSource, /gpt-paragraph-nav__label-thumbnail-zoom/);
   assert.match(contentSource, /labelThumbnail\.setAttribute\("role", "button"\)/);
   assert.match(contentSource, /labelThumbnail\.tabIndex = -1/);
   assert.match(contentSource, /openImagePreview\(userImagePreviewSources\.get\(labelThumbnail\) \|\| \[\], labelThumbnail\)/);
   assert.match(contentSource, /event\.stopPropagation\(\);[\s\S]*?openImagePreview/);
+  assert.match(
+    styles,
+    /\.gpt-paragraph-nav__label-thumbnail-zoom \{[\s\S]*?top: 6px;[\s\S]*?right: 6px;[\s\S]*?pointer-events: none;/
+  );
 });
 
 test("页内图片画廊提供计数、切换、关闭和失败回退", () => {

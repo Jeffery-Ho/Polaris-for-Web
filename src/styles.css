@@ -1732,6 +1732,42 @@ html.gpt-paragraph-nav--dragging * {
   cursor: pointer;
 }
 
+.gpt-paragraph-nav__label-thumbnail-wrap {
+  position: relative;
+  display: block;
+  flex: 0 0 112px;
+  width: 112px !important;
+  height: 112px !important;
+  pointer-events: none;
+}
+
+.gpt-paragraph-nav__label-thumbnail-wrap[hidden] {
+  display: none !important;
+}
+
+.gpt-paragraph-nav__label-thumbnail-zoom {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 1;
+  display: grid;
+  width: 24px;
+  height: 24px;
+  box-sizing: border-box;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.72);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.22);
+  color: #ffffff;
+  pointer-events: none;
+}
+
+.gpt-paragraph-nav__label-thumbnail-zoom svg {
+  width: 14px;
+  height: 14px;
+}
+
 .gpt-paragraph-nav__label-thumbnail[hidden] {
   display: none !important;
 }
