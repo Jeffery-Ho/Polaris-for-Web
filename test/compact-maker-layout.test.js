@@ -116,7 +116,7 @@ test("提示条图片独立响应点击，并支持键盘打开页内画廊", ()
   assert.match(contentSource, /event\.stopPropagation\(\);[\s\S]*?openImagePreview/);
   assert.match(
     styles,
-    /\.gpt-paragraph-nav__label-thumbnail-zoom \{[\s\S]*?top: 6px;[\s\S]*?right: 6px;[\s\S]*?pointer-events: none;/
+    /\.gpt-paragraph-nav__label-thumbnail-zoom \{[\s\S]*?top: 6px;[\s\S]*?right: 6px;[\s\S]*?background: var\(--gpt-glass-input-bg\);[\s\S]*?color: var\(--gpt-arco-text-2\);[\s\S]*?pointer-events: none;/
   );
 });
 

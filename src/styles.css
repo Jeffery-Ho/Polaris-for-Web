@@ -1755,11 +1755,10 @@ html.gpt-paragraph-nav--dragging * {
   height: 24px;
   box-sizing: border-box;
   place-items: center;
-  border: 1px solid rgba(255, 255, 255, 0.72);
+  border: 1px solid var(--gpt-glass-border);
   border-radius: 999px;
-  background: rgba(15, 23, 42, 0.72);
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.22);
-  color: #ffffff;
+  background: var(--gpt-glass-input-bg);
+  color: var(--gpt-arco-text-2);
   pointer-events: none;
 }
 
