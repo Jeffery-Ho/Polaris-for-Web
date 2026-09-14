@@ -33,6 +33,7 @@ Polaris for Web automatically detects headings and list titles in AI responses a
 - Maker navigation is generated only from currently mounted user and AI response DOM. A route change removes the previous list immediately; only a later non-Polaris page mutation can populate the new list. DOM removal also removes its Makers, and a DOM remount receives new runtime keys.
 - Progressive Maker rendering begins during streaming output as soon as the first non-empty supported marker is available; fixed 120ms render batches reuse existing Maker nodes and update only changed items, preserving list scrolling, focus, hover, and manual collapse state. Wheel, trackpad, or list-drag input on a Maker or group card immediately takes control from temporary Active Maker positioning, so any Maker can remain outside the list viewport while streaming continues.
 - Click-to-jump navigation, active-section highlighting, and a scrollable marker queue.
+- User Maker tooltips show the first message image; clicking that image opens an in-page preview, with previous/next navigation for multi-image messages. The Maker capsule itself remains an expand/collapse control.
 - Visible titles inside AI markers, user groups, and the floating active marker are left-aligned; user group capsules remain on the queue's right edge while AI markers and folded stacks remain on the left.
 - Platform-specific marker filters for H1, H2, H3, H4, bold text, unordered lists, and ordered lists.
 - Settings synchronization through `chrome.storage.sync`.
@@ -104,7 +105,7 @@ Load the generated `dist/` directory as an unpacked extension in Chromium-based 
 
 ## Version
 
-Current version: `0.51.2(204)`
+Current version: `0.51.5(207)`
 
 ## License
 

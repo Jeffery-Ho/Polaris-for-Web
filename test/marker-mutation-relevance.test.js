@@ -15,8 +15,8 @@ function node({ matches = [], descendants = [] } = {}) {
   };
 }
 
-function mutation({ target, addedNodes = [], removedNodes = [] }) {
-  return { type: "childList", target, addedNodes, removedNodes };
+function mutation({ type = "childList", target, addedNodes = [], removedNodes = [], attributeName = null }) {
+  return { type, target, addedNodes, removedNodes, attributeName };
 }
 
 test("无关宿主 DOM 变化不会触发 Maker 扫描", () => {
@@ -40,6 +40,18 @@ test("已知会话容器内变化会触发 Maker 扫描", () => {
     mutations: [mutation({ target: changedTextParent })],
     knownContainers: [knownAssistant],
     sourceSelectors: [".assistant"]
+  }), true);
+});
+
+test("已知会话容器内图片地址变化会触发 Maker 扫描", () => {
+  const knownUser = node();
+  const changedImage = node();
+  knownUser.contains = (candidate) => candidate === changedImage;
+
+  assert.equal(hasRelevantMarkerMutation({
+    mutations: [mutation({ type: "attributes", target: changedImage, attributeName: "src" })],
+    knownContainers: [knownUser],
+    sourceSelectors: ["user-query"]
   }), true);
 });
 

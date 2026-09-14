@@ -10,6 +10,27 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 207
+
+- Date: 2026-09-14
+- Version: 0.51.5
+- Summary: Adds an in-page image preview gallery for user Maker tooltip images.
+- Notes: Clicking only the image in a user Maker tooltip opens a Polaris modal using the safe image URLs already present in the message. Multi-image messages support previous/next controls, a counter, keyboard arrow navigation, Escape, backdrop click, close control, scroll locking, focus restoration, and localized load-failure fallback. The preview backdrop now reuses the user Maker frosted-glass background variable and blur treatment across light and dark themes, and its close button reuses the Chapter View close-button definition. The Maker button remains dedicated to expand/collapse. Updated the current version to `0.51.5(207)`.
+
+## 206
+
+- Date: 2026-09-14
+- Version: 0.51.4
+- Summary: Adds user-uploaded image thumbnails to Makers on every supported platform.
+- Notes: User Makers now reuse the first safe HTTPS or same-origin blob image in their message, show `+N` for additional images, and retain a thumbnail-only Maker for image-only messages. Gemini attachment URLs are rescanned when lazy-loaded, and page-level `mavatar` classes no longer filter valid attachments. The user-title tooltip shows a 112×112 first-image preview matching the message thumbnail, is horizontally aligned beside the Maker and vertically centered, and omits the visible `图片` description for image-only messages while retaining localized accessibility labels. Maker and floating Active Maker tooltips share one z-index token, and the hovered Maker row is raised to that token so the tooltip stays above other Makers. Failed thumbnails preserve Maker expand/collapse behavior. No images are stored or uploaded. Updated the current version to `0.51.4(206)`.
+
+## 205
+
+- Date: 2026-09-14
+- Version: 0.51.3
+- Summary: Prevents Chinese user Maker titles from expanding their capsule.
+- Notes: User Maker preview text now enforces its local font, single-line layout, and clipping against host-page typography rules, while preserving the expand/collapse chevron. Updated the current version to `0.51.3(205)`.
+
 ## 204
 
 - Date: 2026-09-11

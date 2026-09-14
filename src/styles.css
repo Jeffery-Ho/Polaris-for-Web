@@ -11,6 +11,8 @@
   --gpt-glass-border: rgba(255, 255, 255, 0.1);
   --gpt-glass-shadow: 0 18px 42px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.12);
   --gpt-glass-marker-bg: var(--gpt-glass-bg);
+  --gpt-glass-user-marker-bg: rgba(219, 234, 254, 0.72);
+  --gpt-glass-user-marker-hover-bg: rgba(219, 234, 254, 0.86);
   --gpt-glass-fold-hover-bg: rgba(20, 22, 30, 0.88);
   --gpt-highlight-bg: #ffffff;
   --gpt-highlight-text: #000000;
@@ -29,6 +31,8 @@
   --gpt-arco-fill-2: rgba(255, 255, 255, 0.08);
   --gpt-arco-fill-3: rgba(255, 255, 255, 0.14);
   --gpt-marker-shadow-buffer: 32px;
+  --gpt-nav-tooltip-z-index: 3;
+  --gpt-nav-image-preview-z-index: 2147483648;
   width: var(--gpt-nav-width, calc(100vw - 28px));
   display: flex;
   flex-direction: column;
@@ -67,6 +71,8 @@
 }
 
 .gpt-paragraph-nav__marker-row {
+  position: relative;
+  z-index: 0;
   display: flex;
   align-self: flex-end;
   width: min(var(--gpt-nav-controls-width, 360px), calc(100vw - 48px));
@@ -79,6 +85,14 @@
 
 .gpt-paragraph-nav__marker-row--user {
   justify-content: flex-end;
+}
+
+.gpt-paragraph-nav__marker-row:has(.gpt-paragraph-nav__marker-shell:hover) {
+  z-index: var(--gpt-nav-tooltip-z-index);
+}
+
+.gpt-paragraph-nav__marker-row:has(.gpt-paragraph-nav__marker-shell:focus-within) {
+  z-index: var(--gpt-nav-tooltip-z-index);
 }
 
 #gpt-paragraph-nav.is-collapsed .gpt-paragraph-nav__list {
@@ -395,6 +409,159 @@ html.gpt-paragraph-nav--dragging * {
   display: none !important;
 }
 
+.gpt-paragraph-nav__image-preview-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--gpt-nav-image-preview-z-index);
+  --gpt-explosion-close-bg: rgba(15, 23, 42, 0.05);
+  --gpt-explosion-close-border: rgba(15, 23, 42, 0.14);
+  --gpt-explosion-close-text: var(--gpt-arco-text-1);
+  --gpt-explosion-close-hover-bg: var(--gpt-highlight-bg);
+  --gpt-explosion-close-hover-text: var(--gpt-highlight-text);
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  padding: 16px;
+  background: var(--gpt-glass-user-marker-bg);
+  -webkit-backdrop-filter: blur(var(--gpt-glass-blur)) saturate(var(--gpt-glass-saturate));
+  backdrop-filter: blur(var(--gpt-glass-blur)) saturate(var(--gpt-glass-saturate));
+  pointer-events: auto;
+}
+
+.gpt-paragraph-nav__image-preview-overlay[hidden] {
+  display: none !important;
+}
+
+.gpt-paragraph-nav__image-preview-content {
+  position: relative;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto auto;
+  align-items: center;
+  justify-items: center;
+  gap: 10px;
+  width: min(1200px, calc(100vw - 32px));
+  height: min(900px, calc(100dvh - 32px));
+  min-height: 0;
+  padding: 16px;
+  box-sizing: border-box;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 24px;
+  background: rgba(15, 23, 42, 0.72);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.38);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  backdrop-filter: blur(18px) saturate(140%);
+}
+
+.gpt-paragraph-nav__image-preview-viewport {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.gpt-paragraph-nav__image-preview-image {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: 16px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.32);
+}
+
+.gpt-paragraph-nav__image-preview-image[hidden],
+.gpt-paragraph-nav__image-preview-nav[hidden],
+.gpt-paragraph-nav__image-preview-counter[hidden],
+.gpt-paragraph-nav__image-preview-failure[hidden] {
+  display: none !important;
+}
+
+.gpt-paragraph-nav__image-preview-nav {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  border: 1px solid rgba(255, 255, 255, 0.26);
+  background: rgba(15, 23, 42, 0.72);
+  color: #ffffff;
+  cursor: pointer;
+  transition: background 120ms ease, transform 120ms ease;
+}
+
+.gpt-paragraph-nav__image-preview-nav {
+  position: absolute;
+  top: 50%;
+  z-index: 1;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border-radius: 999px;
+  font: 400 28px/1 ui-sans-serif, system-ui, sans-serif;
+  transform: translateY(-50%);
+}
+
+.gpt-paragraph-nav__image-preview-nav.is-previous {
+  left: 8px;
+}
+
+.gpt-paragraph-nav__image-preview-nav.is-next {
+  right: 8px;
+}
+
+.gpt-paragraph-nav__image-preview-nav:hover,
+.gpt-paragraph-nav__image-preview-nav:focus-visible {
+  background: rgba(59, 130, 246, 0.82);
+  transform: translateY(-50%) scale(1.04);
+}
+
+.gpt-paragraph-nav__image-preview-nav:focus-visible {
+  outline: 2px solid #bfdbfe;
+  outline-offset: 2px;
+}
+
+.gpt-paragraph-nav__image-preview-counter,
+.gpt-paragraph-nav__image-preview-failure {
+  color: #e2e8f0;
+  font: 600 12px/1.4 ui-sans-serif, system-ui, sans-serif;
+  text-align: center;
+}
+
+.gpt-paragraph-nav__image-preview-failure {
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.62);
+}
+
+#gpt-paragraph-nav[data-page-theme="light"] .gpt-paragraph-nav__image-preview-overlay {
+  background: var(--gpt-glass-user-marker-bg);
+}
+
+@media (max-width: 720px) {
+  .gpt-paragraph-nav__image-preview-content {
+    width: calc(100vw - 20px);
+    height: calc(100dvh - 20px);
+    padding: 10px;
+    border-radius: 18px;
+  }
+
+  .gpt-paragraph-nav__image-preview-nav {
+    width: 34px;
+    height: 34px;
+  }
+
+  .gpt-paragraph-nav__image-preview-nav.is-previous {
+    left: 4px;
+  }
+
+  .gpt-paragraph-nav__image-preview-nav.is-next {
+    right: 4px;
+  }
+}
+
 .gpt-paragraph-nav__release-notice-overlay {
   position: fixed;
   inset: 0;
@@ -625,6 +792,12 @@ html.gpt-paragraph-nav--dragging * {
     --gpt-explosion-selection-bg: rgba(59, 130, 246, 0.38);
 }
 
+#gpt-paragraph-nav[data-page-theme="dark"] .gpt-paragraph-nav__image-preview-overlay {
+  --gpt-explosion-close-bg: rgba(255, 255, 255, 0.08);
+  --gpt-explosion-close-border: rgba(255, 255, 255, 0.14);
+  --gpt-explosion-close-text: var(--gpt-arco-text-1);
+}
+
 .gpt-paragraph-nav__explosion-actions {
   display: flex;
   align-items: center;
@@ -775,6 +948,14 @@ html.gpt-paragraph-nav--dragging * {
 .gpt-paragraph-nav__explosion-close:focus-visible {
   outline: 2px solid var(--gpt-arco-primary);
   outline-offset: 2px;
+}
+
+.gpt-paragraph-nav__image-preview-close.gpt-paragraph-nav__explosion-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 2;
+  box-sizing: border-box;
 }
 
 .gpt-paragraph-nav__copy-toast {
@@ -1213,6 +1394,15 @@ html.gpt-paragraph-nav--dragging * {
   transition: background 120ms ease, color 120ms ease, transform 120ms ease;
 }
 
+.gpt-paragraph-nav__marker-shell {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  max-width: 100%;
+  pointer-events: auto;
+}
+
 .gpt-paragraph-nav__marker--ai,
 .gpt-paragraph-nav__fold {
   align-self: flex-start;
@@ -1221,22 +1411,59 @@ html.gpt-paragraph-nav--dragging * {
 .gpt-paragraph-nav__marker.gpt-paragraph-nav__marker--user {
   align-self: flex-end;
   gap: 6px;
-  background: rgba(219, 234, 254, 0.72);
+  background: var(--gpt-glass-user-marker-bg);
   box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.46), inset 0 1px 0 rgba(255, 255, 255, 0.54);
   color: var(--gpt-arco-text-1);
 }
 
 .gpt-paragraph-nav__marker.gpt-paragraph-nav__marker--user:hover {
-  background: rgba(219, 234, 254, 0.86);
+  background: var(--gpt-glass-user-marker-hover-bg);
   color: var(--gpt-arco-text-1);
+}
+
+.gpt-paragraph-nav__user-thumbnail {
+  display: block !important;
+  flex: 0 0 24px;
+  min-width: 24px !important;
+  max-width: 24px !important;
+  width: 24px !important;
+  height: 24px !important;
+  border-radius: 6px !important;
+  object-fit: cover !important;
+  pointer-events: none;
+}
+
+.gpt-paragraph-nav__user-thumbnail[hidden] {
+  display: none !important;
+}
+
+.gpt-paragraph-nav__user-image-count {
+  flex: 0 0 auto;
+  color: inherit;
+  font: 600 10px/1 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+  white-space: nowrap !important;
+}
+
+.gpt-paragraph-nav__user-image-count[hidden] {
+  display: none !important;
 }
 
 .gpt-paragraph-nav__marker--user .gpt-paragraph-nav__preview {
   flex: 1 1 auto;
   min-width: 0;
+  max-width: calc(100% - 14px);
+  max-height: 1.2em;
+  display: block !important;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
+  font: 500 11px/1.2 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+  white-space: nowrap !important;
+  overflow-wrap: normal !important;
+  word-break: normal !important;
+}
+
+.gpt-paragraph-nav__marker--user.is-image-only .gpt-paragraph-nav__preview {
+  display: none !important;
 }
 
 .gpt-paragraph-nav__user-chevron {
@@ -1349,7 +1576,7 @@ html.gpt-paragraph-nav--dragging * {
   position: absolute;
   right: 0;
   bottom: var(--floating-active-bottom, 20pt);
-  z-index: 1;
+  z-index: var(--gpt-nav-tooltip-z-index);
   display: inline-flex;
   align-items: center;
   justify-content: flex-start;
@@ -1394,9 +1621,14 @@ html.gpt-paragraph-nav--dragging * {
     color: #000000;
   }
 
+#gpt-paragraph-nav[data-page-theme="dark"] {
+  --gpt-glass-user-marker-bg: rgba(96, 165, 250, 0.24);
+  --gpt-glass-user-marker-hover-bg: rgba(96, 165, 250, 0.24);
+}
+
 #gpt-paragraph-nav[data-page-theme="dark"] .gpt-paragraph-nav__marker.gpt-paragraph-nav__marker--user,
 #gpt-paragraph-nav[data-page-theme="dark"] .gpt-paragraph-nav__marker.gpt-paragraph-nav__marker--user:hover {
-    background: rgba(96, 165, 250, 0.24);
+    background: var(--gpt-glass-user-marker-bg);
     box-shadow: 0 0 0 1px rgba(147, 197, 253, 0.42);
     color: var(--gpt-arco-text-1);
 }
@@ -1455,15 +1687,65 @@ html.gpt-paragraph-nav--dragging * {
   overflow-wrap: anywhere;
   word-break: break-word;
   box-shadow: 0 0 12px rgba(15, 23, 42, 0.18);
+  z-index: var(--gpt-nav-tooltip-z-index);
   opacity: 0;
   pointer-events: none;
   transform: translate(6px, -50%);
   transition: opacity 120ms ease, transform 120ms ease;
 }
 
-.gpt-paragraph-nav__marker:hover .gpt-paragraph-nav__label {
+.gpt-paragraph-nav__label--user {
+  top: 50%;
+  right: calc(100% + 8px);
+  bottom: auto;
+  left: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  transform: translate(6px, -50%);
+}
+
+.gpt-paragraph-nav__label-thumbnail {
+  display: block !important;
+  flex: 0 0 112px;
+  width: 112px !important;
+  height: 112px !important;
+  border-radius: 12px !important;
+  object-fit: cover !important;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.gpt-paragraph-nav__label-thumbnail[hidden] {
+  display: none !important;
+}
+
+.gpt-paragraph-nav__label-text {
+  display: block;
+}
+
+.gpt-paragraph-nav__label--user.is-image-only .gpt-paragraph-nav__label-text {
+  display: none !important;
+}
+
+.gpt-paragraph-nav__marker-shell:hover .gpt-paragraph-nav__label {
   opacity: 1;
   transform: translate(0, -50%);
+}
+
+.gpt-paragraph-nav__marker-shell:focus-within .gpt-paragraph-nav__label {
+  opacity: 1;
+  transform: translate(0, -50%);
+}
+
+.gpt-paragraph-nav__marker-shell:hover .gpt-paragraph-nav__label--user {
+  transform: translate(0, -50%);
+}
+
+.gpt-paragraph-nav__label-thumbnail:focus-visible {
+  outline: 2px solid var(--gpt-arco-primary);
+  outline-offset: 2px;
 }
 
 #gpt-paragraph-nav.is-marker-motion-suppressed .gpt-paragraph-nav__marker,
@@ -1505,6 +1787,8 @@ html.gpt-paragraph-nav--dragging * {
   --gpt-glass-border: rgba(15, 23, 42, 0.12);
   --gpt-glass-shadow: 0 10px 28px rgba(15, 23, 42, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.72);
   --gpt-glass-marker-bg: var(--gpt-glass-bg);
+  --gpt-glass-user-marker-bg: rgba(219, 234, 254, 0.72);
+  --gpt-glass-user-marker-hover-bg: rgba(219, 234, 254, 0.86);
   --gpt-glass-fold-hover-bg: rgba(255, 255, 255, 0.72);
   --gpt-highlight-bg: #000000;
   --gpt-highlight-text: #ffffff;
@@ -1540,12 +1824,12 @@ html.gpt-paragraph-nav--dragging * {
 }
 
 #gpt-paragraph-nav[data-page-theme="light"] .gpt-paragraph-nav__marker.gpt-paragraph-nav__marker--user {
-  background: rgba(219, 234, 254, 0.72);
+  background: var(--gpt-glass-user-marker-bg);
   box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.46), inset 0 1px 0 rgba(255, 255, 255, 0.54);
 }
 
 #gpt-paragraph-nav[data-page-theme="light"] .gpt-paragraph-nav__marker.gpt-paragraph-nav__marker--user:hover {
-  background: rgba(219, 234, 254, 0.86);
+  background: var(--gpt-glass-user-marker-hover-bg);
   color: var(--gpt-arco-text-1);
 }
 

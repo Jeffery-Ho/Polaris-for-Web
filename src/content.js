@@ -56,6 +56,10 @@ import {
   downloadDiagnosticLog,
   openDiagnosticEmail
 } from "./diagnostic-export.js";
+import {
+  safeUserMessageImageUrl,
+  userMessageThumbnailForSources
+} from "./user-message-images.js";
 
 (() => {
   const { locale, t } = globalThis.PolarisI18n;
@@ -83,6 +87,10 @@ import {
   const GEMINI_USER_MESSAGE_SELECTOR = "user-query";
   const GEMINI_USER_MESSAGE_FALLBACK_SELECTOR = "user-query-content, .user-query-content, .user-query-container";
   const GEMINI_USER_TEXT_SELECTOR = ".query-content, .query-text-line, .query-text";
+  const GEMINI_USER_IMAGE_SELECTOR = "user-query-file-preview img, user-query-file-carousel img";
+  const USER_MESSAGE_IMAGE_SELECTOR = "img";
+  const USER_MESSAGE_IMAGE_ATTRIBUTE_FILTER = ["src", "srcset", "data-src", "data-original", "data-url"];
+  const USER_MESSAGE_AVATAR_SELECTOR = '[class*="avatar" i], [class*="profile" i], [data-testid*="avatar" i]';
   const GEMINI_USER_ROLE_PREFIX_PATTERN = /^\s*(?:You said|你说|你話|你话)\s*[:：]?\s*/i;
   const GROK_ASSISTANT_MESSAGE_SELECTOR = "main [data-testid=\"assistant-message\"] .response-content-markdown.markdown";
   const GROK_USER_MESSAGE_SELECTOR = "main [data-testid=\"user-message\"]";
@@ -205,6 +213,7 @@ import {
   const SETTINGS_PANEL_ID = "gpt-paragraph-nav-settings-panel";
   const ROUTE_CHANGE_EVENT = "polaris-for-web-route-change";
   const FLOATING_ACTIVE_CLASS = "gpt-paragraph-nav__floating-active";
+  const IMAGE_PREVIEW_CLASS = "gpt-paragraph-nav__image-preview-overlay";
   const LIQUID_GLASS_SELECTOR = [
     `.${CONTROL_CAPSULE_CLASS}`,
     `.${CONTROL_COMPACT_TOGGLE_CLASS}`,
@@ -300,6 +309,7 @@ import {
     enabledUnorderedListByPlatform: DEFAULT_UNORDERED_LIST_BY_PLATFORM
   });
   const liquidGlassSignatures = new WeakMap();
+  const userImagePreviewSources = new WeakMap();
   const settingsPanelControllers = new WeakMap();
   const settingsPanelRenderSignatures = new WeakMap();
   const extensionMetadata = {
@@ -352,6 +362,10 @@ import {
     explosionSections: [],
     activeExplosionSectionIndex: 0,
     lastExplosionRenderSignature: "",
+    isImagePreviewOpen: false,
+    imagePreviewUrls: [],
+    activeImagePreviewIndex: 0,
+    imagePreviewReturnElement: null,
     scrollLock: null,
     routeKey: "",
     isExtensionContextInvalidated: false,
@@ -580,6 +594,7 @@ import {
     state.pageThemeWatcher = null;
     state.liquidGlassObserver?.disconnect();
     closeExplosionOverlay();
+    closeImagePreviewOverlay();
     state.isReleaseNoticeOpen = false;
     unlockPageScroll();
     cancelPointerDrag("extension-context-invalidated");
@@ -1069,6 +1084,225 @@ import {
     }
     syncExplosionOverlay(overlay);
     return overlay;
+  }
+
+  function getImagePreviewOverlay(root = getRoot()) {
+    let overlay = root.querySelector(`.${IMAGE_PREVIEW_CLASS}`);
+    if (!overlay) {
+      overlay = document.createElement("div");
+      overlay.className = IMAGE_PREVIEW_CLASS;
+      overlay.setAttribute("role", "dialog");
+      overlay.setAttribute("aria-modal", "true");
+      overlay.setAttribute("aria-label", t("userMarker.imagePreview"));
+      overlay.hidden = true;
+      overlay.addEventListener("click", (event) => {
+        if (event.target === overlay) {
+          closeImagePreviewOverlay();
+        }
+      });
+
+      const content = document.createElement("div");
+      content.className = "gpt-paragraph-nav__image-preview-content";
+
+      const closeButton = document.createElement("button");
+      closeButton.type = "button";
+      closeButton.className = "gpt-paragraph-nav__image-preview-close gpt-paragraph-nav__explosion-close";
+      closeButton.setAttribute("aria-label", t("userMarker.closeImagePreview"));
+      closeButton.setAttribute("title", t("userMarker.closeImagePreview"));
+      closeButton.addEventListener("click", closeImagePreviewOverlay);
+      content.appendChild(closeButton);
+
+      const viewport = document.createElement("div");
+      viewport.className = "gpt-paragraph-nav__image-preview-viewport";
+
+      const previousButton = document.createElement("button");
+      previousButton.type = "button";
+      previousButton.className = "gpt-paragraph-nav__image-preview-nav is-previous";
+      previousButton.setAttribute("aria-label", t("userMarker.previousImage"));
+      previousButton.setAttribute("title", t("userMarker.previousImage"));
+      previousButton.textContent = "‹";
+      previousButton.addEventListener("click", () => stepImagePreview(-1));
+      viewport.appendChild(previousButton);
+
+      const image = document.createElement("img");
+      image.className = "gpt-paragraph-nav__image-preview-image";
+      image.alt = "";
+      image.decoding = "async";
+      image.addEventListener("load", () => {
+        if (image.getAttribute("src") !== state.imagePreviewUrls[state.activeImagePreviewIndex]) {
+          return;
+        }
+        image.hidden = false;
+        const failure = overlay.querySelector(".gpt-paragraph-nav__image-preview-failure");
+        if (failure instanceof HTMLElement) {
+          failure.hidden = true;
+        }
+      });
+      image.addEventListener("error", () => {
+        if (image.getAttribute("src") !== state.imagePreviewUrls[state.activeImagePreviewIndex]) {
+          return;
+        }
+        image.hidden = true;
+        const failure = overlay.querySelector(".gpt-paragraph-nav__image-preview-failure");
+        if (failure instanceof HTMLElement) {
+          failure.hidden = false;
+        }
+      });
+      viewport.appendChild(image);
+
+      const nextButton = document.createElement("button");
+      nextButton.type = "button";
+      nextButton.className = "gpt-paragraph-nav__image-preview-nav is-next";
+      nextButton.setAttribute("aria-label", t("userMarker.nextImage"));
+      nextButton.setAttribute("title", t("userMarker.nextImage"));
+      nextButton.textContent = "›";
+      nextButton.addEventListener("click", () => stepImagePreview(1));
+      viewport.appendChild(nextButton);
+      content.appendChild(viewport);
+
+      const counter = document.createElement("div");
+      counter.className = "gpt-paragraph-nav__image-preview-counter";
+      counter.setAttribute("aria-live", "polite");
+      content.appendChild(counter);
+
+      const failure = document.createElement("div");
+      failure.className = "gpt-paragraph-nav__image-preview-failure";
+      failure.hidden = true;
+      failure.textContent = t("userMarker.imagePreviewLoadFailure");
+      content.appendChild(failure);
+
+      overlay.appendChild(content);
+      root.appendChild(overlay);
+    }
+
+    syncImagePreviewOverlay(overlay);
+    return overlay;
+  }
+
+  function imagePreviewUrlsForSources(sources) {
+    const values = Array.isArray(sources) ? sources : [];
+    return userMessageThumbnailForSources(values, window.location.href).imageUrls;
+  }
+
+  function syncImagePreviewOverlay(overlay) {
+    const urls = state.imagePreviewUrls;
+    const index = Math.min(Math.max(state.activeImagePreviewIndex, 0), Math.max(urls.length - 1, 0));
+    state.activeImagePreviewIndex = index;
+    const image = overlay.querySelector(".gpt-paragraph-nav__image-preview-image");
+    const previousButton = overlay.querySelector(".gpt-paragraph-nav__image-preview-nav.is-previous");
+    const nextButton = overlay.querySelector(".gpt-paragraph-nav__image-preview-nav.is-next");
+    const counter = overlay.querySelector(".gpt-paragraph-nav__image-preview-counter");
+    const failure = overlay.querySelector(".gpt-paragraph-nav__image-preview-failure");
+    if (image instanceof HTMLImageElement) {
+      const nextSrc = urls[index] || "";
+      if (image.getAttribute("src") !== nextSrc) {
+        image.hidden = !nextSrc;
+        if (failure instanceof HTMLElement) {
+          failure.hidden = true;
+        }
+        if (nextSrc) {
+          image.src = nextSrc;
+        } else {
+          image.removeAttribute("src");
+        }
+      }
+    }
+    if (previousButton instanceof HTMLButtonElement) {
+      previousButton.hidden = urls.length < 2;
+      previousButton.disabled = urls.length < 2;
+    }
+    if (nextButton instanceof HTMLButtonElement) {
+      nextButton.hidden = urls.length < 2;
+      nextButton.disabled = urls.length < 2;
+    }
+    if (counter instanceof HTMLElement) {
+      counter.hidden = urls.length < 2;
+      counter.textContent = urls.length > 1
+        ? t("userMarker.imageCounter", { current: index + 1, count: urls.length })
+        : "";
+    }
+    overlay.hidden = !state.isImagePreviewOpen || urls.length === 0;
+  }
+
+  function syncOpenImagePreviewForThumbnail(labelThumbnail) {
+    if (!state.isImagePreviewOpen || state.imagePreviewReturnElement !== labelThumbnail) {
+      return;
+    }
+    const urls = imagePreviewUrlsForSources(userImagePreviewSources.get(labelThumbnail) || []);
+    if (!urls.length) {
+      closeImagePreviewOverlay();
+      return;
+    }
+    const currentUrl = state.imagePreviewUrls[state.activeImagePreviewIndex] || "";
+    const currentIndex = urls.indexOf(currentUrl);
+    state.imagePreviewUrls = urls;
+    state.activeImagePreviewIndex = currentIndex >= 0
+      ? currentIndex
+      : Math.min(state.activeImagePreviewIndex, urls.length - 1);
+    const overlay = document.querySelector(`#${ROOT_ID} .${IMAGE_PREVIEW_CLASS}`);
+    if (overlay instanceof HTMLElement) {
+      syncImagePreviewOverlay(overlay);
+    }
+  }
+
+  function openImagePreview(sources, returnElement) {
+    if (state.isReleaseNoticeOpen || state.isExplosionOpen) {
+      return;
+    }
+    const urls = imagePreviewUrlsForSources(sources);
+    if (!urls.length) {
+      return;
+    }
+    state.imagePreviewUrls = urls;
+    state.activeImagePreviewIndex = 0;
+    state.imagePreviewReturnElement = returnElement instanceof HTMLElement ? returnElement : null;
+    state.isImagePreviewOpen = true;
+    lockPageScroll();
+    const overlay = getImagePreviewOverlay();
+    syncImagePreviewOverlay(overlay);
+    const closeButton = overlay.querySelector(".gpt-paragraph-nav__image-preview-close");
+    requestAnimationFrame(() => {
+      if (state.isImagePreviewOpen && closeButton instanceof HTMLButtonElement) {
+        closeButton.focus();
+      }
+    });
+  }
+
+  function stepImagePreview(delta) {
+    if (!state.isImagePreviewOpen || state.imagePreviewUrls.length < 2) {
+      return;
+    }
+    const count = state.imagePreviewUrls.length;
+    state.activeImagePreviewIndex = (state.activeImagePreviewIndex + delta + count) % count;
+    const overlay = document.querySelector(`#${ROOT_ID} .${IMAGE_PREVIEW_CLASS}`);
+    if (overlay instanceof HTMLElement) {
+      syncImagePreviewOverlay(overlay);
+    }
+  }
+
+  function closeImagePreviewOverlay() {
+    if (!state.isImagePreviewOpen) {
+      return;
+    }
+
+    state.isImagePreviewOpen = false;
+    state.imagePreviewUrls = [];
+    state.activeImagePreviewIndex = 0;
+    const returnElement = state.imagePreviewReturnElement;
+    state.imagePreviewReturnElement = null;
+    unlockPageScroll();
+    const overlay = document.querySelector(`#${ROOT_ID} .${IMAGE_PREVIEW_CLASS}`);
+    if (overlay instanceof HTMLElement) {
+      syncImagePreviewOverlay(overlay);
+    }
+    let focusTarget = returnElement;
+    if (!(focusTarget instanceof HTMLElement && focusTarget.isConnected && !focusTarget.hidden)) {
+      const marker = returnElement?.closest?.(".gpt-paragraph-nav__marker-shell")?.querySelector("button");
+      focusTarget = marker instanceof HTMLElement ? marker : null;
+    }
+    if (focusTarget instanceof HTMLElement && focusTarget.isConnected && !focusTarget.hidden) {
+      focusTarget.focus({ preventScroll: true });
+    }
   }
 
   function getReleaseNoticeOverlay(root = getRoot()) {
@@ -2972,6 +3206,49 @@ import {
       .replace(GEMINI_USER_ROLE_PREFIX_PATTERN, "");
   }
 
+  function userMessageImageSelector() {
+    return isGeminiPage() ? GEMINI_USER_IMAGE_SELECTOR : USER_MESSAGE_IMAGE_SELECTOR;
+  }
+
+  function isUserMessageImage(image, messageElement) {
+    if (!(image instanceof HTMLImageElement) || isInsideNavigationRoot(image)) {
+      return false;
+    }
+    for (let node = image; node && node !== messageElement; node = node.parentElement) {
+      if (node.matches?.(USER_MESSAGE_AVATAR_SELECTOR)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  function firstImageSrcsetUrl(image) {
+    const srcset = image.getAttribute("srcset") || "";
+    return srcset
+      .split(",")
+      .map((candidate) => candidate.trim().split(/\s+/)[0] || "")
+      .find(Boolean) || "";
+  }
+
+  function userMessageImageSource(image) {
+    const candidates = [
+      image.currentSrc,
+      image.src,
+      firstImageSrcsetUrl(image),
+      image.getAttribute("data-src"),
+      image.getAttribute("data-original"),
+      image.getAttribute("data-url")
+    ];
+    return candidates.find((candidate) => safeUserMessageImageUrl(candidate, window.location.href)) || "";
+  }
+
+  function userMessageThumbnail(element) {
+    const sources = Array.from(element.querySelectorAll(userMessageImageSelector()))
+      .filter((image) => isUserMessageImage(image, element))
+      .map(userMessageImageSource);
+    return userMessageThumbnailForSources(sources, window.location.href);
+  }
+
   function compareDocumentOrder(left, right) {
     if (left === right) {
       return 0;
@@ -2990,11 +3267,18 @@ import {
 
   function makeUserMarkerItem(element) {
     const text = userMessageText(element);
-    const title = normalizeTitle(text);
+    const textTitle = normalizeTitle(text);
+    const { imageUrls, thumbnailSrc, imageCount } = userMessageThumbnail(element);
+    const isImageOnly = !textTitle && Boolean(thumbnailSrc);
+    const title = textTitle || (isImageOnly ? t("userMarker.imageOnly") : "");
     return {
       element,
       title,
-      previewTitle: firstLineMarkerTitle(text) || title,
+      previewTitle: isImageOnly ? "" : firstLineMarkerTitle(text) || title,
+      imageUrls,
+      thumbnailSrc,
+      imageCount,
+      isImageOnly,
       markerKey: markerKeyFor(element)
     };
   }
@@ -3973,9 +4257,13 @@ import {
 
   function userMarkerRenderItem(group, isExpanded) {
     const { user } = group;
-    const ariaLabel = isExpanded
+    const baseAriaLabel = isExpanded
       ? t("userMarker.collapseAria", { title: user.title })
       : t("userMarker.expandAria", { title: user.title });
+    const imageCountAria = user.isImageOnly && user.imageCount > 0
+      ? `, ${t("userMarker.imageCountAria", { count: user.imageCount })}`
+      : "";
+    const ariaLabel = `${baseAriaLabel}${imageCountAria}`;
     const preview = markerPreviewFor(user.previewTitle);
     return {
       key: `user:${group.key}`,
@@ -3985,8 +4273,12 @@ import {
       ariaLabel,
       title: user.title,
       preview,
+      thumbnailSrc: user.thumbnailSrc,
+      imageCount: user.imageCount,
+      imageUrls: user.imageUrls,
+      isImageOnly: user.isImageOnly,
       width: markerWidthFor(user.previewTitle),
-      signature: markerRenderSignature(["user", isExpanded, ariaLabel, user.title, preview])
+      signature: markerRenderSignature(["user", isExpanded, ariaLabel, user.title, preview, user.imageUrls, user.thumbnailSrc, user.imageCount, user.isImageOnly])
     };
   }
 
@@ -4017,10 +4309,13 @@ import {
     }
 
     const row = document.createElement("div");
+    const markerShell = document.createElement("div");
+    markerShell.className = "gpt-paragraph-nav__marker-shell";
     const marker = document.createElement("button");
     marker.type = "button";
     marker.dataset.markerItemType = item.type;
-    row.appendChild(marker);
+    markerShell.appendChild(marker);
+    row.appendChild(markerShell);
 
     if (item.type === "fold") {
       const label = document.createElement("span");
@@ -4036,6 +4331,28 @@ import {
       chevron.setAttribute("aria-hidden", "true");
       marker.appendChild(chevron);
     } else {
+      if (item.type === "user") {
+        const thumbnail = document.createElement("img");
+        thumbnail.className = "gpt-paragraph-nav__user-thumbnail";
+        thumbnail.alt = "";
+        thumbnail.loading = "lazy";
+        thumbnail.decoding = "async";
+        thumbnail.addEventListener("error", () => {
+          const failedSrc = thumbnail.getAttribute("src") || "";
+          if (failedSrc) {
+            thumbnail.dataset.failedSrc = failedSrc;
+          }
+          thumbnail.hidden = true;
+          thumbnail.nextElementSibling.hidden = true;
+        });
+        marker.appendChild(thumbnail);
+
+        const imageCount = document.createElement("span");
+        imageCount.className = "gpt-paragraph-nav__user-image-count";
+        imageCount.setAttribute("aria-hidden", "true");
+        marker.appendChild(imageCount);
+      }
+
       const preview = document.createElement("span");
       preview.className = "gpt-paragraph-nav__preview";
       marker.appendChild(preview);
@@ -4049,8 +4366,44 @@ import {
 
       if (item.type !== "earlier") {
         const label = document.createElement("span");
-        label.className = "gpt-paragraph-nav__label";
-        marker.appendChild(label);
+        label.className = `gpt-paragraph-nav__label${item.type === "user" ? " gpt-paragraph-nav__label--user" : ""}`;
+        if (item.type === "user") {
+          const labelThumbnail = document.createElement("img");
+          labelThumbnail.className = "gpt-paragraph-nav__label-thumbnail";
+          labelThumbnail.alt = "";
+          labelThumbnail.loading = "lazy";
+          labelThumbnail.decoding = "async";
+          labelThumbnail.tabIndex = -1;
+          labelThumbnail.setAttribute("role", "button");
+          labelThumbnail.setAttribute("aria-label", t("userMarker.openImage"));
+          labelThumbnail.addEventListener("click", (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            openImagePreview(userImagePreviewSources.get(labelThumbnail) || [], labelThumbnail);
+          });
+          labelThumbnail.addEventListener("keydown", (event) => {
+            if (event.key !== "Enter" && event.key !== " ") {
+              return;
+            }
+            event.preventDefault();
+            event.stopPropagation();
+            openImagePreview(userImagePreviewSources.get(labelThumbnail) || [], labelThumbnail);
+          });
+          labelThumbnail.addEventListener("error", () => {
+            const failedSrc = labelThumbnail.getAttribute("src") || "";
+            if (failedSrc) {
+              labelThumbnail.dataset.failedSrc = failedSrc;
+            }
+            labelThumbnail.hidden = true;
+            labelThumbnail.tabIndex = -1;
+          });
+          label.appendChild(labelThumbnail);
+
+          const labelText = document.createElement("span");
+          labelText.className = "gpt-paragraph-nav__label-text";
+          label.appendChild(labelText);
+        }
+        markerShell.appendChild(label);
       }
     }
 
@@ -4066,7 +4419,10 @@ import {
 
     row.className = `gpt-paragraph-nav__marker-row gpt-paragraph-nav__marker-row--${item.type === "user" || item.type === "earlier" ? "user" : "ai"}`;
     row.dataset.markerRenderKey = item.key;
-    const marker = row.firstElementChild;
+    const marker = row.firstElementChild?.firstElementChild;
+    if (!(marker instanceof HTMLButtonElement)) {
+      return;
+    }
     marker.dataset.markerItemType = item.type;
 
     if (item.type === "fold") {
@@ -4092,14 +4448,53 @@ import {
 
     if (item.type === "ai") {
       marker.dataset.markerKey = item.markerKey;
-      marker.querySelector(".gpt-paragraph-nav__label").textContent = item.title;
+      row.querySelector(".gpt-paragraph-nav__label").textContent = item.title;
       return;
     }
 
     marker.setAttribute("aria-expanded", String(item.isExpanded));
     if (item.type === "user") {
       marker.dataset.userMarkerKey = item.groupKey;
-      marker.querySelector(".gpt-paragraph-nav__label").textContent = item.title;
+      const label = row.querySelector(".gpt-paragraph-nav__label");
+      const labelText = label.querySelector(".gpt-paragraph-nav__label-text");
+      labelText.textContent = item.title;
+      label.classList.toggle("is-image-only", item.isImageOnly);
+      const labelThumbnail = label.querySelector(".gpt-paragraph-nav__label-thumbnail");
+      const imageUrls = Array.isArray(item.imageUrls) ? item.imageUrls : [];
+      userImagePreviewSources.set(labelThumbnail, imageUrls);
+      labelThumbnail.tabIndex = imageUrls.length ? 0 : -1;
+      labelThumbnail.setAttribute(
+        "aria-label",
+        imageUrls.length > 0
+          ? `${t("userMarker.openImage")}, ${t("userMarker.imageCountAria", { count: imageUrls.length })}`
+          : t("userMarker.openImage")
+      );
+      const previousLabelSrc = labelThumbnail.getAttribute("src") || "";
+      if (previousLabelSrc !== item.thumbnailSrc) {
+        delete labelThumbnail.dataset.failedSrc;
+      }
+      labelThumbnail.hidden = !item.thumbnailSrc || labelThumbnail.dataset.failedSrc === item.thumbnailSrc;
+      if (item.thumbnailSrc && previousLabelSrc !== item.thumbnailSrc) {
+        labelThumbnail.src = item.thumbnailSrc;
+      } else if (!item.thumbnailSrc && previousLabelSrc) {
+        labelThumbnail.removeAttribute("src");
+      }
+      marker.classList.toggle("is-image-only", item.isImageOnly);
+      const thumbnail = marker.querySelector(".gpt-paragraph-nav__user-thumbnail");
+      const previousSrc = thumbnail.getAttribute("src") || "";
+      if (previousSrc !== item.thumbnailSrc) {
+        delete thumbnail.dataset.failedSrc;
+      }
+      thumbnail.hidden = !item.thumbnailSrc || thumbnail.dataset.failedSrc === item.thumbnailSrc;
+      if (item.thumbnailSrc && thumbnail.getAttribute("src") !== item.thumbnailSrc) {
+        thumbnail.src = item.thumbnailSrc;
+      } else if (!item.thumbnailSrc && previousSrc) {
+        thumbnail.removeAttribute("src");
+      }
+      const imageCount = marker.querySelector(".gpt-paragraph-nav__user-image-count");
+      imageCount.hidden = item.imageCount < 2;
+      imageCount.textContent = item.imageCount > 1 ? `+${item.imageCount - 1}` : "";
+      syncOpenImagePreviewForThumbnail(labelThumbnail);
     }
   }
 
@@ -4300,6 +4695,7 @@ import {
 
     if (!isSupportedRoute()) {
       closeExplosionOverlay();
+      closeImagePreviewOverlay();
       markerListReconciler.reset();
       markerListActiveTracker.reset();
       markerListScrollPersistence.reset();
@@ -4318,6 +4714,7 @@ import {
 
     if (!renderSnapshot.hasConversation) {
       closeExplosionOverlay();
+      closeImagePreviewOverlay();
       markerListReconciler.reset();
       markerListActiveTracker.reset();
       markerListScrollPersistence.reset();
@@ -4458,6 +4855,11 @@ import {
     state.explosionSections = [];
     state.activeExplosionSectionIndex = 0;
     state.lastExplosionRenderSignature = "";
+    closeImagePreviewOverlay();
+    state.isImagePreviewOpen = false;
+    state.imagePreviewUrls = [];
+    state.activeImagePreviewIndex = 0;
+    state.imagePreviewReturnElement = null;
     state.lastRenderedHeadingCount = 0;
     state.markerSearchQuery = "";
     state.explosionSearchQuery = "";
@@ -4492,6 +4894,7 @@ import {
     state.routeKey = nextRouteKey;
     recordDiagnosticEvent("route_change", { source: "route-bridge" });
     closeExplosionOverlay();
+    closeImagePreviewOverlay();
     resetRouteState();
     state.awaitingRouteDom = true;
     removeNavigationRoot();
@@ -4743,7 +5146,7 @@ import {
   }
 
   function handlePointerDown(event) {
-    if (state.pointerDrag || state.isExplosionOpen || !isPrimaryPointer(event)) {
+    if (state.pointerDrag || state.isExplosionOpen || state.isImagePreviewOpen || !isPrimaryPointer(event)) {
       return;
     }
 
@@ -4963,6 +5366,20 @@ import {
       return;
     }
 
+    if (state.isImagePreviewOpen) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeImagePreviewOverlay();
+        return;
+      }
+      if (!event.metaKey && !event.ctrlKey && !event.altKey && (event.key === "ArrowLeft" || event.key === "ArrowRight")) {
+        event.preventDefault();
+        event.stopPropagation();
+        stepImagePreview(event.key === "ArrowLeft" ? -1 : 1);
+      }
+      return;
+    }
+
     if (event.key === "Escape" && state.isExplosionOpen) {
       const copyMenu = document.querySelector(`#${ROOT_ID} .gpt-paragraph-nav__explosion-copy-menu`);
       if (copyMenu instanceof HTMLDetailsElement && copyMenu.open) {
@@ -5100,6 +5517,8 @@ import {
 
     state.observer = new MutationObserver(handleDocumentMutations);
     state.observer.observe(document.body, {
+      attributes: true,
+      attributeFilter: USER_MESSAGE_IMAGE_ATTRIBUTE_FILTER,
       childList: true,
       subtree: true,
       characterData: true
