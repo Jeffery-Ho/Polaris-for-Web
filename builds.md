@@ -15,7 +15,7 @@
 - Date: 2026-09-14
 - Version: 0.51.5
 - Summary: Adds an in-page image preview gallery for user Maker tooltip images.
-- Notes: Clicking only the image in a user Maker tooltip opens a Polaris modal using the safe image URLs already present in the message. Multi-image messages support previous/next controls, a counter, keyboard arrow navigation, Escape, backdrop click, close control, scroll locking, focus restoration, and localized load-failure fallback. The preview backdrop now reuses the user Maker frosted-glass background variable and blur treatment across light and dark themes, and its close button reuses the Chapter View close-button definition. The Maker button remains dedicated to expand/collapse. Updated the current version to `0.51.5(207)`.
+- Notes: Clicking only the image in a user Maker tooltip opens a Polaris modal using the safe image URLs already present in the message. Multi-image messages support previous/next controls, a counter, keyboard arrow navigation, Escape, backdrop click, close control, scroll locking, focus restoration, and localized load-failure fallback. The preview backdrop and content surface now reuse the user Maker frosted-glass background variable and blur treatment across light and dark themes, and its close button reuses the Chapter View close-button definition. The Maker button remains dedicated to expand/collapse. Updated the current version to `0.51.5(207)`.
 
 ## 206
 

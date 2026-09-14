@@ -136,6 +136,10 @@ test("图片预览遮罩沿用 Maker 毛玻璃背景", () => {
     styles,
     /\.gpt-paragraph-nav__marker\.gpt-paragraph-nav__marker--user \{[\s\S]*?background: var\(--gpt-glass-user-marker-bg\);/
   );
+  assert.match(
+    styles,
+    /\.gpt-paragraph-nav__image-preview-content \{[\s\S]*?background: var\(--gpt-glass-user-marker-bg\);/
+  );
   assert.match(styles, /#gpt-paragraph-nav\[data-page-theme="dark"\] \{[\s\S]*?--gpt-glass-user-marker-bg: rgba\(96, 165, 250, 0\.24\);/);
   assert.doesNotMatch(
     styles,
