@@ -126,21 +126,18 @@ test("页内图片画廊提供计数、切换、关闭和失败回退", () => {
   assert.match(styles, /\.gpt-paragraph-nav__image-preview-image \{[\s\S]*?object-fit: contain;/);
 });
 
-test("图片预览遮罩沿用 Maker 毛玻璃背景", () => {
+test("图片预览遮罩沿用 AI content 毛玻璃背景", () => {
   assert.match(
     styles,
-    /\.gpt-paragraph-nav__image-preview-overlay \{[\s\S]*?background: var\(--gpt-glass-user-marker-bg\);[\s\S]*?-webkit-backdrop-filter: blur\(var\(--gpt-glass-blur\)\) saturate\(var\(--gpt-glass-saturate\)\);[\s\S]*?backdrop-filter: blur\(var\(--gpt-glass-blur\)\) saturate\(var\(--gpt-glass-saturate\)\);/
+    /\.gpt-paragraph-nav__image-preview-overlay \{[\s\S]*?background: var\(--gpt-ai-content-bg\);[\s\S]*?background: color-mix\(in srgb, var\(--gpt-ai-content-bg\) 76%, transparent\);[\s\S]*?-webkit-backdrop-filter: blur\(var\(--gpt-glass-blur\)\) saturate\(var\(--gpt-glass-saturate\)\);[\s\S]*?backdrop-filter: blur\(var\(--gpt-glass-blur\)\) saturate\(var\(--gpt-glass-saturate\)\);/
   );
-  assert.match(styles, /--gpt-glass-user-marker-bg: rgba\(219, 234, 254, 0\.72\);/);
+  assert.match(styles, /--gpt-ai-content-bg: var\(--gpt-glass-bg\);/);
   assert.match(
     styles,
-    /\.gpt-paragraph-nav__marker\.gpt-paragraph-nav__marker--user \{[\s\S]*?background: var\(--gpt-glass-user-marker-bg\);/
+    /\.gpt-paragraph-nav__image-preview-content \{[\s\S]*?background: var\(--gpt-ai-content-bg\);[\s\S]*?background: color-mix\(in srgb, var\(--gpt-ai-content-bg\) 76%, transparent\);/
   );
-  assert.match(
-    styles,
-    /\.gpt-paragraph-nav__image-preview-content \{[\s\S]*?background: var\(--gpt-glass-user-marker-bg\);/
-  );
-  assert.match(styles, /#gpt-paragraph-nav\[data-page-theme="dark"\] \{[\s\S]*?--gpt-glass-user-marker-bg: rgba\(96, 165, 250, 0\.24\);/);
+  assert.match(contentSource, /function firstOpaqueBackgroundColor\(elements\)/);
+  assert.match(contentSource, /root\.style\.setProperty\("--gpt-ai-content-bg", aiContentBackground\)/);
   assert.doesNotMatch(
     styles,
     /\.gpt-paragraph-nav__image-preview-overlay \{[\s\S]*?background: rgba\(2, 6, 23, 0\.62\);/

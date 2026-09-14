@@ -13,6 +13,7 @@
   --gpt-glass-marker-bg: var(--gpt-glass-bg);
   --gpt-glass-user-marker-bg: rgba(219, 234, 254, 0.72);
   --gpt-glass-user-marker-hover-bg: rgba(219, 234, 254, 0.86);
+  --gpt-ai-content-bg: var(--gpt-glass-bg);
   --gpt-glass-fold-hover-bg: rgba(20, 22, 30, 0.88);
   --gpt-highlight-bg: #ffffff;
   --gpt-highlight-text: #000000;
@@ -422,7 +423,8 @@ html.gpt-paragraph-nav--dragging * {
   place-items: center;
   box-sizing: border-box;
   padding: 16px;
-  background: var(--gpt-glass-user-marker-bg);
+  background: var(--gpt-ai-content-bg);
+  background: color-mix(in srgb, var(--gpt-ai-content-bg) 76%, transparent);
   -webkit-backdrop-filter: blur(var(--gpt-glass-blur)) saturate(var(--gpt-glass-saturate));
   backdrop-filter: blur(var(--gpt-glass-blur)) saturate(var(--gpt-glass-saturate));
   pointer-events: auto;
@@ -446,7 +448,8 @@ html.gpt-paragraph-nav--dragging * {
   box-sizing: border-box;
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 24px;
-  background: var(--gpt-glass-user-marker-bg);
+  background: var(--gpt-ai-content-bg);
+  background: color-mix(in srgb, var(--gpt-ai-content-bg) 76%, transparent);
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.38);
   -webkit-backdrop-filter: blur(18px) saturate(140%);
   backdrop-filter: blur(18px) saturate(140%);
@@ -537,7 +540,8 @@ html.gpt-paragraph-nav--dragging * {
 }
 
 #gpt-paragraph-nav[data-page-theme="light"] .gpt-paragraph-nav__image-preview-overlay {
-  background: var(--gpt-glass-user-marker-bg);
+  background: var(--gpt-ai-content-bg);
+  background: color-mix(in srgb, var(--gpt-ai-content-bg) 76%, transparent);
 }
 
 @media (max-width: 720px) {

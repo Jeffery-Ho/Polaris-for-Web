@@ -624,6 +624,27 @@ import {
     }
   }
 
+  function backgroundColorAlpha(value) {
+    const match = String(value || "").match(/^rgba?\(\s*[\d.]+[\s,]+[\d.]+[\s,]+[\d.]+(?:\s*[,/]\s*([\d.]+%?))?\s*\)$/i);
+    if (!match) {
+      return 0;
+    }
+    const alpha = match[1] ? Number.parseFloat(match[1]) : 1;
+    return match[1]?.endsWith("%") ? alpha / 100 : alpha;
+  }
+
+  function firstOpaqueBackgroundColor(elements) {
+    for (const element of elements) {
+      for (let node = element; node instanceof HTMLElement; node = node.parentElement) {
+        const backgroundColor = window.getComputedStyle(node).backgroundColor;
+        if (backgroundColorAlpha(backgroundColor) >= 0.8) {
+          return backgroundColor;
+        }
+      }
+    }
+    return "";
+  }
+
   function updatePageTheme(root) {
     const fallbackTheme = window.matchMedia(PAGE_THEME_MEDIA_QUERY).matches ? "dark" : "light";
     const pageSurfaces = [
@@ -632,12 +653,21 @@ import {
       document.body,
       document.documentElement
     ].filter((element) => element instanceof HTMLElement);
+    const aiContentBackground = firstOpaqueBackgroundColor([
+      ...getAssistantContainers(),
+      ...pageSurfaces
+    ]);
     const theme = pageThemeFromColors(
       pageSurfaces.map((element) => window.getComputedStyle(element).backgroundColor),
       fallbackTheme
     );
 
     applyPageTheme(root, theme);
+    if (aiContentBackground) {
+      root.style.setProperty("--gpt-ai-content-bg", aiContentBackground);
+    } else {
+      root.style.removeProperty("--gpt-ai-content-bg");
+    }
     state.pageThemeWatcher?.refresh();
   }
 
