@@ -161,6 +161,25 @@ test("图片预览关闭按钮复用章节弹窗的关闭按钮定义", () => {
   assert.doesNotMatch(styles, /\.gpt-paragraph-nav__image-preview-close:hover/);
 });
 
+test("图片预览翻页按钮复用浅灰默认背景并移除照片阴影", () => {
+  assert.match(
+    styles,
+    /\.gpt-paragraph-nav__image-preview-overlay \{[\s\S]*?--gpt-explosion-action-bg: rgba\(15, 23, 42, 0\.05\);[\s\S]*?--gpt-explosion-action-text: var\(--gpt-arco-text-2\);/
+  );
+  assert.match(
+    styles,
+    /\.gpt-paragraph-nav__image-preview-nav \{[\s\S]*?border: 1px solid var\(--gpt-explosion-action-border\);[\s\S]*?background: var\(--gpt-explosion-action-bg\);[\s\S]*?color: var\(--gpt-explosion-action-text\);/
+  );
+  assert.match(
+    styles,
+    /\.gpt-paragraph-nav__image-preview-counter,[\s\S]*?color: var\(--gpt-arco-text-2\);/
+  );
+  assert.match(
+    styles,
+    /\.gpt-paragraph-nav__image-preview-image \{[\s\S]*?box-shadow: none;/
+  );
+});
+
 test("缩小模式为折叠分组的标题、余量和箭头扩展宽度", () => {
   assert.match(
     styles,
