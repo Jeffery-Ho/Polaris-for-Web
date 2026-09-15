@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 213
+
+- Date: 2026-09-15
+- Version: 0.53.4
+- Summary: Keeps the portrait Maker arrangement inside a bounded vertical Sidebar container.
+- Notes: Vertical Sidebar Maker rows now fill only the bounded Maker pane, preserving left-aligned AI entries and right-aligned user entries without spreading them across the viewport. The vertical container width is recalculated from the current control and viewport sizes when switching layouts. Updated the current version to `0.53.4(213)`.
+
 ## 212
 
 - Date: 2026-09-15
