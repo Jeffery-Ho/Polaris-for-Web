@@ -725,6 +725,16 @@ import {
     return list;
   }
 
+  function ensureMarkerSearchIcon(wrapper) {
+    if (wrapper.querySelector(".gpt-paragraph-nav__search-icon")) {
+      return;
+    }
+    const icon = document.createElement("span");
+    icon.className = "gpt-paragraph-nav__search-icon";
+    icon.setAttribute("aria-hidden", "true");
+    wrapper.prepend(icon);
+  }
+
   function getMarkerSearchInput(root = getRoot()) {
     let input = root.querySelector(".gpt-paragraph-nav__search-input");
     const pane = getMakerPane(root);
@@ -759,11 +769,15 @@ import {
       });
 
       wrapper.appendChild(input);
+      ensureMarkerSearchIcon(wrapper);
       pane.insertBefore(wrapper, list);
     } else {
       const wrapper = input.closest(".gpt-paragraph-nav__search");
-      if (wrapper instanceof HTMLElement && wrapper.parentElement !== pane) {
-        pane.insertBefore(wrapper, list);
+      if (wrapper instanceof HTMLElement) {
+        ensureMarkerSearchIcon(wrapper);
+        if (wrapper.parentElement !== pane) {
+          pane.insertBefore(wrapper, list);
+        }
       }
     }
 
@@ -930,6 +944,76 @@ import {
     return icon;
   }
 
+  function createControlTabIcon(key) {
+    if (key === "navigation") {
+      const icon = document.createElement("img");
+      icon.className = "gpt-paragraph-nav__control-tab-icon";
+      icon.alt = "";
+      icon.width = 16;
+      icon.height = 16;
+      icon.src = extensionMetadata.iconUrl;
+      return icon;
+    }
+
+    const namespace = "http://www.w3.org/2000/svg";
+    const icon = document.createElementNS(namespace, "svg");
+    icon.classList.add(
+      "gpt-paragraph-nav__control-tab-icon",
+      "gpt-paragraph-nav__control-tab-icon--vertical"
+    );
+    icon.setAttribute("aria-hidden", "true");
+    icon.setAttribute("focusable", "false");
+    icon.setAttribute("height", "24px");
+    icon.setAttribute("viewBox", "0 0 24 24");
+    icon.setAttribute("width", "24px");
+
+    const title = document.createElementNS(namespace, "title");
+    title.textContent = key === "chapters" ? "book-open" : "information";
+    icon.appendChild(title);
+
+    const group = document.createElementNS(namespace, "g");
+    group.setAttribute("fill", "none");
+    group.setAttribute("stroke", "currentColor");
+    group.setAttribute("stroke-linecap", "round");
+    group.setAttribute("stroke-linejoin", "round");
+    group.setAttribute("stroke-width", "1.5");
+
+    if (key === "chapters") {
+      const path = document.createElementNS(namespace, "path");
+      path.setAttribute("d", "M12,5 L11.4059,4.40589 C10.887,3.88703 10.6276,3.6276 10.3249,3.44208 C10.0564,3.27759 9.7638,3.15638 9.4577,3.08289 C9.11243,3 8.74555,3 8.01178,3 L4.6,3 C4.03995,3 3.75992,3 3.54601,3.10899 C3.35785,3.20487 3.20487,3.35785 3.10899,3.54601 C3,3.75992 3,4.03995 3,4.6 L3,17.4 C3,17.9601 3,18.2401 3.10899,18.454 C3.20487,18.6422 3.35785,18.7951 3.54601,18.891 C3.75992,19 4.03995,19 4.6,19 L8.01178,19 C8.74555,19 9.11243,19 9.4577,19.0829 C9.7638,19.1564 10.0564,19.2776 10.3249,19.4421 C10.6276,19.6276 10.887,19.887 11.4059,20.4059 L12,21 L12.5941,20.4059 C13.113,19.887 13.3724,19.6276 13.6751,19.4421 C13.9436,19.2776 14.2362,19.1564 14.5423,19.0829 C14.8876,19 15.2545,19 15.9882,19 L19.4,19 C19.9601,19 20.2401,19 20.454,18.891 C20.6422,18.7951 20.7951,18.6422 20.891,18.454 C21,18.2401 21,17.9601 21,17.4 L21,4.6 C21,4.03995 21,3.75992 20.891,3.54601 C20.7951,3.35785 20.6422,3.20487 20.454,3.10899 C20.2401,3 19.9601,3 19.4,3 L15.9882,3 C15.2545,3 14.8876,3 14.5423,3.08289 C14.2362,3.15638 13.9436,3.27759 13.6751,3.44208 C13.3724,3.6276 13.113,3.88703 12.5941,4.40589 L12,5 Z M12,21 L12,5");
+      group.appendChild(path);
+    } else {
+      group.setAttribute("fill-rule", "evenodd");
+      const innerGroup = document.createElementNS(namespace, "g");
+      innerGroup.setAttribute("transform", "translate(3, 3)");
+      innerGroup.setAttribute("stroke", "currentColor");
+
+      const line = document.createElementNS(namespace, "line");
+      line.setAttribute("id", "information-line");
+      line.setAttribute("x1", "9");
+      line.setAttribute("y1", "12.5");
+      line.setAttribute("x2", "9");
+      line.setAttribute("y2", "9");
+      innerGroup.appendChild(line);
+
+      const circle = document.createElementNS(namespace, "path");
+      circle.setAttribute("d", "M9,18 C13.9706,18 18,13.9706 18,9 C18,4.02944 13.9706,0 9,0 C4.02944,0 0,4.02944 0,9 C0,13.9706 4.02944,18 9,18 Z");
+      innerGroup.appendChild(circle);
+
+      const dot = document.createElementNS(namespace, "line");
+      dot.setAttribute("id", "information-dot");
+      dot.setAttribute("x1", "9");
+      dot.setAttribute("y1", "6");
+      dot.setAttribute("x2", "9.01");
+      dot.setAttribute("y2", "6");
+      innerGroup.appendChild(dot);
+      group.appendChild(innerGroup);
+    }
+
+    icon.appendChild(group);
+    return icon;
+  }
+
   function createImagePreviewZoomIcon() {
     const namespace = "http://www.w3.org/2000/svg";
     const icon = document.createElementNS(namespace, "svg");
@@ -992,26 +1076,19 @@ import {
         tab.id = `gpt-paragraph-nav-tab-${key}`;
         tab.setAttribute("role", "tab");
         tab.setAttribute("aria-controls", controlsId);
+        tab.setAttribute("aria-label", label);
+        tab.appendChild(createControlTabIcon(key));
+
+        const title = document.createElement("span");
+        title.className = "gpt-paragraph-nav__control-tab-label";
+        title.textContent = label;
+        tab.appendChild(title);
+
         if (key === "navigation") {
-          const icon = document.createElement("img");
-          icon.className = "gpt-paragraph-nav__control-tab-icon";
-          icon.alt = "";
-          icon.width = 16;
-          icon.height = 16;
-          icon.src = extensionMetadata.iconUrl;
-          tab.appendChild(icon);
-
-          const title = document.createElement("span");
-          title.className = "gpt-paragraph-nav__control-tab-label";
-          title.textContent = label;
-          tab.appendChild(title);
-
           const chevron = document.createElement("span");
           chevron.className = "gpt-paragraph-nav__control-tab-chevron";
           chevron.setAttribute("aria-hidden", "true");
           tab.appendChild(chevron);
-        } else {
-          tab.textContent = label;
         }
         tab.addEventListener("click", () => {
           activateControlTab(key, {

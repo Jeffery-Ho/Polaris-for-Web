@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 210
+
+- Date: 2026-09-15
+- Version: 0.53.1
+- Summary: Makes vertical Sidebar navigation icon-only and adds dedicated Chapters and About icons.
+- Notes: The vertical layout now hides navigation text labels and the collapse chevron while retaining accessible labels on all three tabs. Chapters uses the supplied book-open SVG and About & Settings uses the supplied information SVG. Horizontal capsule layout remains unchanged. Updated the current version to `0.53.1(210)`.
+
 ## 209
 
 - Date: 2026-09-15
