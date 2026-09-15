@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 209
+
+- Date: 2026-09-15
+- Version: 0.53.0
+- Summary: Adds a switchable vertical right Sidebar layout for the main navigation and Maker list.
+- Notes: About & Settings now offers Horizontal capsule and Vertical right Sidebar layouts. The vertical layout keeps the three main navigation tabs in a draggable right-side stack and places the Maker search/list pane to its left across viewport sizes. Existing Maker scanning, jumping, scrolling, folding, search, themes, and floating Active Maker behavior remain unchanged. Updated the current version to `0.53.0(209)`.
+
 ## 208
 
 - Date: 2026-09-15

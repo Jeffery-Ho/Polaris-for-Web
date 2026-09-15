@@ -116,6 +116,32 @@ function createCheckbox({ label, isSelected, isDisabled, onChange }) {
   return wrapper;
 }
 
+function createNavigationLayoutSelector(model) {
+  const fieldset = createElement("fieldset", "polaris-settings-layout");
+  const legend = createElement("legend", "polaris-settings-section-label");
+  legend.textContent = model.navigationLayout.label;
+  const options = createElement("div", "polaris-settings-layout-options");
+
+  model.navigationLayout.options.forEach((option) => {
+    const wrapper = createElement("label", "polaris-settings-layout-option");
+    const input = document.createElement("input");
+    input.className = "polaris-settings-layout-input";
+    input.name = "polaris-navigation-layout";
+    input.type = "radio";
+    input.value = option.key;
+    input.checked = option.isSelected;
+    input.addEventListener("change", () => model.onNavigationLayoutChange(option.key));
+
+    const content = createElement("span", "polaris-settings-layout-content");
+    content.textContent = option.label;
+    wrapper.append(input, content);
+    options.appendChild(wrapper);
+  });
+
+  fieldset.append(legend, options);
+  return fieldset;
+}
+
 function createSeparator() {
   const separator = createElement("div", "polaris-settings-separator");
   separator.setAttribute("aria-hidden", "true");
@@ -218,7 +244,7 @@ function createSettingsPanel(model) {
 
   const sliders = createElement("div", "polaris-settings-sliders");
   model.fields.forEach((field) => sliders.appendChild(createSlider(field, model)));
-  body.append(sliders, createSeparator());
+  body.append(createNavigationLayoutSelector(model), createSeparator(), sliders, createSeparator());
 
   const markerTypes = createElement("section", "polaris-settings-marker-types");
   markerTypes.setAttribute("aria-label", model.markerTypesLabel);
