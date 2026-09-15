@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 208
+
+- Date: 2026-09-15
+- Version: 0.52.0
+- Summary: Adds an X profile entry beside the settings footer email action.
+- Notes: About & Settings now shows an accessible X profile link before email and GitHub Issue. The link opens `https://x.com/JefferyHo_` in a new tab and reuses the existing Footer contact styling. Updated the current version to `0.52.0(208)`.
+
 ## 207
 
 - Date: 2026-09-14

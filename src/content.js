@@ -229,6 +229,7 @@ import {
   const RATING_DISMISSAL_STORAGE_KEY = "polaris-rating-dismissed-until";
   const RELEASE_NOTICE_STORAGE_KEY = "polaris-release-notice-version";
   const SUPPORT_URL = "https://jeffery-ho.github.io/polaris-landing/entry/extension/";
+  const X_PROFILE_URL = "https://x.com/JefferyHo_";
   const RATING_DISMISSAL_DURATION_MS = 24 * 60 * 60 * 1000;
   const CONFIG_SCHEMA_VERSION = 7;
   const POINTER_DRAG_THRESHOLD = 4;
@@ -1960,6 +1961,8 @@ import {
       diagnosticStatus: model.diagnosticStatus,
       diagnosticTitle: model.diagnosticTitle,
       emailLabel: model.emailLabel,
+      xLabel: model.xLabel,
+      xUrl: model.xUrl,
       fields: model.fields.map(({ key, label, min, max, step, unit, value }) => [key, label, min, max, step, unit, value]),
       issueLabel: model.issueLabel,
       markerLevels: model.markerLevels.map(({ key, label, level, isDisabled, isSelected }) => [key, label, level, isDisabled, isSelected]),
@@ -2021,6 +2024,8 @@ import {
       iconUrl: extensionMetadata.iconUrl,
       issueLabel: t("contact.issue"),
       issueUrl: "https://github.com/Jeffery-Ho/Polaris-for-Web/issues",
+      xLabel: t("contact.x"),
+      xUrl: X_PROFILE_URL,
       markerLevels: MARKER_LEVEL_OPTIONS
         .filter((level) => supportedLevels.has(level))
         .map((level) => ({

@@ -1,5 +1,16 @@
 const RELEASE_NOTES = Object.freeze([
   {
+    version: "0.52.0",
+    en: {
+      title: "X profile in About & Settings",
+      changes: ["About & Settings now includes an X profile link beside email feedback in the footer."]
+    },
+    zh: {
+      title: "关于与设置新增 X 主页入口",
+      changes: ["关于与设置页 Footer 在邮件入口左侧新增 X 主页入口，可在新标签页打开。"]
+    }
+  },
+  {
     version: "0.51.0",
     en: {
       title: "Grok navigation",

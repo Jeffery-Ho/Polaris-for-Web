@@ -36,6 +36,10 @@ function createMailIcon() {
   return svg;
 }
 
+function createXIcon() {
+  return createIcon("M18.244 2.25h3.308l-7.227 8.26 8.502 11.24h-6.657l-5.214-6.817-5.964 6.817H1.684l7.73-8.835L1.25 2.25h6.824l4.713 6.231 5.457-6.231Zm-1.161 17.52h1.833L7.084 4.126H5.117L17.083 19.77Z");
+}
+
 function createStarIcon() {
   return createIcon("M12 2.75l2.8 5.68 6.27.91-4.54 4.42 1.07 6.24L12 17.08l-5.6 2.94 1.07-6.24-4.54-4.42 6.27-.91L12 2.75Z");
 }
@@ -261,6 +265,13 @@ function createSettingsPanel(model) {
   versionActions.append(version, releaseNotes);
   const actions = createElement("div", "polaris-settings-contact-actions");
   actions.setAttribute("aria-label", model.contactLabel);
+  const x = createElement("a", "polaris-settings-contact-action");
+  x.setAttribute("aria-label", model.xLabel);
+  x.href = model.xUrl;
+  x.rel = "noreferrer";
+  x.target = "_blank";
+  x.title = model.xLabel;
+  x.appendChild(createXIcon());
   const email = createElement("a", "polaris-settings-contact-action");
   email.setAttribute("aria-label", model.emailLabel);
   email.href = model.emailUrl;
@@ -273,7 +284,7 @@ function createSettingsPanel(model) {
   issue.target = "_blank";
   issue.title = model.issueLabel;
   issue.appendChild(createIcon("M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.161-1.11-1.47-1.11-1.47-.908-.62.069-.608.069-.608 1.003.071 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.03-2.688-.103-.253-.447-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.748-1.026 2.748-1.026.546 1.379.202 2.398.1 2.65.64.7 1.029 1.595 1.029 2.688 0 3.848-2.339 4.695-4.566 4.944.359.31.678.921.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.481A10.019 10.019 0 0 0 22 12.017C22 6.484 17.523 2 12 2Z"));
-  actions.append(email, issue);
+  actions.append(x, email, issue);
   footer.append(versionActions, actions);
 
   card.append(header, createSeparator(), body, createSeparator(), footer);
