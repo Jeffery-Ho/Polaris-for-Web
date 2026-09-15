@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 212
+
+- Date: 2026-09-15
+- Version: 0.53.3
+- Summary: Constrains the vertical Maker pane after a layout overflow regression.
+- Notes: The vertical Maker pane and Maker rows are bounded to the Sidebar Maker width again, preventing AI and user entries from spreading to opposite viewport edges. The vertical search control remains right-aligned and icon-only when unfocused. Updated the current version to `0.53.3(212)`.
+
 ## 211
 
 - Date: 2026-09-15

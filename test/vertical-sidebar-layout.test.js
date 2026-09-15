@@ -33,8 +33,11 @@ test("Maker pane 将搜索和列表作为垂直布局左侧整体", () => {
   assert.match(contentSource, /root\.classList\.toggle\("is-layout-vertical", state\.config\.navigationLayout === "vertical"\)/);
   assert.match(styles, /#gpt-paragraph-nav\.is-layout-vertical \{[\s\S]*?display: grid;[\s\S]*?grid-template-columns: minmax\(0, 1fr\) auto;/);
   assert.match(styles, /#gpt-paragraph-nav\.is-layout-vertical \.gpt-paragraph-nav__maker-pane \{[\s\S]*?grid-column: 1;/);
-  assert.match(styles, /#gpt-paragraph-nav\.is-layout-vertical \.gpt-paragraph-nav__maker-pane \{[\s\S]*?justify-self: stretch;[\s\S]*?width: 100%;/);
-  assert.match(styles, /#gpt-paragraph-nav\.is-layout-vertical \.gpt-paragraph-nav__marker-row \{[\s\S]*?width: 100%;/);
+  const verticalMakerPaneRule = styles.match(/#gpt-paragraph-nav\.is-layout-vertical \.gpt-paragraph-nav__maker-pane \{[^}]*\}/)?.[0] || "";
+  assert.match(verticalMakerPaneRule, /justify-self: end;[\s\S]*?width: min\(var\(--gpt-nav-controls-width, 360px\), 100%\);/);
+  assert.doesNotMatch(verticalMakerPaneRule, /width: 100%;/);
+  assert.doesNotMatch(styles, /#gpt-paragraph-nav\.is-layout-vertical \.gpt-paragraph-nav__marker-row \{[\s\S]*?width: 100%;/);
+  assert.match(styles, /\.gpt-paragraph-nav__marker-row \{[\s\S]*?width: min\(var\(--gpt-nav-controls-width, 360px\), calc\(100vw - 48px\)\);/);
   assert.match(styles, /#gpt-paragraph-nav\.is-layout-vertical \.gpt-paragraph-nav__search \{[\s\S]*?align-self: flex-end;[\s\S]*?width: min\(var\(--gpt-nav-controls-width, 360px\), 100%\);/);
   assert.match(styles, /#gpt-paragraph-nav\.is-layout-vertical \.gpt-paragraph-nav__controls \{[\s\S]*?grid-column: 2;[\s\S]*?flex-direction: column;/);
   assert.match(contentSource, /function verticalMarkerPaneWidth\(root, controls\)/);
