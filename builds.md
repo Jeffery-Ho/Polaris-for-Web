@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 211
+
+- Date: 2026-09-15
+- Version: 0.53.2
+- Summary: Restores the portrait-style Maker list arrangement in the vertical Sidebar.
+- Notes: The vertical Maker pane now fills the available left column so AI Maker rows align left and user Maker rows align right while remaining vertically stacked. The search control stays right-aligned and icon-only when unfocused. Horizontal capsule layout remains unchanged. Updated the current version to `0.53.2(211)`.
+
 ## 210
 
 - Date: 2026-09-15

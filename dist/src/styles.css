@@ -76,8 +76,8 @@
 #gpt-paragraph-nav.is-layout-vertical .gpt-paragraph-nav__maker-pane {
   grid-column: 1;
   grid-row: 1 / -1;
-  justify-self: end;
-  width: min(var(--gpt-nav-controls-width, 360px), 100%);
+  justify-self: stretch;
+  width: 100%;
 }
 
 #gpt-paragraph-nav.is-layout-vertical .gpt-paragraph-nav__controls {
@@ -89,9 +89,9 @@
 }
 
 #gpt-paragraph-nav.is-layout-vertical .gpt-paragraph-nav__search {
-  align-self: stretch;
-  width: 100%;
-  max-width: none;
+  align-self: flex-end;
+  width: min(var(--gpt-nav-controls-width, 360px), 100%);
+  max-width: calc(100vw - 48px);
 }
 
 #gpt-paragraph-nav.is-layout-vertical .gpt-paragraph-nav__search-icon {
@@ -196,6 +196,10 @@
 
 .gpt-paragraph-nav__marker-row--user {
   justify-content: flex-end;
+}
+
+#gpt-paragraph-nav.is-layout-vertical .gpt-paragraph-nav__marker-row {
+  width: 100%;
 }
 
 .gpt-paragraph-nav__marker-row:has(.gpt-paragraph-nav__marker-shell:hover) {
