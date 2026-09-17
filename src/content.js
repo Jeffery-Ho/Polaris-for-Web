@@ -2432,7 +2432,6 @@ import {
 
   function applyConfig(root, controlPosition = activeControlPosition()) {
     const controls = root.querySelector(`.${CONTROLS_CLASS}`);
-    const isVerticalLayout = root.classList.contains("is-layout-vertical");
     const position = controlPosition && controls instanceof HTMLElement
       ? clampedControlPosition(controlPosition, controls, root)
       : null;
@@ -2440,24 +2439,9 @@ import {
       ? `${position.top}px`
       : `calc(var(--gpt-conversation-header-height, ${DEFAULT_HEADER_HEIGHT}px) + ${DEFAULT_TOP_GAP}px)`);
     root.style.setProperty("--gpt-nav-right", position ? `${position.right}px` : `${DEFAULT_RIGHT_OFFSET}px`);
-    const makerWidth = Number.parseFloat(root.style.getPropertyValue("--gpt-nav-controls-width"));
-    const controlWidth = Number.parseFloat(root.style.getPropertyValue("--gpt-nav-control-column-width"));
-    const availableWidth = Math.max(0, window.innerWidth - (position?.right ?? DEFAULT_RIGHT_OFFSET));
-    const verticalNavWidth = Math.min(
-      availableWidth,
-      (Number.isFinite(makerWidth) ? makerWidth : 360)
-        + (Number.isFinite(controlWidth)
-          ? controlWidth
-          : controls instanceof HTMLElement
-            ? controls.getBoundingClientRect().width
-            : 42)
-        + 8
-    );
-    root.style.setProperty("--gpt-nav-width", isVerticalLayout
-      ? `${Math.round(verticalNavWidth)}px`
-      : position
-        ? `calc(100vw - ${position.right}px)`
-        : `calc(100vw - ${DEFAULT_RIGHT_OFFSET * 2}px)`);
+    root.style.setProperty("--gpt-nav-width", position
+      ? `calc(100vw - ${position.right}px)`
+      : `calc(100vw - ${DEFAULT_RIGHT_OFFSET * 2}px)`);
     root.style.setProperty("--gpt-nav-tooltip-max-width", `${state.config.tooltipMaxWidth}px`);
   }
 
@@ -5008,6 +4992,7 @@ import {
     updateHeaderOffset(root);
     getControlCapsule(root);
     getSettings(root);
+    applyConfig(root);
     const controls = getControls(root);
     const controlWidth = controls.getBoundingClientRect().width;
     const rootWidth = root.getBoundingClientRect().width;
