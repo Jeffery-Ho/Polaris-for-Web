@@ -499,6 +499,27 @@
   gap: 5px;
 }
 
+.polaris-settings-layout-preview-cascade {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  width: 100%;
+  gap: 7px;
+}
+
+.polaris-settings-layout-preview-maker-list--ai {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
+}
+
+.polaris-settings-layout-preview-user-list {
+  display: grid;
+  flex: 0 0 28%;
+  gap: 5px;
+  min-width: 0;
+}
+
 .polaris-settings-layout-preview-maker-item {
   display: block;
   width: 100%;
@@ -510,6 +531,20 @@
 }
 
 .polaris-settings-layout-preview-maker-item--active {
+  border-color: #111111;
+  background: #111111;
+}
+
+.polaris-settings-layout-preview-user-item {
+  display: block;
+  width: 100%;
+  height: 10px;
+  border: 1px solid #d8d8d8;
+  border-radius: 999px;
+  background: #ffffff;
+}
+
+.polaris-settings-layout-preview-user-item--active {
   border-color: #111111;
   background: #111111;
 }

@@ -156,7 +156,19 @@ function createNavigationLayoutPreview(key) {
       sidebar.appendChild(createElement("span", "polaris-settings-layout-preview-sidebar-item"));
     });
     const canvas = createElement("span", "polaris-settings-layout-preview-canvas");
-    canvas.appendChild(createNavigationMakerListPreview());
+    const cascade = createElement("span", "polaris-settings-layout-preview-cascade");
+    const makerList = createNavigationMakerListPreview();
+    makerList.classList.add("polaris-settings-layout-preview-maker-list--ai");
+    const userList = createElement("span", "polaris-settings-layout-preview-user-list");
+    ["active", "default", "default"].forEach((state) => {
+      const item = createElement("span", "polaris-settings-layout-preview-user-item");
+      if (state === "active") {
+        item.classList.add("polaris-settings-layout-preview-user-item--active");
+      }
+      userList.appendChild(item);
+    });
+    cascade.append(makerList, userList);
+    canvas.appendChild(cascade);
     body.append(
       canvas,
       sidebar

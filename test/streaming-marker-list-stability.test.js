@@ -18,6 +18,9 @@ const renderSource = contentSource.slice(renderStart, renderEnd);
 const listStart = contentSource.indexOf("  function getList(");
 const listEnd = contentSource.indexOf("  function getMarkerSearchInput(", listStart);
 const listSource = contentSource.slice(listStart, listEnd);
+const listConfigStart = contentSource.indexOf("  function configureMarkerList(");
+const listConfigEnd = contentSource.indexOf("  function getVerticalSubmenu(", listConfigStart);
+const listInteractionSource = contentSource.slice(listConfigStart, listConfigEnd);
 const pointerMoveStart = contentSource.indexOf("  function handlePointerMove(");
 const pointerMoveEnd = contentSource.indexOf("  function finishPointerDrag(", pointerMoveStart);
 const pointerMoveSource = contentSource.slice(pointerMoveStart, pointerMoveEnd);
@@ -68,9 +71,9 @@ test("流式渲染不再清空列表或取消进行中的滚动", () => {
 });
 
 test("Maker 卡片 wheel 使用列表原生滚动并取消自动定位", () => {
-  assert.match(listSource, /createMarkerListNativeWheelHandler/);
-  assert.match(listSource, /cancelAutoPosition: \(\) => markerListScrollPersistence\.cancel\(\)/);
-  assert.match(listSource, /\{ passive: true \}/);
+  assert.match(listInteractionSource, /createMarkerListNativeWheelHandler/);
+  assert.match(listInteractionSource, /cancelAutoPosition: \(\) => markerListScrollPersistence\.cancel\(\)/);
+  assert.match(listInteractionSource, /\{ passive: true \}/);
 });
 
 test("不再注册全局 wheel 或维护自定义滚动动画", () => {

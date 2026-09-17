@@ -210,6 +210,9 @@ import {
   const CONTROL_COMPACT_TOGGLE_CLASS = "gpt-paragraph-nav__control-compact-toggle";
   const SETTINGS_CLASS = "gpt-paragraph-nav__settings";
   const MAKER_PANE_CLASS = "gpt-paragraph-nav__maker-pane";
+  const VERTICAL_SUBMENU_CLASS = "gpt-paragraph-nav__vertical-submenu";
+  const VERTICAL_SUBMENU_BACK_CLASS = "gpt-paragraph-nav__vertical-submenu-back";
+  const VERTICAL_USER_LIST_ID = "gpt-paragraph-nav-user-list";
   const LIST_ID = "gpt-paragraph-nav-list";
   const SETTINGS_PANEL_ID = "gpt-paragraph-nav-settings-panel";
   const ROUTE_CHANGE_EVENT = "polaris-for-web-route-change";
@@ -354,6 +357,8 @@ import {
     areEarlierUserGroupsExpanded: false,
     isCollapsed: false,
     collapsedListHeight: 0,
+    verticalPinnedGroupKey: "",
+    verticalPreviewGroupKey: "",
     ratingDismissedUntil: 0,
     releaseNotes: [],
     releaseNoticePending: false,
@@ -384,6 +389,10 @@ import {
     }
   });
   const markerListReconciler = createMarkerListReconciler({
+    createRow: createMarkerRenderRow,
+    updateRow: updateMarkerRenderRow
+  });
+  const verticalUserMarkerListReconciler = createMarkerListReconciler({
     createRow: createMarkerRenderRow,
     updateRow: updateMarkerRenderRow
   });
@@ -591,6 +600,7 @@ import {
     markerMotionSuppressor.reset();
     markerRenderStateMachine.reset();
     markerListReconciler.reset();
+    verticalUserMarkerListReconciler.reset();
     markerListActiveTracker.reset();
     markerListScrollPersistence.reset();
     window.clearTimeout(state.markerNoticeTimer);
@@ -693,20 +703,50 @@ import {
       pane.className = MAKER_PANE_CLASS;
       root.appendChild(pane);
     }
-
-    const list = root.querySelector(`#${LIST_ID}`);
-    if (list instanceof HTMLElement && list.parentElement !== pane) {
-      pane.appendChild(list);
-    }
-    const search = root.querySelector(".gpt-paragraph-nav__search");
-    if (search instanceof HTMLElement && search.parentElement !== pane) {
-      pane.insertBefore(search, list instanceof HTMLElement ? list : null);
-    }
     return pane;
+  }
+
+  function configureMarkerList(list) {
+    if (list.dataset.polarisListConfigured === "true") {
+      return;
+    }
+    list.dataset.polarisListConfigured = "true";
+    list.addEventListener("click", handleMarkerListClick);
+    list.addEventListener("wheel", createMarkerListNativeWheelHandler({
+      list,
+      cancelAutoPosition: () => markerListScrollPersistence.cancel()
+    }), { passive: true });
+    list.addEventListener("scroll", () => {
+      scheduleFloatingActiveUpdate();
+    }, { passive: true });
+  }
+
+  function getVerticalSubmenu(root = getRoot()) {
+    const pane = getMakerPane(root);
+    let submenu = pane.querySelector(`.${VERTICAL_SUBMENU_CLASS}`);
+    if (!(submenu instanceof HTMLElement)) {
+      submenu = document.createElement("div");
+      submenu.className = VERTICAL_SUBMENU_CLASS;
+      const back = document.createElement("button");
+      back.type = "button";
+      back.className = VERTICAL_SUBMENU_BACK_CLASS;
+      back.textContent = t("userMarker.verticalBack");
+      back.setAttribute("aria-label", t("userMarker.verticalBack"));
+      back.addEventListener("click", () => {
+        state.verticalPinnedGroupKey = "";
+        state.verticalPreviewGroupKey = "";
+        render();
+      });
+      submenu.appendChild(back);
+      pane.appendChild(submenu);
+    }
+    return submenu;
   }
 
   function getList(root = getRoot()) {
     const pane = getMakerPane(root);
+    const isVertical = root.classList.contains("is-layout-vertical");
+    const listParent = isVertical ? getVerticalSubmenu(root) : pane;
     let list = root.querySelector(`#${LIST_ID}`);
     if (!list) {
       list = document.createElement("div");
@@ -714,15 +754,70 @@ import {
       list.className = "gpt-paragraph-nav__list";
       list.setAttribute("role", "tabpanel");
       list.setAttribute("aria-labelledby", "gpt-paragraph-nav-tab-navigation");
-      list.addEventListener("click", handleMarkerListClick);
-      list.addEventListener("wheel", createMarkerListNativeWheelHandler({
-        list,
-        cancelAutoPosition: () => markerListScrollPersistence.cancel()
-      }), { passive: true });
-      list.addEventListener("scroll", () => {
-        scheduleFloatingActiveUpdate();
-      }, { passive: true });
+      configureMarkerList(list);
+    }
+    if (list.parentElement !== listParent) {
+      listParent.appendChild(list);
+    }
+    return list;
+  }
+
+  function getVerticalUserList(root = getRoot()) {
+    const pane = getMakerPane(root);
+    let list = root.querySelector(`#${VERTICAL_USER_LIST_ID}`);
+    if (!(list instanceof HTMLElement)) {
+      list = document.createElement("div");
+      list.id = VERTICAL_USER_LIST_ID;
+      list.className = "gpt-paragraph-nav__list gpt-paragraph-nav__vertical-user-list";
+      list.setAttribute("role", "list");
+      list.setAttribute("aria-label", t("userMarker.verticalGroups"));
+      configureMarkerList(list);
+      list.addEventListener("pointerover", (event) => {
+        const target = event.target instanceof Element
+          ? event.target.closest("[data-user-marker-key]")
+          : null;
+        if (!(target instanceof HTMLButtonElement) || !list.contains(target)) {
+          return;
+        }
+        const groupKey = target.dataset.userMarkerKey || "";
+        if (groupKey && state.verticalPreviewGroupKey !== groupKey) {
+          state.verticalPreviewGroupKey = groupKey;
+          render();
+        }
+      });
+      list.addEventListener("focusin", (event) => {
+        const target = event.target instanceof Element
+          ? event.target.closest("[data-user-marker-key]")
+          : null;
+        if (!(target instanceof HTMLButtonElement) || !list.contains(target)) {
+          return;
+        }
+        const groupKey = target.dataset.userMarkerKey || "";
+        if (groupKey && state.verticalPreviewGroupKey !== groupKey) {
+          state.verticalPreviewGroupKey = groupKey;
+          render();
+        }
+      });
       pane.appendChild(list);
+    }
+    if (pane.dataset.verticalSubmenuEvents !== "true") {
+      pane.dataset.verticalSubmenuEvents = "true";
+      pane.addEventListener("pointerleave", () => {
+        if (state.verticalPreviewGroupKey) {
+          state.verticalPreviewGroupKey = "";
+          render();
+        }
+      });
+      pane.addEventListener("focusout", (event) => {
+        const nextTarget = event.relatedTarget;
+        if (nextTarget instanceof Node && pane.contains(nextTarget)) {
+          return;
+        }
+        if (state.verticalPreviewGroupKey) {
+          state.verticalPreviewGroupKey = "";
+          render();
+        }
+      });
     }
     return list;
   }
@@ -772,13 +867,19 @@ import {
 
       wrapper.appendChild(input);
       ensureMarkerSearchIcon(wrapper);
-      pane.insertBefore(wrapper, list);
+      const anchor = root.classList.contains("is-layout-vertical")
+        ? getVerticalSubmenu(root)
+        : list;
+      pane.insertBefore(wrapper, anchor);
     } else {
       const wrapper = input.closest(".gpt-paragraph-nav__search");
       if (wrapper instanceof HTMLElement) {
         ensureMarkerSearchIcon(wrapper);
         if (wrapper.parentElement !== pane) {
-          pane.insertBefore(wrapper, list);
+          const anchor = root.classList.contains("is-layout-vertical")
+            ? getVerticalSubmenu(root)
+            : list;
+          pane.insertBefore(wrapper, anchor);
         }
       }
     }
@@ -833,6 +934,8 @@ import {
       state.collapsedListHeight = getList().offsetHeight;
     }
     state.isCollapsed = !state.isCollapsed;
+    state.verticalPinnedGroupKey = "";
+    state.verticalPreviewGroupKey = "";
   }
 
   function syncNavigationLayout(root = getRoot()) {
@@ -2252,6 +2355,8 @@ import {
       },
       onNavigationLayoutChange(layout) {
         state.config = normalizeConfig({ ...state.config, navigationLayout: layout });
+        state.verticalPinnedGroupKey = "";
+        state.verticalPreviewGroupKey = "";
         recordDiagnosticEvent("setting_change", { settingKey: "navigation-layout" });
         saveConfig(state.config);
         render();
@@ -2271,6 +2376,8 @@ import {
       onReset() {
         state.config = normalizeConfig(DEFAULT_CONFIG);
         state.areEarlierUserGroupsExpanded = false;
+        state.verticalPinnedGroupKey = "";
+        state.verticalPreviewGroupKey = "";
         resetCollapsedGroups();
         recordDiagnosticEvent("setting_change", { settingKey: "reset" });
         saveConfig(state.config);
@@ -4536,7 +4643,7 @@ import {
     }, 2200);
   }
 
-  function userMarkerRenderItem(group, isExpanded) {
+  function userMarkerRenderItem(group, isExpanded, { isSelected = false } = {}) {
     const { user } = group;
     const baseAriaLabel = isExpanded
       ? t("userMarker.collapseAria", { title: user.title })
@@ -4558,9 +4665,27 @@ import {
       imageCount: user.imageCount,
       imageUrls: user.imageUrls,
       isImageOnly: user.isImageOnly,
+      isSelected,
       width: markerWidthFor(user.previewTitle),
-      signature: markerRenderSignature(["user", isExpanded, ariaLabel, user.title, preview, user.imageUrls, user.thumbnailSrc, user.imageCount, user.isImageOnly])
+      signature: markerRenderSignature(["user", isExpanded, isSelected, ariaLabel, user.title, preview, user.imageUrls, user.thumbnailSrc, user.imageCount, user.isImageOnly])
     };
+  }
+
+  function verticalUserMarkerRenderItem(group, isSelected) {
+    if (group.user) {
+      return userMarkerRenderItem(group, isSelected, { isSelected });
+    }
+
+    const title = t("userMarker.unassignedGroup");
+    const user = {
+      title,
+      previewTitle: title,
+      thumbnailSrc: "",
+      imageCount: 0,
+      imageUrls: [],
+      isImageOnly: false
+    };
+    return userMarkerRenderItem({ ...group, user }, isSelected, { isSelected });
   }
 
   function earlierUserGroupsRenderItem(count) {
@@ -4732,6 +4857,7 @@ import {
       ? `gpt-paragraph-nav__marker gpt-paragraph-nav__marker--ai level-${item.level}`
       : "gpt-paragraph-nav__marker gpt-paragraph-nav__marker--user";
     marker.classList.toggle("is-active", wasActive);
+    marker.classList.toggle("is-vertical-group-selected", Boolean(item.isSelected));
     marker.style.setProperty("--marker-width", `${item.width}px`);
     marker.setAttribute("aria-label", item.ariaLabel || item.title);
     marker.querySelector(".gpt-paragraph-nav__preview").textContent = item.preview;
@@ -4745,6 +4871,11 @@ import {
     marker.setAttribute("aria-expanded", String(item.isExpanded));
     if (item.type === "user") {
       marker.dataset.userMarkerKey = item.groupKey;
+      if (item.isSelected) {
+        marker.setAttribute("aria-controls", LIST_ID);
+      } else {
+        marker.removeAttribute("aria-controls");
+      }
       const label = row.querySelector(".gpt-paragraph-nav__label");
       const labelText = label.querySelector(".gpt-paragraph-nav__label-text");
       labelText.textContent = item.title;
@@ -4839,6 +4970,13 @@ import {
     if (!group) {
       return;
     }
+    const root = list.closest(`#${ROOT_ID}`);
+    if (root instanceof HTMLElement && root.classList.contains("is-layout-vertical")) {
+      state.verticalPinnedGroupKey = groupKey;
+      state.verticalPreviewGroupKey = groupKey;
+      render();
+      return;
+    }
     if (shouldShowUserMarkerNotLoadedNotice({
       isChatGPT: isChatGPTPage(),
       hasAssistantMessage: group.hasAssistantMessage,
@@ -4875,7 +5013,7 @@ import {
     ), trailing.length);
   }
 
-  function markerRenderItemsForGroup(group) {
+  function markerRenderItemsForGroup(group, { includeUser = true } = {}) {
     const isSearchActive = Boolean(normalizeSearchQuery(state.markerSearchQuery));
     const isExpanded = isUserMarkerExpanded({
       groupKey: group.key,
@@ -4885,7 +5023,7 @@ import {
     });
     const items = [];
 
-    if (group.user) {
+    if (includeUser && group.user) {
       items.push(userMarkerRenderItem(group, isExpanded));
     }
 
@@ -4901,6 +5039,61 @@ import {
         }
       });
       trailing.forEach((heading) => items.push(aiMarkerRenderItem(heading)));
+    }
+    return items;
+  }
+
+  function verticalSelectedGroupKey(visibleGroups) {
+    const selectedKey = state.verticalPreviewGroupKey || state.verticalPinnedGroupKey;
+    if (selectedKey && visibleGroups.some((group) => group.key === selectedKey)) {
+      return selectedKey;
+    }
+    if (normalizeSearchQuery(state.markerSearchQuery)) {
+      return visibleGroups.find((group) => group.user || group.headings.length)?.key || "";
+    }
+    return "";
+  }
+
+  function verticalUserMarkerRenderItems(visibleGroups, earlierUserGroupCount, selectedGroupKey) {
+    const items = [];
+    let isEarlierUserGroupsControlAppended = false;
+    visibleGroups.forEach((group) => {
+      if (earlierUserGroupCount && !isEarlierUserGroupsControlAppended && group.user) {
+        items.push(earlierUserGroupsRenderItem(earlierUserGroupCount));
+        isEarlierUserGroupsControlAppended = true;
+      }
+      if (group.user || group.headings.length) {
+        items.push(verticalUserMarkerRenderItem(group, group.key === selectedGroupKey));
+      }
+    });
+    if (earlierUserGroupCount && !isEarlierUserGroupsControlAppended) {
+      items.push(earlierUserGroupsRenderItem(earlierUserGroupCount));
+    }
+    if (!items.length) {
+      const message = t("search.empty");
+      items.push({
+        key: "vertical-user-empty",
+        type: "empty",
+        message,
+        signature: markerRenderSignature(["vertical-user-empty", message])
+      });
+    }
+    return items;
+  }
+
+  function verticalAiMarkerRenderItems(group) {
+    if (!group) {
+      return [];
+    }
+    const items = markerRenderItemsForGroup(group, { includeUser: false });
+    if (!items.length) {
+      const message = t("userMarker.noAiMarkers");
+      return [{
+        key: `vertical-ai-empty:${group.key}`,
+        type: "empty",
+        message,
+        signature: markerRenderSignature(["vertical-ai-empty", group.key, message])
+      }];
     }
     return items;
   }
@@ -5003,6 +5196,15 @@ import {
       return;
     }
 
+    const {
+      headings,
+      markerGroups,
+      metrics
+    } = renderSnapshot;
+    syncUserMarkerExpansion(markerGroups);
+    const filteredGroups = filteredMarkerGroups(markerGroups);
+    const { groups: visibleGroups, earlierUserGroupCount } = limitedMarkerGroups(filteredGroups);
+
     showPendingReleaseNotice();
     const root = getRoot();
     updatePageTheme(root);
@@ -5014,16 +5216,40 @@ import {
     getSettings(root);
     const controls = getControls(root);
     const controlWidth = controls.getBoundingClientRect().width;
-    const rootWidth = root.getBoundingClientRect().width;
-    const markerContentWidth = state.config.navigationLayout === "vertical"
-      ? Math.min(360, Math.max(0, rootWidth - controlWidth - 8))
+    const isVertical = root.classList.contains("is-layout-vertical");
+    const selectedVerticalGroupKey = isVertical ? verticalSelectedGroupKey(visibleGroups) : "";
+    const controlPosition = activeControlPosition();
+    const rightOffset = Number.isFinite(controlPosition?.right)
+      ? Math.max(0, controlPosition.right)
+      : DEFAULT_RIGHT_OFFSET;
+    const availableMakerWidth = Math.max(
+      0,
+      window.innerWidth - rightOffset - controlWidth - 8
+    );
+    const markerContentWidth = isVertical
+      ? Math.min(selectedVerticalGroupKey ? 360 : 180, availableMakerWidth)
       : controlWidth;
     root.style.setProperty("--gpt-nav-control-column-width", `${Math.round(controlWidth)}px`);
-    if (markerContentWidth > 0) {
-      root.style.setProperty("--gpt-nav-controls-width", `${Math.round(markerContentWidth)}px`);
+    root.style.setProperty("--gpt-nav-controls-width", `${Math.round(markerContentWidth)}px`);
+    if (isVertical) {
+      const verticalUserWidth = selectedVerticalGroupKey
+        ? Math.min(132, Math.max(0, markerContentWidth * 0.38))
+        : Math.max(0, markerContentWidth - 8);
+      const verticalAiWidth = selectedVerticalGroupKey
+        ? Math.max(0, markerContentWidth - verticalUserWidth - 8)
+        : 0;
+      root.style.setProperty("--gpt-nav-maker-pane-width", `${Math.round(markerContentWidth)}px`);
+      root.style.setProperty("--gpt-nav-vertical-ai-width", `${Math.round(verticalAiWidth)}px`);
+      root.style.setProperty("--gpt-nav-vertical-user-width", `${Math.round(verticalUserWidth)}px`);
+    } else {
+      root.style.removeProperty("--gpt-nav-maker-pane-width");
+      root.style.removeProperty("--gpt-nav-vertical-ai-width");
+      root.style.removeProperty("--gpt-nav-vertical-user-width");
     }
     applyConfig(root);
     const list = getList(root);
+    const verticalSubmenu = isVertical ? getVerticalSubmenu(root) : null;
+    const verticalUserList = isVertical ? getVerticalUserList(root) : null;
     getMarkerSearchInput(root);
     const searchInput = root.querySelector(".gpt-paragraph-nav__search-input");
     const searchWrapper = searchInput instanceof HTMLElement
@@ -5033,14 +5259,6 @@ import {
       searchWrapper.hidden = state.isCollapsed;
     }
     getExplosionOverlay(root);
-    const {
-      headings,
-      markerGroups,
-      metrics
-    } = renderSnapshot;
-    syncUserMarkerExpansion(markerGroups);
-    const filteredGroups = filteredMarkerGroups(markerGroups);
-    const { groups: visibleGroups, earlierUserGroupCount } = limitedMarkerGroups(filteredGroups);
     ensureHeadingIds(headings);
     state.headings = headings;
     state.markerGroups = markerGroups;
@@ -5068,7 +5286,21 @@ import {
     root.classList.toggle("is-empty", !hasMarkers);
     root.classList.toggle("is-collapsed", state.isCollapsed && hasMarkers);
     list.style.height = state.isCollapsed && state.collapsedListHeight > 0 ? `${state.collapsedListHeight}px` : "";
-    list.setAttribute("aria-hidden", String(state.isCollapsed));
+    list.hidden = isVertical && !selectedVerticalGroupKey;
+    list.setAttribute("aria-hidden", String(state.isCollapsed || list.hidden));
+    if (verticalSubmenu instanceof HTMLElement) {
+      verticalSubmenu.hidden = state.isCollapsed || !selectedVerticalGroupKey;
+      const back = verticalSubmenu.querySelector(`.${VERTICAL_SUBMENU_BACK_CLASS}`);
+      if (back instanceof HTMLButtonElement) {
+        back.hidden = !selectedVerticalGroupKey;
+      }
+    }
+    if (verticalUserList instanceof HTMLElement) {
+      verticalUserList.hidden = state.isCollapsed;
+      verticalUserList.setAttribute("aria-hidden", String(state.isCollapsed));
+    } else {
+      verticalUserMarkerListReconciler.reset();
+    }
 
     if (state.isCollapsed) {
       updateFloatingActiveMarker(null);
@@ -5076,21 +5308,35 @@ import {
       return;
     }
 
-    const {
-      changed: didChangeMarkerList,
-      scrollDelta: markerListScrollDelta
-    } = markerListReconciler.reconcile(
+    const markerListResult = markerListReconciler.reconcile(
       list,
-      markerRenderItems(visibleGroups, earlierUserGroupCount)
+      isVertical
+        ? verticalAiMarkerRenderItems(visibleGroups.find((group) => group.key === selectedVerticalGroupKey))
+        : markerRenderItems(visibleGroups, earlierUserGroupCount)
     );
-    if (didChangeMarkerList) {
+    const verticalUserListResult = verticalUserList instanceof HTMLElement
+      ? verticalUserMarkerListReconciler.reconcile(
+        verticalUserList,
+        verticalUserMarkerRenderItems(visibleGroups, earlierUserGroupCount, selectedVerticalGroupKey)
+      )
+      : { changed: false, scrollDelta: 0 };
+    if (markerListResult.changed) {
       preserveMarkerListDragPosition({
         drag: state.pointerDrag,
         list,
         maxScrollTop: markerListMaxScrollTop(list),
-        scrollDelta: markerListScrollDelta
+        scrollDelta: markerListResult.scrollDelta
       });
     }
+    if (verticalUserListResult.changed) {
+      preserveMarkerListDragPosition({
+        drag: state.pointerDrag,
+        list: verticalUserList,
+        maxScrollTop: markerListMaxScrollTop(verticalUserList),
+        scrollDelta: verticalUserListResult.scrollDelta
+      });
+    }
+    const didChangeMarkerList = markerListResult.changed || verticalUserListResult.changed;
     if (didChangeMarkerList && suppressMarkerMotion) {
       markerMotionSuppressor.suppress();
     }
@@ -5122,6 +5368,7 @@ import {
     markerMotionSuppressor.reset();
     markerRenderStateMachine.reset();
     markerListReconciler.reset();
+    verticalUserMarkerListReconciler.reset();
     markerListActiveTracker.reset();
     markerListScrollPersistence.reset();
     runtimeMarkerKeySequence.reset();
@@ -5139,6 +5386,8 @@ import {
     state.activeMarkerKey = "";
     state.isCollapsed = false;
     state.collapsedListHeight = 0;
+    state.verticalPinnedGroupKey = "";
+    state.verticalPreviewGroupKey = "";
     state.activeControlTab = "navigation";
     state.releaseNoticeReturnControlTab = null;
     state.explosionSections = [];
@@ -5370,8 +5619,10 @@ import {
   }
 
   function markerListDragTarget(event, root) {
-    const list = root.querySelector(`#${LIST_ID}`);
-    if (!(list instanceof HTMLElement)) {
+    const list = event.target instanceof Element
+      ? event.target.closest(".gpt-paragraph-nav__list")
+      : null;
+    if (!(list instanceof HTMLElement) || !root.contains(list)) {
       return null;
     }
 
