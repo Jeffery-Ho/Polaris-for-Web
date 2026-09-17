@@ -167,19 +167,11 @@ test("更新说明赞赏入口提供内置更新说明", () => {
   assert.match(note.en.changes[0], /support button/);
 });
 
-test("垂直 Sidebar 布局提供内置更新说明", () => {
-  const note = releaseNotesForUpdate("0.52.0", "0.53.0")[0];
-  assert.equal(note.version, "0.53");
-  assert.equal(note.isFallback, undefined);
-  assert.match(note.zh.changes[0], /纵向/);
-  assert.match(note.en.changes[0], /vertically/);
-});
-
 test("缺失当前功能版本说明时按 0.xx 粒度安全降级", () => {
-  const note = releaseNotesForUpdate("0.51.0", "0.54.2")
+  const note = releaseNotesForUpdate("0.51.0", "0.53.2")
     .find((candidate) => candidate.isFallback);
   assert.ok(note);
-  assert.equal(note.version, "0.54");
+  assert.equal(note.version, "0.53");
   assert.equal(note.isFallback, true);
   assert.match(note.zh.title, /更新说明/);
 });

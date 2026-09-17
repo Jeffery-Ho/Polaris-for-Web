@@ -1,16 +1,5 @@
 const RELEASE_NOTES = Object.freeze([
   {
-    version: "0.53.0",
-    en: {
-      title: "Vertical right Sidebar layout",
-      changes: ["About & Settings now lets you place the main navigation vertically on the right with the Maker pane to its left, while keeping the horizontal capsule layout available."]
-    },
-    zh: {
-      title: "新增右侧垂直 Sidebar 布局",
-      changes: ["关于与设置现可将主导航纵向放在右侧，并把 Maker 搜索和列表放在左侧，同时保留横向胶囊布局。"]
-    }
-  },
-  {
     version: "0.52.0",
     en: {
       title: "X profile in About & Settings",

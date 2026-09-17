@@ -209,7 +209,6 @@ import {
   const CONTROL_TAB_INDICATOR_CLASS = "gpt-paragraph-nav__control-tab-indicator";
   const CONTROL_COMPACT_TOGGLE_CLASS = "gpt-paragraph-nav__control-compact-toggle";
   const SETTINGS_CLASS = "gpt-paragraph-nav__settings";
-  const MAKER_PANE_CLASS = "gpt-paragraph-nav__maker-pane";
   const LIST_ID = "gpt-paragraph-nav-list";
   const SETTINGS_PANEL_ID = "gpt-paragraph-nav-settings-panel";
   const ROUTE_CHANGE_EVENT = "polaris-for-web-route-change";
@@ -232,7 +231,7 @@ import {
   const SUPPORT_URL = "https://jeffery-ho.github.io/polaris-landing/entry/extension/";
   const X_PROFILE_URL = "https://x.com/JefferyHo_";
   const RATING_DISMISSAL_DURATION_MS = 24 * 60 * 60 * 1000;
-  const CONFIG_SCHEMA_VERSION = 8;
+  const CONFIG_SCHEMA_VERSION = 7;
   const POINTER_DRAG_THRESHOLD = 4;
   const EXPLOSION_EMPTY_TEXT = t("chapters.empty");
   const EXPLOSION_BLOCK_SELECTOR = CHAPTER_BLOCK_SELECTOR;
@@ -300,7 +299,6 @@ import {
   const DEFAULT_CONFIG = Object.freeze({
     controlPosition: null,
     isControlMinimized: false,
-    navigationLayout: "horizontal",
     maxVisible: QUEUE_MAX_VISIBLE,
     maxVisibleUserGroups: 20,
     foldThreshold: 20,
@@ -685,27 +683,7 @@ import {
     return controls;
   }
 
-  function getMakerPane(root = getRoot()) {
-    let pane = root.querySelector(`.${MAKER_PANE_CLASS}`);
-    if (!(pane instanceof HTMLElement)) {
-      pane = document.createElement("div");
-      pane.className = MAKER_PANE_CLASS;
-      root.appendChild(pane);
-    }
-
-    const list = root.querySelector(`#${LIST_ID}`);
-    if (list instanceof HTMLElement && list.parentElement !== pane) {
-      pane.appendChild(list);
-    }
-    const search = root.querySelector(".gpt-paragraph-nav__search");
-    if (search instanceof HTMLElement && search.parentElement !== pane) {
-      pane.insertBefore(search, list instanceof HTMLElement ? list : null);
-    }
-    return pane;
-  }
-
   function getList(root = getRoot()) {
-    const pane = getMakerPane(root);
     let list = root.querySelector(`#${LIST_ID}`);
     if (!list) {
       list = document.createElement("div");
@@ -721,15 +699,13 @@ import {
       list.addEventListener("scroll", () => {
         scheduleFloatingActiveUpdate();
       }, { passive: true });
-      pane.appendChild(list);
+      root.appendChild(list);
     }
     return list;
   }
 
   function getMarkerSearchInput(root = getRoot()) {
     let input = root.querySelector(".gpt-paragraph-nav__search-input");
-    const pane = getMakerPane(root);
-    const list = getList(root);
     if (!(input instanceof HTMLInputElement)) {
       if (input) {
         input.remove();
@@ -760,15 +736,9 @@ import {
       });
 
       wrapper.appendChild(input);
-      pane.insertBefore(wrapper, list);
-    } else {
-      const wrapper = input.closest(".gpt-paragraph-nav__search");
-      if (wrapper instanceof HTMLElement && wrapper.parentElement !== pane) {
-        pane.insertBefore(wrapper, list);
-      }
-    }
-
-    if (document.activeElement !== input && input.value !== state.markerSearchQuery) {
+      const list = getList(root);
+      root.insertBefore(wrapper, list);
+    } else if (document.activeElement !== input && input.value !== state.markerSearchQuery) {
       input.value = state.markerSearchQuery;
     }
 
@@ -820,10 +790,6 @@ import {
     state.isCollapsed = !state.isCollapsed;
   }
 
-  function syncNavigationLayout(root = getRoot()) {
-    root.classList.toggle("is-layout-vertical", state.config.navigationLayout === "vertical");
-  }
-
   function syncControlTabIndicator(root = getRoot()) {
     const capsule = root.querySelector(`.${CONTROL_CAPSULE_CLASS}`);
     if (!(capsule instanceof HTMLElement)) {
@@ -836,14 +802,6 @@ import {
       return;
     }
 
-    if (root.classList.contains("is-layout-vertical")) {
-      indicator.style.width = "";
-      indicator.style.height = `${activeTab.offsetHeight}px`;
-      indicator.style.transform = `translateY(${activeTab.offsetTop}px)`;
-      return;
-    }
-
-    indicator.style.height = "";
     indicator.style.width = `${activeTab.offsetWidth}px`;
     indicator.style.transform = `translateX(${activeTab.offsetLeft}px)`;
   }
@@ -851,7 +809,6 @@ import {
   function syncControlTabs(root = getRoot()) {
     const capsule = root.querySelector(`.${CONTROL_CAPSULE_CLASS}`);
     const isMinimized = state.config.isControlMinimized;
-    const isVerticalLayout = root.classList.contains("is-layout-vertical");
     if (!(capsule instanceof HTMLElement)) {
       return;
     }
@@ -861,7 +818,6 @@ import {
     root.classList.toggle("has-custom-control-position", Boolean(activeControlPosition()));
     capsule.classList.toggle("is-minimized", isMinimized);
     capsule.setAttribute("role", isMinimized ? "group" : "tablist");
-    capsule.setAttribute("aria-orientation", isVerticalLayout ? "vertical" : "horizontal");
     capsule.setAttribute("aria-label", isMinimized
       ? `${t("controls.label")}: ${t(`tab.${state.activeControlTab}`)}`
       : t("controls.label"));
@@ -1026,7 +982,6 @@ import {
       capsule.addEventListener("keydown", (event) => {
         const tabs = Array.from(capsule.querySelectorAll("[data-control-tab]"));
         const currentIndex = tabs.indexOf(document.activeElement);
-        const isVerticalLayout = root.classList.contains("is-layout-vertical");
         if (currentIndex < 0) {
           return;
         }
@@ -1034,8 +989,7 @@ import {
           key: event.key,
           currentIndex,
           tabCount: tabs.length,
-          isChapterModalOpen: state.isExplosionOpen,
-          orientation: isVerticalLayout ? "vertical" : "horizontal"
+          isChapterModalOpen: state.isExplosionOpen
         });
         if (nextIndex === null) {
           return;
@@ -1699,10 +1653,6 @@ import {
     }, {});
   }
 
-  function normalizeNavigationLayout(value) {
-    return value === "vertical" ? "vertical" : "horizontal";
-  }
-
   function normalizeConfig(config) {
     const result = CONFIG_FIELDS.reduce((normalizedConfig, field) => {
       normalizedConfig[field.key] = normalizeNumber(
@@ -1719,7 +1669,6 @@ import {
     result.enabledUnorderedListByPlatform = normalizeUnorderedListByPlatform(config);
     result.controlPosition = normalizeControlPosition(config && config.controlPosition);
     result.isControlMinimized = Boolean(config && config.isControlMinimized);
-    result.navigationLayout = normalizeNavigationLayout(config && config.navigationLayout);
     if ((Number(config && config.configVersion) || 1) < 2) {
       result.enabledLevelsByPlatform.xiaohongshu = normalizeEnabledLevels(
         [...result.enabledLevelsByPlatform.xiaohongshu, 4],
@@ -1783,8 +1732,7 @@ import {
       && enabledUnorderedListByPlatformEqual(first.enabledUnorderedListByPlatform, second.enabledUnorderedListByPlatform)
       && first.controlPosition?.top === second.controlPosition?.top
       && first.controlPosition?.right === second.controlPosition?.right
-      && first.isControlMinimized === second.isControlMinimized
-      && first.navigationLayout === second.navigationLayout;
+      && first.isControlMinimized === second.isControlMinimized;
   }
 
   function hasSyncStorage() {
@@ -2057,10 +2005,6 @@ import {
       issueLabel: model.issueLabel,
       markerLevels: model.markerLevels.map(({ key, label, level, isDisabled, isSelected }) => [key, label, level, isDisabled, isSelected]),
       markerTypesLabel: model.markerTypesLabel,
-      navigationLayout: {
-        label: model.navigationLayout.label,
-        options: model.navigationLayout.options.map(({ key, label, isSelected }) => [key, label, isSelected])
-      },
       releaseNotesLabel: model.releaseNotesLabel,
       resetLabel: model.resetLabel,
       settingsTitle: model.settingsTitle,
@@ -2130,21 +2074,6 @@ import {
           level
         })),
       markerTypesLabel: t("settings.markerTypes"),
-      navigationLayout: {
-        label: t("settings.layout"),
-        options: [
-          {
-            key: "horizontal",
-            label: t("settings.layoutHorizontal"),
-            isSelected: state.config.navigationLayout === "horizontal"
-          },
-          {
-            key: "vertical",
-            label: t("settings.layoutVertical"),
-            isSelected: state.config.navigationLayout === "vertical"
-          }
-        ]
-      },
       onConfigChange(key, value) {
         const previousFoldThreshold = state.config.foldThreshold;
         state.config = normalizeConfig({ ...state.config, [key]: value });
@@ -2166,12 +2095,6 @@ import {
       onMarkerLevelChange(level, isEnabled) {
         updateEnabledLevelForCurrentPlatform(level, isEnabled);
         recordDiagnosticEvent("setting_change", { settingKey: `heading-level-${level}` });
-        saveConfig(state.config);
-        render();
-      },
-      onNavigationLayoutChange(layout) {
-        state.config = normalizeConfig({ ...state.config, navigationLayout: layout });
-        recordDiagnosticEvent("setting_change", { settingKey: "navigation-layout" });
         saveConfig(state.config);
         render();
       },
@@ -2327,26 +2250,10 @@ import {
       : state.config.controlPosition;
   }
 
-  function verticalMarkerPaneWidth(root, controls) {
-    if (!(root instanceof HTMLElement) || !root.classList.contains("is-layout-vertical")) {
-      return 0;
-    }
-
-    const configuredWidth = Number.parseFloat(root.style.getPropertyValue("--gpt-nav-controls-width"));
-    if (Number.isFinite(configuredWidth)) {
-      return Math.max(0, configuredWidth);
-    }
-
-    const rootRect = root.getBoundingClientRect();
-    const controlsRect = controls.getBoundingClientRect();
-    return Math.min(360, Math.max(0, rootRect.width - controlsRect.width - 8));
-  }
-
-  function clampedControlPosition(position, controls, root = controls.closest(`#${ROOT_ID}`)) {
+  function clampedControlPosition(position, controls) {
     const rect = controls.getBoundingClientRect();
     const maxTop = Math.max(0, window.innerHeight - rect.height - 16);
-    const markerPaneWidth = verticalMarkerPaneWidth(root, controls);
-    const maxRight = Math.max(0, window.innerWidth - rect.width - markerPaneWidth - (markerPaneWidth > 0 ? 8 : 0));
+    const maxRight = Math.max(0, window.innerWidth - rect.width);
     return {
       top: Math.max(0, Math.min(position.top, maxTop)),
       right: Math.max(0, Math.min(position.right, maxRight))
@@ -2356,7 +2263,7 @@ import {
   function applyConfig(root, controlPosition = activeControlPosition()) {
     const controls = root.querySelector(`.${CONTROLS_CLASS}`);
     const position = controlPosition && controls instanceof HTMLElement
-      ? clampedControlPosition(controlPosition, controls, root)
+      ? clampedControlPosition(controlPosition, controls)
       : null;
     root.style.setProperty("--gpt-nav-top", position
       ? `${position.top}px`
@@ -4909,7 +4816,6 @@ import {
     showPendingReleaseNotice();
     const root = getRoot();
     updatePageTheme(root);
-    syncNavigationLayout(root);
     getReleaseNoticeOverlay(root);
 
     updateHeaderOffset(root);
@@ -4918,13 +4824,8 @@ import {
     applyConfig(root);
     const controls = getControls(root);
     const controlWidth = controls.getBoundingClientRect().width;
-    const rootWidth = root.getBoundingClientRect().width;
-    const markerContentWidth = state.config.navigationLayout === "vertical"
-      ? Math.min(360, Math.max(0, rootWidth - controlWidth - 8))
-      : controlWidth;
-    root.style.setProperty("--gpt-nav-control-column-width", `${Math.round(controlWidth)}px`);
-    if (markerContentWidth > 0) {
-      root.style.setProperty("--gpt-nav-controls-width", `${Math.round(markerContentWidth)}px`);
+    if (controlWidth > 0) {
+      root.style.setProperty("--gpt-nav-controls-width", `${Math.round(controlWidth)}px`);
     }
     applyConfig(root);
     const list = getList(root);
@@ -5450,7 +5351,7 @@ import {
         drag.controlPosition = clampedControlPosition({
           top: drag.controlPosition.top + deltaY,
           right: drag.controlPosition.right - deltaX
-        }, controls, drag.root);
+        }, controls);
         drag.startX = event.clientX;
         drag.startY = event.clientY;
         applyConfig(drag.root, drag.controlPosition);

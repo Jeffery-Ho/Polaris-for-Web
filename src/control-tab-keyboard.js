@@ -1,13 +1,12 @@
-export function nextControlTabIndex({ key, currentIndex, tabCount, isChapterModalOpen, orientation = "horizontal" }) {
+export function nextControlTabIndex({ key, currentIndex, tabCount, isChapterModalOpen }) {
   if (isChapterModalOpen) {
     return null;
   }
 
-  const isVertical = orientation === "vertical";
-  if (key === (isVertical ? "ArrowDown" : "ArrowRight")) {
+  if (key === "ArrowRight") {
     return (currentIndex + 1) % tabCount;
   }
-  if (key === (isVertical ? "ArrowUp" : "ArrowLeft")) {
+  if (key === "ArrowLeft") {
     return (currentIndex - 1 + tabCount) % tabCount;
   }
   if (key === "Home") {
