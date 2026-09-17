@@ -27,9 +27,6 @@
       "settings.maxVisibleUserGroups": "User group limit",
       "settings.foldThreshold": "Fold threshold",
       "settings.tooltipMaxWidth": "Tooltip width",
-      "settings.layout": "Tab Layout:",
-      "settings.layoutHorizontal": "Top of Window",
-      "settings.layoutVertical": "Sidebar",
       "settings.markerTypes": "Marker types",
       "settings.strong": "Bold text",
       "settings.orderedList": "Ordered list",
@@ -82,10 +79,6 @@
       "userMarker.earlierGroups": "+{count} earlier user groups",
       "userMarker.expandEarlierAria": "Show {count} earlier user groups",
       "userMarker.collapseEarlierAria": "Hide {count} earlier user groups",
-      "userMarker.verticalBack": "Back to user groups",
-      "userMarker.verticalGroups": "User message groups",
-      "userMarker.unassignedGroup": "Unassigned replies",
-      "userMarker.noAiMarkers": "No AI markers in this group",
       "userMarker.replyNotLoaded": "This reply has not loaded yet. Scroll the conversation to load it, then try again."
     }),
     zh: Object.freeze({
@@ -115,9 +108,6 @@
       "settings.maxVisibleUserGroups": "用户分组上限",
       "settings.foldThreshold": "折叠数量",
       "settings.tooltipMaxWidth": "提示宽度",
-      "settings.layout": "Tab 布局：",
-      "settings.layoutHorizontal": "窗口顶部",
-      "settings.layoutVertical": "侧边栏",
       "settings.markerTypes": "Marker 类型",
       "settings.strong": "加粗文本",
       "settings.orderedList": "有序列表",
@@ -170,10 +160,6 @@
       "userMarker.earlierGroups": "+{count} 个更早分组",
       "userMarker.expandEarlierAria": "显示 {count} 个更早用户分组",
       "userMarker.collapseEarlierAria": "收起 {count} 个更早用户分组",
-      "userMarker.verticalBack": "返回用户分组",
-      "userMarker.verticalGroups": "用户消息分组",
-      "userMarker.unassignedGroup": "未分组回复",
-      "userMarker.noAiMarkers": "该分组暂无 AI Maker",
       "userMarker.replyNotLoaded": "该回复尚未加载，请滚动会话加载后再试。"
     })
   });

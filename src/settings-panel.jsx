@@ -116,98 +116,6 @@ function createCheckbox({ label, isSelected, isDisabled, onChange }) {
   return wrapper;
 }
 
-function createNavigationMakerListPreview() {
-  const list = createElement("span", "polaris-settings-layout-preview-maker-list");
-  ["active", "default", "default", "default"].forEach((state) => {
-    const item = createElement("span", "polaris-settings-layout-preview-maker-item");
-    if (state === "active") {
-      item.classList.add("polaris-settings-layout-preview-maker-item--active");
-    }
-    list.appendChild(item);
-  });
-  return list;
-}
-
-function createNavigationLayoutPreview(key) {
-  const preview = createElement(
-    "span",
-    `polaris-settings-layout-preview polaris-settings-layout-preview--${key}`
-  );
-  preview.setAttribute("aria-hidden", "true");
-
-  const topbar = createElement("span", "polaris-settings-layout-preview-topbar");
-
-  const body = createElement("span", "polaris-settings-layout-preview-body");
-  if (key === "horizontal") {
-    const tabs = createElement("span", "polaris-settings-layout-preview-tabs");
-    [1, 2, 3].forEach(() => {
-      tabs.appendChild(createElement("span", "polaris-settings-layout-preview-tab"));
-    });
-    topbar.appendChild(tabs);
-    const canvas = createElement("span", "polaris-settings-layout-preview-canvas");
-    canvas.appendChild(createNavigationMakerListPreview());
-    body.appendChild(canvas);
-  } else {
-    const sidebar = createElement(
-      "span",
-      "polaris-settings-layout-preview-sidebar polaris-settings-layout-preview-sidebar--right"
-    );
-    [1, 2, 3].forEach(() => {
-      sidebar.appendChild(createElement("span", "polaris-settings-layout-preview-sidebar-item"));
-    });
-    const canvas = createElement("span", "polaris-settings-layout-preview-canvas");
-    const cascade = createElement("span", "polaris-settings-layout-preview-cascade");
-    const makerList = createNavigationMakerListPreview();
-    makerList.classList.add("polaris-settings-layout-preview-maker-list--ai");
-    const userList = createElement("span", "polaris-settings-layout-preview-user-list");
-    ["active", "default", "default"].forEach((state) => {
-      const item = createElement("span", "polaris-settings-layout-preview-user-item");
-      if (state === "active") {
-        item.classList.add("polaris-settings-layout-preview-user-item--active");
-      }
-      userList.appendChild(item);
-    });
-    cascade.append(makerList, userList);
-    canvas.appendChild(cascade);
-    body.append(
-      canvas,
-      sidebar
-    );
-  }
-
-  preview.append(topbar, body);
-  return preview;
-}
-
-function createNavigationLayoutSelector(model) {
-  const fieldset = createElement("fieldset", "polaris-settings-layout");
-  const legend = createElement("legend", "polaris-settings-section-label");
-  legend.textContent = model.navigationLayout.label;
-  const options = createElement("div", "polaris-settings-layout-options");
-
-  model.navigationLayout.options.forEach((option) => {
-    const wrapper = createElement("label", "polaris-settings-layout-option");
-    const input = document.createElement("input");
-    input.className = "polaris-settings-layout-input";
-    input.name = "polaris-navigation-layout";
-    input.type = "radio";
-    input.value = option.key;
-    input.checked = option.isSelected;
-    input.setAttribute("aria-label", option.label);
-    input.addEventListener("change", () => model.onNavigationLayoutChange(option.key));
-
-    const content = createElement("span", "polaris-settings-layout-content");
-    const label = createElement("span", "polaris-settings-layout-label");
-    label.textContent = option.label;
-    content.append(createNavigationLayoutPreview(option.key), label);
-    wrapper.append(input, content);
-    options.appendChild(wrapper);
-  });
-
-  fieldset.append(legend, options);
-  return fieldset;
-}
-
 function createSeparator() {
   const separator = createElement("div", "polaris-settings-separator");
   separator.setAttribute("aria-hidden", "true");
@@ -310,7 +218,7 @@ function createSettingsPanel(model) {
 
   const sliders = createElement("div", "polaris-settings-sliders");
   model.fields.forEach((field) => sliders.appendChild(createSlider(field, model)));
-  body.append(createNavigationLayoutSelector(model), createSeparator(), sliders, createSeparator());
+  body.append(sliders, createSeparator());
 
   const markerTypes = createElement("section", "polaris-settings-marker-types");
   markerTypes.setAttribute("aria-label", model.markerTypesLabel);

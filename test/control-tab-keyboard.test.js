@@ -46,21 +46,6 @@ test("章节弹窗关闭时保留主 Tab 的循环与首尾键盘导航", () => 
   assert.equal(nextIndexFor("End", 1), 2);
 });
 
-test("垂直 Sidebar 使用上下方向键循环主 Tab", () => {
-  const nextIndexFor = (key, currentIndex) => nextControlTabIndex({
-    key,
-    currentIndex,
-    tabCount: 3,
-    isChapterModalOpen: false,
-    orientation: "vertical"
-  });
-
-  assert.equal(nextIndexFor("ArrowDown", 2), 0);
-  assert.equal(nextIndexFor("ArrowUp", 0), 2);
-  assert.equal(nextIndexFor("ArrowRight", 1), null);
-  assert.equal(nextIndexFor("ArrowLeft", 1), null);
-});
-
 test("无关按键不触发主 Tab 导航", () => {
   assert.equal(nextControlTabIndex({
     key: "Enter",

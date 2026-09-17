@@ -210,9 +210,6 @@ import {
   const CONTROL_COMPACT_TOGGLE_CLASS = "gpt-paragraph-nav__control-compact-toggle";
   const SETTINGS_CLASS = "gpt-paragraph-nav__settings";
   const MAKER_PANE_CLASS = "gpt-paragraph-nav__maker-pane";
-  const VERTICAL_SUBMENU_CLASS = "gpt-paragraph-nav__vertical-submenu";
-  const VERTICAL_SUBMENU_BACK_CLASS = "gpt-paragraph-nav__vertical-submenu-back";
-  const VERTICAL_USER_LIST_ID = "gpt-paragraph-nav-user-list";
   const LIST_ID = "gpt-paragraph-nav-list";
   const SETTINGS_PANEL_ID = "gpt-paragraph-nav-settings-panel";
   const ROUTE_CHANGE_EVENT = "polaris-for-web-route-change";
@@ -236,7 +233,6 @@ import {
   const X_PROFILE_URL = "https://x.com/JefferyHo_";
   const RATING_DISMISSAL_DURATION_MS = 24 * 60 * 60 * 1000;
   const CONFIG_SCHEMA_VERSION = 8;
-  const VERTICAL_LAYOUT_ENABLED = true;
   const POINTER_DRAG_THRESHOLD = 4;
   const EXPLOSION_EMPTY_TEXT = t("chapters.empty");
   const EXPLOSION_BLOCK_SELECTOR = CHAPTER_BLOCK_SELECTOR;
@@ -304,7 +300,6 @@ import {
   const DEFAULT_CONFIG = Object.freeze({
     controlPosition: null,
     isControlMinimized: false,
-    navigationLayout: "horizontal",
     maxVisible: QUEUE_MAX_VISIBLE,
     maxVisibleUserGroups: 20,
     foldThreshold: 20,
@@ -357,8 +352,6 @@ import {
     areEarlierUserGroupsExpanded: false,
     isCollapsed: false,
     collapsedListHeight: 0,
-    verticalPinnedGroupKey: "",
-    verticalPreviewGroupKey: "",
     ratingDismissedUntil: 0,
     releaseNotes: [],
     releaseNoticePending: false,
@@ -389,10 +382,6 @@ import {
     }
   });
   const markerListReconciler = createMarkerListReconciler({
-    createRow: createMarkerRenderRow,
-    updateRow: updateMarkerRenderRow
-  });
-  const verticalUserMarkerListReconciler = createMarkerListReconciler({
     createRow: createMarkerRenderRow,
     updateRow: updateMarkerRenderRow
   });
@@ -600,7 +589,6 @@ import {
     markerMotionSuppressor.reset();
     markerRenderStateMachine.reset();
     markerListReconciler.reset();
-    verticalUserMarkerListReconciler.reset();
     markerListActiveTracker.reset();
     markerListScrollPersistence.reset();
     window.clearTimeout(state.markerNoticeTimer);
@@ -703,6 +691,14 @@ import {
       pane.className = MAKER_PANE_CLASS;
       root.appendChild(pane);
     }
+    const list = root.querySelector(`#${LIST_ID}`);
+    if (list instanceof HTMLElement && list.parentElement !== pane) {
+      pane.appendChild(list);
+    }
+    const search = root.querySelector(".gpt-paragraph-nav__search");
+    if (search instanceof HTMLElement && search.parentElement !== pane) {
+      pane.insertBefore(search, list instanceof HTMLElement ? list : null);
+    }
     return pane;
   }
 
@@ -721,32 +717,8 @@ import {
     }, { passive: true });
   }
 
-  function getVerticalSubmenu(root = getRoot()) {
-    const pane = getMakerPane(root);
-    let submenu = pane.querySelector(`.${VERTICAL_SUBMENU_CLASS}`);
-    if (!(submenu instanceof HTMLElement)) {
-      submenu = document.createElement("div");
-      submenu.className = VERTICAL_SUBMENU_CLASS;
-      const back = document.createElement("button");
-      back.type = "button";
-      back.className = VERTICAL_SUBMENU_BACK_CLASS;
-      back.textContent = t("userMarker.verticalBack");
-      back.setAttribute("aria-label", t("userMarker.verticalBack"));
-      back.addEventListener("click", () => {
-        state.verticalPinnedGroupKey = "";
-        state.verticalPreviewGroupKey = "";
-        render();
-      });
-      submenu.appendChild(back);
-      pane.appendChild(submenu);
-    }
-    return submenu;
-  }
-
   function getList(root = getRoot()) {
     const pane = getMakerPane(root);
-    const isVertical = root.classList.contains("is-layout-vertical");
-    const listParent = isVertical ? getVerticalSubmenu(root) : pane;
     let list = root.querySelector(`#${LIST_ID}`);
     if (!list) {
       list = document.createElement("div");
@@ -755,69 +727,7 @@ import {
       list.setAttribute("role", "tabpanel");
       list.setAttribute("aria-labelledby", "gpt-paragraph-nav-tab-navigation");
       configureMarkerList(list);
-    }
-    if (list.parentElement !== listParent) {
-      listParent.appendChild(list);
-    }
-    return list;
-  }
-
-  function getVerticalUserList(root = getRoot()) {
-    const pane = getMakerPane(root);
-    let list = root.querySelector(`#${VERTICAL_USER_LIST_ID}`);
-    if (!(list instanceof HTMLElement)) {
-      list = document.createElement("div");
-      list.id = VERTICAL_USER_LIST_ID;
-      list.className = "gpt-paragraph-nav__list gpt-paragraph-nav__vertical-user-list";
-      list.setAttribute("role", "list");
-      list.setAttribute("aria-label", t("userMarker.verticalGroups"));
-      configureMarkerList(list);
-      list.addEventListener("pointerover", (event) => {
-        const target = event.target instanceof Element
-          ? event.target.closest("[data-user-marker-key]")
-          : null;
-        if (!(target instanceof HTMLButtonElement) || !list.contains(target)) {
-          return;
-        }
-        const groupKey = target.dataset.userMarkerKey || "";
-        if (groupKey && state.verticalPreviewGroupKey !== groupKey) {
-          state.verticalPreviewGroupKey = groupKey;
-          render();
-        }
-      });
-      list.addEventListener("focusin", (event) => {
-        const target = event.target instanceof Element
-          ? event.target.closest("[data-user-marker-key]")
-          : null;
-        if (!(target instanceof HTMLButtonElement) || !list.contains(target)) {
-          return;
-        }
-        const groupKey = target.dataset.userMarkerKey || "";
-        if (groupKey && state.verticalPreviewGroupKey !== groupKey) {
-          state.verticalPreviewGroupKey = groupKey;
-          render();
-        }
-      });
       pane.appendChild(list);
-    }
-    if (pane.dataset.verticalSubmenuEvents !== "true") {
-      pane.dataset.verticalSubmenuEvents = "true";
-      pane.addEventListener("pointerleave", () => {
-        if (state.verticalPreviewGroupKey) {
-          state.verticalPreviewGroupKey = "";
-          render();
-        }
-      });
-      pane.addEventListener("focusout", (event) => {
-        const nextTarget = event.relatedTarget;
-        if (nextTarget instanceof Node && pane.contains(nextTarget)) {
-          return;
-        }
-        if (state.verticalPreviewGroupKey) {
-          state.verticalPreviewGroupKey = "";
-          render();
-        }
-      });
     }
     return list;
   }
@@ -867,19 +777,13 @@ import {
 
       wrapper.appendChild(input);
       ensureMarkerSearchIcon(wrapper);
-      const anchor = root.classList.contains("is-layout-vertical")
-        ? getVerticalSubmenu(root)
-        : list;
-      pane.insertBefore(wrapper, anchor);
+      pane.insertBefore(wrapper, list);
     } else {
       const wrapper = input.closest(".gpt-paragraph-nav__search");
       if (wrapper instanceof HTMLElement) {
         ensureMarkerSearchIcon(wrapper);
         if (wrapper.parentElement !== pane) {
-          const anchor = root.classList.contains("is-layout-vertical")
-            ? getVerticalSubmenu(root)
-            : list;
-          pane.insertBefore(wrapper, anchor);
+          pane.insertBefore(wrapper, list);
         }
       }
     }
@@ -934,15 +838,6 @@ import {
       state.collapsedListHeight = getList().offsetHeight;
     }
     state.isCollapsed = !state.isCollapsed;
-    state.verticalPinnedGroupKey = "";
-    state.verticalPreviewGroupKey = "";
-  }
-
-  function syncNavigationLayout(root = getRoot()) {
-    root.classList.toggle(
-      "is-layout-vertical",
-      VERTICAL_LAYOUT_ENABLED && state.config.navigationLayout === "vertical"
-    );
   }
 
   function syncControlTabIndicator(root = getRoot()) {
@@ -957,13 +852,6 @@ import {
       return;
     }
 
-    if (root.classList.contains("is-layout-vertical")) {
-      indicator.style.width = "";
-      indicator.style.height = `${activeTab.offsetHeight}px`;
-      indicator.style.transform = `translateY(${activeTab.offsetTop}px)`;
-      return;
-    }
-
     indicator.style.height = "";
     indicator.style.width = `${activeTab.offsetWidth}px`;
     indicator.style.transform = `translateX(${activeTab.offsetLeft}px)`;
@@ -972,7 +860,6 @@ import {
   function syncControlTabs(root = getRoot()) {
     const capsule = root.querySelector(`.${CONTROL_CAPSULE_CLASS}`);
     const isMinimized = state.config.isControlMinimized;
-    const isVerticalLayout = root.classList.contains("is-layout-vertical");
     if (!(capsule instanceof HTMLElement)) {
       return;
     }
@@ -982,7 +869,7 @@ import {
     root.classList.toggle("has-custom-control-position", Boolean(activeControlPosition()));
     capsule.classList.toggle("is-minimized", isMinimized);
     capsule.setAttribute("role", isMinimized ? "group" : "tablist");
-    capsule.setAttribute("aria-orientation", isVerticalLayout ? "vertical" : "horizontal");
+    capsule.setAttribute("aria-orientation", "horizontal");
     capsule.setAttribute("aria-label", isMinimized
       ? `${t("controls.label")}: ${t(`tab.${state.activeControlTab}`)}`
       : t("controls.label"));
@@ -1063,63 +950,7 @@ import {
       return icon;
     }
 
-    const namespace = "http://www.w3.org/2000/svg";
-    const icon = document.createElementNS(namespace, "svg");
-    icon.classList.add(
-      "gpt-paragraph-nav__control-tab-icon",
-      "gpt-paragraph-nav__control-tab-icon--vertical"
-    );
-    icon.setAttribute("aria-hidden", "true");
-    icon.setAttribute("focusable", "false");
-    icon.setAttribute("height", "24px");
-    icon.setAttribute("viewBox", "0 0 24 24");
-    icon.setAttribute("width", "24px");
-
-    const title = document.createElementNS(namespace, "title");
-    title.textContent = key === "chapters" ? "book-open" : "information";
-    icon.appendChild(title);
-
-    const group = document.createElementNS(namespace, "g");
-    group.setAttribute("fill", "none");
-    group.setAttribute("stroke", "currentColor");
-    group.setAttribute("stroke-linecap", "round");
-    group.setAttribute("stroke-linejoin", "round");
-    group.setAttribute("stroke-width", "1.5");
-
-    if (key === "chapters") {
-      const path = document.createElementNS(namespace, "path");
-      path.setAttribute("d", "M12,5 L11.4059,4.40589 C10.887,3.88703 10.6276,3.6276 10.3249,3.44208 C10.0564,3.27759 9.7638,3.15638 9.4577,3.08289 C9.11243,3 8.74555,3 8.01178,3 L4.6,3 C4.03995,3 3.75992,3 3.54601,3.10899 C3.35785,3.20487 3.20487,3.35785 3.10899,3.54601 C3,3.75992 3,4.03995 3,4.6 L3,17.4 C3,17.9601 3,18.2401 3.10899,18.454 C3.20487,18.6422 3.35785,18.7951 3.54601,18.891 C3.75992,19 4.03995,19 4.6,19 L8.01178,19 C8.74555,19 9.11243,19 9.4577,19.0829 C9.7638,19.1564 10.0564,19.2776 10.3249,19.4421 C10.6276,19.6276 10.887,19.887 11.4059,20.4059 L12,21 L12.5941,20.4059 C13.113,19.887 13.3724,19.6276 13.6751,19.4421 C13.9436,19.2776 14.2362,19.1564 14.5423,19.0829 C14.8876,19 15.2545,19 15.9882,19 L19.4,19 C19.9601,19 20.2401,19 20.454,18.891 C20.6422,18.7951 20.7951,18.6422 20.891,18.454 C21,18.2401 21,17.9601 21,17.4 L21,4.6 C21,4.03995 21,3.75992 20.891,3.54601 C20.7951,3.35785 20.6422,3.20487 20.454,3.10899 C20.2401,3 19.9601,3 19.4,3 L15.9882,3 C15.2545,3 14.8876,3 14.5423,3.08289 C14.2362,3.15638 13.9436,3.27759 13.6751,3.44208 C13.3724,3.6276 13.113,3.88703 12.5941,4.40589 L12,5 Z M12,21 L12,5");
-      group.appendChild(path);
-    } else {
-      group.setAttribute("fill-rule", "evenodd");
-      const innerGroup = document.createElementNS(namespace, "g");
-      innerGroup.setAttribute("transform", "translate(3, 3)");
-      innerGroup.setAttribute("stroke", "currentColor");
-
-      const line = document.createElementNS(namespace, "line");
-      line.setAttribute("id", "information-line");
-      line.setAttribute("x1", "9");
-      line.setAttribute("y1", "12.5");
-      line.setAttribute("x2", "9");
-      line.setAttribute("y2", "9");
-      innerGroup.appendChild(line);
-
-      const circle = document.createElementNS(namespace, "path");
-      circle.setAttribute("d", "M9,18 C13.9706,18 18,13.9706 18,9 C18,4.02944 13.9706,0 9,0 C4.02944,0 0,4.02944 0,9 C0,13.9706 4.02944,18 9,18 Z");
-      innerGroup.appendChild(circle);
-
-      const dot = document.createElementNS(namespace, "line");
-      dot.setAttribute("id", "information-dot");
-      dot.setAttribute("x1", "9");
-      dot.setAttribute("y1", "6");
-      dot.setAttribute("x2", "9.01");
-      dot.setAttribute("y2", "6");
-      innerGroup.appendChild(dot);
-      group.appendChild(innerGroup);
-    }
-
-    icon.appendChild(group);
-    return icon;
+    return null;
   }
 
   function createImagePreviewZoomIcon() {
@@ -1185,7 +1016,10 @@ import {
         tab.setAttribute("role", "tab");
         tab.setAttribute("aria-controls", controlsId);
         tab.setAttribute("aria-label", label);
-        tab.appendChild(createControlTabIcon(key));
+        const icon = createControlTabIcon(key);
+        if (icon) {
+          tab.appendChild(icon);
+        }
 
         const title = document.createElement("span");
         title.className = "gpt-paragraph-nav__control-tab-label";
@@ -1210,7 +1044,6 @@ import {
       capsule.addEventListener("keydown", (event) => {
         const tabs = Array.from(capsule.querySelectorAll("[data-control-tab]"));
         const currentIndex = tabs.indexOf(document.activeElement);
-        const isVerticalLayout = root.classList.contains("is-layout-vertical");
         if (currentIndex < 0) {
           return;
         }
@@ -1218,8 +1051,7 @@ import {
           key: event.key,
           currentIndex,
           tabCount: tabs.length,
-          isChapterModalOpen: state.isExplosionOpen,
-          orientation: isVerticalLayout ? "vertical" : "horizontal"
+          isChapterModalOpen: state.isExplosionOpen
         });
         if (nextIndex === null) {
           return;
@@ -1883,10 +1715,6 @@ import {
     }, {});
   }
 
-  function normalizeNavigationLayout(value) {
-    return VERTICAL_LAYOUT_ENABLED && value === "vertical" ? "vertical" : "horizontal";
-  }
-
   function normalizeConfig(config) {
     const result = CONFIG_FIELDS.reduce((normalizedConfig, field) => {
       normalizedConfig[field.key] = normalizeNumber(
@@ -1903,7 +1731,6 @@ import {
     result.enabledUnorderedListByPlatform = normalizeUnorderedListByPlatform(config);
     result.controlPosition = normalizeControlPosition(config && config.controlPosition);
     result.isControlMinimized = Boolean(config && config.isControlMinimized);
-    result.navigationLayout = normalizeNavigationLayout(config && config.navigationLayout);
     if ((Number(config && config.configVersion) || 1) < 2) {
       result.enabledLevelsByPlatform.xiaohongshu = normalizeEnabledLevels(
         [...result.enabledLevelsByPlatform.xiaohongshu, 4],
@@ -1967,8 +1794,7 @@ import {
       && enabledUnorderedListByPlatformEqual(first.enabledUnorderedListByPlatform, second.enabledUnorderedListByPlatform)
       && first.controlPosition?.top === second.controlPosition?.top
       && first.controlPosition?.right === second.controlPosition?.right
-      && first.isControlMinimized === second.isControlMinimized
-      && first.navigationLayout === second.navigationLayout;
+      && first.isControlMinimized === second.isControlMinimized;
   }
 
   function hasSyncStorage() {
@@ -2241,10 +2067,6 @@ import {
       issueLabel: model.issueLabel,
       markerLevels: model.markerLevels.map(({ key, label, level, isDisabled, isSelected }) => [key, label, level, isDisabled, isSelected]),
       markerTypesLabel: model.markerTypesLabel,
-      navigationLayout: {
-        label: model.navigationLayout.label,
-        options: model.navigationLayout.options.map(({ key, label, isSelected }) => [key, label, isSelected])
-      },
       releaseNotesLabel: model.releaseNotesLabel,
       resetLabel: model.resetLabel,
       settingsTitle: model.settingsTitle,
@@ -2314,21 +2136,6 @@ import {
           level
         })),
       markerTypesLabel: t("settings.markerTypes"),
-      navigationLayout: {
-        label: t("settings.layout"),
-        options: [
-          {
-            key: "horizontal",
-            label: t("settings.layoutHorizontal"),
-            isSelected: state.config.navigationLayout === "horizontal"
-          },
-          {
-            key: "vertical",
-            label: t("settings.layoutVertical"),
-            isSelected: state.config.navigationLayout === "vertical"
-          }
-        ]
-      },
       onConfigChange(key, value) {
         const previousFoldThreshold = state.config.foldThreshold;
         state.config = normalizeConfig({ ...state.config, [key]: value });
@@ -2353,14 +2160,6 @@ import {
         saveConfig(state.config);
         render();
       },
-      onNavigationLayoutChange(layout) {
-        state.config = normalizeConfig({ ...state.config, navigationLayout: layout });
-        state.verticalPinnedGroupKey = "";
-        state.verticalPreviewGroupKey = "";
-        recordDiagnosticEvent("setting_change", { settingKey: "navigation-layout" });
-        saveConfig(state.config);
-        render();
-      },
       onOpenReleaseNotes() {
         state.releaseNotes = releaseNotesForUpdate(null, extensionMetadata.releaseVersion, 1);
         state.releaseNoticePending = false;
@@ -2376,8 +2175,6 @@ import {
       onReset() {
         state.config = normalizeConfig(DEFAULT_CONFIG);
         state.areEarlierUserGroupsExpanded = false;
-        state.verticalPinnedGroupKey = "";
-        state.verticalPreviewGroupKey = "";
         resetCollapsedGroups();
         recordDiagnosticEvent("setting_change", { settingKey: "reset" });
         saveConfig(state.config);
@@ -2515,26 +2312,10 @@ import {
       : state.config.controlPosition;
   }
 
-  function verticalMarkerPaneWidth(root, controls) {
-    if (!(root instanceof HTMLElement) || !root.classList.contains("is-layout-vertical")) {
-      return 0;
-    }
-
-    const configuredWidth = Number.parseFloat(root.style.getPropertyValue("--gpt-nav-controls-width"));
-    if (Number.isFinite(configuredWidth)) {
-      return Math.max(0, configuredWidth);
-    }
-
-    const rootRect = root.getBoundingClientRect();
-    const controlsRect = controls.getBoundingClientRect();
-    return Math.min(360, Math.max(0, rootRect.width - controlsRect.width - 8));
-  }
-
-  function clampedControlPosition(position, controls, root = controls.closest(`#${ROOT_ID}`)) {
+  function clampedControlPosition(position, controls) {
     const rect = controls.getBoundingClientRect();
     const maxTop = Math.max(0, window.innerHeight - rect.height - 16);
-    const markerPaneWidth = verticalMarkerPaneWidth(root, controls);
-    const maxRight = Math.max(0, window.innerWidth - rect.width - markerPaneWidth - (markerPaneWidth > 0 ? 8 : 0));
+    const maxRight = Math.max(0, window.innerWidth - rect.width - 8);
     return {
       top: Math.max(0, Math.min(position.top, maxTop)),
       right: Math.max(0, Math.min(position.right, maxRight))
@@ -2543,32 +2324,16 @@ import {
 
   function applyConfig(root, controlPosition = activeControlPosition()) {
     const controls = root.querySelector(`.${CONTROLS_CLASS}`);
-    const isVerticalLayout = root.classList.contains("is-layout-vertical");
     const position = controlPosition && controls instanceof HTMLElement
-      ? clampedControlPosition(controlPosition, controls, root)
+      ? clampedControlPosition(controlPosition, controls)
       : null;
     root.style.setProperty("--gpt-nav-top", position
       ? `${position.top}px`
       : `calc(var(--gpt-conversation-header-height, ${DEFAULT_HEADER_HEIGHT}px) + ${DEFAULT_TOP_GAP}px)`);
     root.style.setProperty("--gpt-nav-right", position ? `${position.right}px` : `${DEFAULT_RIGHT_OFFSET}px`);
-    const makerWidth = Number.parseFloat(root.style.getPropertyValue("--gpt-nav-controls-width"));
-    const controlWidth = Number.parseFloat(root.style.getPropertyValue("--gpt-nav-control-column-width"));
-    const availableWidth = Math.max(0, window.innerWidth - (position?.right ?? DEFAULT_RIGHT_OFFSET));
-    const verticalNavWidth = Math.min(
-      availableWidth,
-      (Number.isFinite(makerWidth) ? makerWidth : 360)
-        + (Number.isFinite(controlWidth)
-          ? controlWidth
-          : controls instanceof HTMLElement
-            ? controls.getBoundingClientRect().width
-            : 42)
-        + 8
-    );
-    root.style.setProperty("--gpt-nav-width", isVerticalLayout
-      ? `${Math.round(verticalNavWidth)}px`
-      : position
-        ? `calc(100vw - ${position.right}px)`
-        : `calc(100vw - ${DEFAULT_RIGHT_OFFSET * 2}px)`);
+    root.style.setProperty("--gpt-nav-width", position
+      ? `calc(100vw - ${position.right}px)`
+      : `calc(100vw - ${DEFAULT_RIGHT_OFFSET * 2}px)`);
     root.style.setProperty("--gpt-nav-tooltip-max-width", `${state.config.tooltipMaxWidth}px`);
   }
 
@@ -4643,7 +4408,7 @@ import {
     }, 2200);
   }
 
-  function userMarkerRenderItem(group, isExpanded, { isSelected = false } = {}) {
+  function userMarkerRenderItem(group, isExpanded) {
     const { user } = group;
     const baseAriaLabel = isExpanded
       ? t("userMarker.collapseAria", { title: user.title })
@@ -4665,27 +4430,9 @@ import {
       imageCount: user.imageCount,
       imageUrls: user.imageUrls,
       isImageOnly: user.isImageOnly,
-      isSelected,
       width: markerWidthFor(user.previewTitle),
-      signature: markerRenderSignature(["user", isExpanded, isSelected, ariaLabel, user.title, preview, user.imageUrls, user.thumbnailSrc, user.imageCount, user.isImageOnly])
+      signature: markerRenderSignature(["user", isExpanded, ariaLabel, user.title, preview, user.imageUrls, user.thumbnailSrc, user.imageCount, user.isImageOnly])
     };
-  }
-
-  function verticalUserMarkerRenderItem(group, isSelected) {
-    if (group.user) {
-      return userMarkerRenderItem(group, isSelected, { isSelected });
-    }
-
-    const title = t("userMarker.unassignedGroup");
-    const user = {
-      title,
-      previewTitle: title,
-      thumbnailSrc: "",
-      imageCount: 0,
-      imageUrls: [],
-      isImageOnly: false
-    };
-    return userMarkerRenderItem({ ...group, user }, isSelected, { isSelected });
   }
 
   function earlierUserGroupsRenderItem(count) {
@@ -4857,7 +4604,6 @@ import {
       ? `gpt-paragraph-nav__marker gpt-paragraph-nav__marker--ai level-${item.level}`
       : "gpt-paragraph-nav__marker gpt-paragraph-nav__marker--user";
     marker.classList.toggle("is-active", wasActive);
-    marker.classList.toggle("is-vertical-group-selected", Boolean(item.isSelected));
     marker.style.setProperty("--marker-width", `${item.width}px`);
     marker.setAttribute("aria-label", item.ariaLabel || item.title);
     marker.querySelector(".gpt-paragraph-nav__preview").textContent = item.preview;
@@ -4871,11 +4617,6 @@ import {
     marker.setAttribute("aria-expanded", String(item.isExpanded));
     if (item.type === "user") {
       marker.dataset.userMarkerKey = item.groupKey;
-      if (item.isSelected) {
-        marker.setAttribute("aria-controls", LIST_ID);
-      } else {
-        marker.removeAttribute("aria-controls");
-      }
       const label = row.querySelector(".gpt-paragraph-nav__label");
       const labelText = label.querySelector(".gpt-paragraph-nav__label-text");
       labelText.textContent = item.title;
@@ -4970,13 +4711,6 @@ import {
     if (!group) {
       return;
     }
-    const root = list.closest(`#${ROOT_ID}`);
-    if (root instanceof HTMLElement && root.classList.contains("is-layout-vertical")) {
-      state.verticalPinnedGroupKey = groupKey;
-      state.verticalPreviewGroupKey = groupKey;
-      render();
-      return;
-    }
     if (shouldShowUserMarkerNotLoadedNotice({
       isChatGPT: isChatGPTPage(),
       hasAssistantMessage: group.hasAssistantMessage,
@@ -5013,7 +4747,7 @@ import {
     ), trailing.length);
   }
 
-  function markerRenderItemsForGroup(group, { includeUser = true } = {}) {
+  function markerRenderItemsForGroup(group) {
     const isSearchActive = Boolean(normalizeSearchQuery(state.markerSearchQuery));
     const isExpanded = isUserMarkerExpanded({
       groupKey: group.key,
@@ -5023,7 +4757,7 @@ import {
     });
     const items = [];
 
-    if (includeUser && group.user) {
+    if (group.user) {
       items.push(userMarkerRenderItem(group, isExpanded));
     }
 
@@ -5039,61 +4773,6 @@ import {
         }
       });
       trailing.forEach((heading) => items.push(aiMarkerRenderItem(heading)));
-    }
-    return items;
-  }
-
-  function verticalSelectedGroupKey(visibleGroups) {
-    const selectedKey = state.verticalPreviewGroupKey || state.verticalPinnedGroupKey;
-    if (selectedKey && visibleGroups.some((group) => group.key === selectedKey)) {
-      return selectedKey;
-    }
-    if (normalizeSearchQuery(state.markerSearchQuery)) {
-      return visibleGroups.find((group) => group.user || group.headings.length)?.key || "";
-    }
-    return "";
-  }
-
-  function verticalUserMarkerRenderItems(visibleGroups, earlierUserGroupCount, selectedGroupKey) {
-    const items = [];
-    let isEarlierUserGroupsControlAppended = false;
-    visibleGroups.forEach((group) => {
-      if (earlierUserGroupCount && !isEarlierUserGroupsControlAppended && group.user) {
-        items.push(earlierUserGroupsRenderItem(earlierUserGroupCount));
-        isEarlierUserGroupsControlAppended = true;
-      }
-      if (group.user || group.headings.length) {
-        items.push(verticalUserMarkerRenderItem(group, group.key === selectedGroupKey));
-      }
-    });
-    if (earlierUserGroupCount && !isEarlierUserGroupsControlAppended) {
-      items.push(earlierUserGroupsRenderItem(earlierUserGroupCount));
-    }
-    if (!items.length) {
-      const message = t("search.empty");
-      items.push({
-        key: "vertical-user-empty",
-        type: "empty",
-        message,
-        signature: markerRenderSignature(["vertical-user-empty", message])
-      });
-    }
-    return items;
-  }
-
-  function verticalAiMarkerRenderItems(group) {
-    if (!group) {
-      return [];
-    }
-    const items = markerRenderItemsForGroup(group, { includeUser: false });
-    if (!items.length) {
-      const message = t("userMarker.noAiMarkers");
-      return [{
-        key: `vertical-ai-empty:${group.key}`,
-        type: "empty",
-        message,
-        signature: markerRenderSignature(["vertical-ai-empty", group.key, message])
-      }];
     }
     return items;
   }
@@ -5208,7 +4887,6 @@ import {
     showPendingReleaseNotice();
     const root = getRoot();
     updatePageTheme(root);
-    syncNavigationLayout(root);
     getReleaseNoticeOverlay(root);
 
     updateHeaderOffset(root);
@@ -5216,40 +4894,11 @@ import {
     getSettings(root);
     const controls = getControls(root);
     const controlWidth = controls.getBoundingClientRect().width;
-    const isVertical = root.classList.contains("is-layout-vertical");
-    const selectedVerticalGroupKey = isVertical ? verticalSelectedGroupKey(visibleGroups) : "";
-    const controlPosition = activeControlPosition();
-    const rightOffset = Number.isFinite(controlPosition?.right)
-      ? Math.max(0, controlPosition.right)
-      : DEFAULT_RIGHT_OFFSET;
-    const availableMakerWidth = Math.max(
-      0,
-      window.innerWidth - rightOffset - controlWidth - 8
-    );
-    const markerContentWidth = isVertical
-      ? Math.min(selectedVerticalGroupKey ? 360 : 180, availableMakerWidth)
-      : controlWidth;
+    const markerContentWidth = controlWidth;
     root.style.setProperty("--gpt-nav-control-column-width", `${Math.round(controlWidth)}px`);
     root.style.setProperty("--gpt-nav-controls-width", `${Math.round(markerContentWidth)}px`);
-    if (isVertical) {
-      const verticalUserWidth = selectedVerticalGroupKey
-        ? Math.min(132, Math.max(0, markerContentWidth * 0.38))
-        : Math.max(0, markerContentWidth - 8);
-      const verticalAiWidth = selectedVerticalGroupKey
-        ? Math.max(0, markerContentWidth - verticalUserWidth - 8)
-        : 0;
-      root.style.setProperty("--gpt-nav-maker-pane-width", `${Math.round(markerContentWidth)}px`);
-      root.style.setProperty("--gpt-nav-vertical-ai-width", `${Math.round(verticalAiWidth)}px`);
-      root.style.setProperty("--gpt-nav-vertical-user-width", `${Math.round(verticalUserWidth)}px`);
-    } else {
-      root.style.removeProperty("--gpt-nav-maker-pane-width");
-      root.style.removeProperty("--gpt-nav-vertical-ai-width");
-      root.style.removeProperty("--gpt-nav-vertical-user-width");
-    }
     applyConfig(root);
     const list = getList(root);
-    const verticalSubmenu = isVertical ? getVerticalSubmenu(root) : null;
-    const verticalUserList = isVertical ? getVerticalUserList(root) : null;
     getMarkerSearchInput(root);
     const searchInput = root.querySelector(".gpt-paragraph-nav__search-input");
     const searchWrapper = searchInput instanceof HTMLElement
@@ -5286,21 +4935,7 @@ import {
     root.classList.toggle("is-empty", !hasMarkers);
     root.classList.toggle("is-collapsed", state.isCollapsed && hasMarkers);
     list.style.height = state.isCollapsed && state.collapsedListHeight > 0 ? `${state.collapsedListHeight}px` : "";
-    list.hidden = isVertical && !selectedVerticalGroupKey;
-    list.setAttribute("aria-hidden", String(state.isCollapsed || list.hidden));
-    if (verticalSubmenu instanceof HTMLElement) {
-      verticalSubmenu.hidden = state.isCollapsed || !selectedVerticalGroupKey;
-      const back = verticalSubmenu.querySelector(`.${VERTICAL_SUBMENU_BACK_CLASS}`);
-      if (back instanceof HTMLButtonElement) {
-        back.hidden = !selectedVerticalGroupKey;
-      }
-    }
-    if (verticalUserList instanceof HTMLElement) {
-      verticalUserList.hidden = state.isCollapsed;
-      verticalUserList.setAttribute("aria-hidden", String(state.isCollapsed));
-    } else {
-      verticalUserMarkerListReconciler.reset();
-    }
+    list.setAttribute("aria-hidden", String(state.isCollapsed));
 
     if (state.isCollapsed) {
       updateFloatingActiveMarker(null);
@@ -5308,35 +4943,21 @@ import {
       return;
     }
 
-    const markerListResult = markerListReconciler.reconcile(
+    const {
+      changed: didChangeMarkerList,
+      scrollDelta: markerListScrollDelta
+    } = markerListReconciler.reconcile(
       list,
-      isVertical
-        ? verticalAiMarkerRenderItems(visibleGroups.find((group) => group.key === selectedVerticalGroupKey))
-        : markerRenderItems(visibleGroups, earlierUserGroupCount)
+      markerRenderItems(visibleGroups, earlierUserGroupCount)
     );
-    const verticalUserListResult = verticalUserList instanceof HTMLElement
-      ? verticalUserMarkerListReconciler.reconcile(
-        verticalUserList,
-        verticalUserMarkerRenderItems(visibleGroups, earlierUserGroupCount, selectedVerticalGroupKey)
-      )
-      : { changed: false, scrollDelta: 0 };
-    if (markerListResult.changed) {
+    if (didChangeMarkerList) {
       preserveMarkerListDragPosition({
         drag: state.pointerDrag,
         list,
         maxScrollTop: markerListMaxScrollTop(list),
-        scrollDelta: markerListResult.scrollDelta
+        scrollDelta: markerListScrollDelta
       });
     }
-    if (verticalUserListResult.changed) {
-      preserveMarkerListDragPosition({
-        drag: state.pointerDrag,
-        list: verticalUserList,
-        maxScrollTop: markerListMaxScrollTop(verticalUserList),
-        scrollDelta: verticalUserListResult.scrollDelta
-      });
-    }
-    const didChangeMarkerList = markerListResult.changed || verticalUserListResult.changed;
     if (didChangeMarkerList && suppressMarkerMotion) {
       markerMotionSuppressor.suppress();
     }
@@ -5368,7 +4989,6 @@ import {
     markerMotionSuppressor.reset();
     markerRenderStateMachine.reset();
     markerListReconciler.reset();
-    verticalUserMarkerListReconciler.reset();
     markerListActiveTracker.reset();
     markerListScrollPersistence.reset();
     runtimeMarkerKeySequence.reset();
@@ -5386,8 +5006,6 @@ import {
     state.activeMarkerKey = "";
     state.isCollapsed = false;
     state.collapsedListHeight = 0;
-    state.verticalPinnedGroupKey = "";
-    state.verticalPreviewGroupKey = "";
     state.activeControlTab = "navigation";
     state.releaseNoticeReturnControlTab = null;
     state.explosionSections = [];
@@ -5619,9 +5237,7 @@ import {
   }
 
   function markerListDragTarget(event, root) {
-    const list = event.target instanceof Element
-      ? event.target.closest(".gpt-paragraph-nav__list")
-      : null;
+    const list = root.querySelector(`#${LIST_ID}`);
     if (!(list instanceof HTMLElement) || !root.contains(list)) {
       return null;
     }
@@ -5797,7 +5413,7 @@ import {
         drag.controlPosition = clampedControlPosition({
           top: drag.controlPosition.top + deltaY,
           right: drag.controlPosition.right - deltaX
-        }, controls, drag.root);
+        }, controls);
         drag.startX = event.clientX;
         drag.startY = event.clientY;
         applyConfig(drag.root, drag.controlPosition);
