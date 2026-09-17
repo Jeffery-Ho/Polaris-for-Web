@@ -48,6 +48,28 @@ test("垂直 Sidebar 更新 Tab 无障碍方向和选中指示器", () => {
   assert.match(styles, /#gpt-paragraph-nav\.is-layout-vertical \.gpt-paragraph-nav__control-tab-indicator \{[\s\S]*?right: 3px;[\s\S]*?bottom: auto;/);
 });
 
+test("垂直 Sidebar 只显示图标并保留每个 Tab 的无障碍标题", () => {
+  assert.match(contentSource, /function createControlTabIcon\(key\)/);
+  assert.match(contentSource, /gpt-paragraph-nav__control-tab-icon--vertical/);
+  assert.match(contentSource, /title\.textContent = key === "chapters" \? "book-open" : "information"/);
+  assert.match(contentSource, /tab\.setAttribute\("aria-label", label\)/);
+  assert.match(contentSource, /M12,5 L11\.4059,4\.40589/);
+  assert.match(contentSource, /M9,18 C13\.9706,18 18,13\.9706 18,9/);
+  assert.match(styles, /#gpt-paragraph-nav\.is-layout-vertical \.gpt-paragraph-nav__control-tab-label,[\s\S]*?#gpt-paragraph-nav\.is-layout-vertical \.gpt-paragraph-nav__control-tab-chevron \{[\s\S]*?display: none;/);
+  assert.match(styles, /#gpt-paragraph-nav\.is-layout-vertical \.gpt-paragraph-nav__control-tab \{[\s\S]*?width: 34px;[\s\S]*?min-width: 34px;/);
+  assert.match(styles, /\.gpt-paragraph-nav__control-tab-icon--vertical \{\n  display: none;/);
+  assert.match(styles, /#gpt-paragraph-nav\.is-layout-vertical \.gpt-paragraph-nav__control-tab-icon--vertical \{[\s\S]*?display: block;[\s\S]*?width: 24px;[\s\S]*?height: 24px;/);
+});
+
+test("垂直 Sidebar 的搜索栏默认仅显示图标并在聚焦时展开", () => {
+  assert.match(contentSource, /function ensureMarkerSearchIcon\(wrapper\)/);
+  assert.match(contentSource, /wrapper\.prepend\(icon\)/);
+  assert.match(styles, /#gpt-paragraph-nav\.is-layout-vertical \.gpt-paragraph-nav__search-icon \{[\s\S]*?-webkit-mask:/);
+  assert.match(styles, /#gpt-paragraph-nav\.is-layout-vertical \.gpt-paragraph-nav__search-input \{[\s\S]*?width: 32px;[\s\S]*?text-indent: -9999px;/);
+  assert.match(styles, /#gpt-paragraph-nav\.is-layout-vertical \.gpt-paragraph-nav__search-input:focus \{[\s\S]*?width: min\(220px, 100%\);[\s\S]*?text-indent: 0;/);
+  assert.match(styles, /#gpt-paragraph-nav\.is-layout-vertical \.gpt-paragraph-nav__search:focus-within \.gpt-paragraph-nav__search-icon \{[\s\S]*?display: none;/);
+});
+
 test("设置面板提供可访问的布局单选项并同步本地化文案", () => {
   assert.match(settingsPanelSource, /function createNavigationLayoutSelector\(model\)/);
   assert.match(settingsPanelSource, /function createNavigationLayoutPreview\(key\)/);
