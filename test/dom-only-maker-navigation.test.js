@@ -16,9 +16,9 @@ test("路由切换立即清空旧列表，并等待宿主 DOM 变更后才扫描
   const mutations = functionSource("handleDocumentMutations", "getSelectedHeading");
   const renderSnapshot = functionSource("collectMarkerRenderSnapshot", "render");
 
-  assert.match(routeChange, /clearNonConversationPageState\(\)/);
+  assert.match(routeChange, /resetRouteState\(\)/);
   assert.match(routeChange, /state\.awaitingRouteDom = true/);
-  assert.match(routeChange, /render\(\)/);
+  assert.match(routeChange, /removeNavigationRoot\(\)/);
   assert.doesNotMatch(routeChange, /scheduleRender/);
   assert.match(contentSource, /function isPolarisOwnedMutationNode/);
   assert.match(contentSource, /changedNodes\.every\(isPolarisOwnedMutationNode\)/);
