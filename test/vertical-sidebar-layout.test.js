@@ -14,10 +14,12 @@ function functionSource(source, name, nextName) {
   return source.slice(start, end);
 }
 
-test("布局配置默认横向并兼容旧配置", () => {
+test("布局配置默认横向并隐藏垂直布局入口", () => {
   assert.match(contentSource, /const CONFIG_SCHEMA_VERSION = 8;/);
+  assert.match(contentSource, /const VERTICAL_LAYOUT_ENABLED = false;/);
   assert.match(contentSource, /navigationLayout: "horizontal"/);
   assert.match(contentSource, /function normalizeNavigationLayout\(value\)/);
+  assert.match(contentSource, /return VERTICAL_LAYOUT_ENABLED && value === "vertical" \? "vertical" : "horizontal";/);
   assert.match(contentSource, /result\.navigationLayout = normalizeNavigationLayout\(config && config\.navigationLayout\);/);
 
   const normalizeConfig = functionSource(contentSource, "normalizeConfig", "enabledLevelsByPlatformEqual");
@@ -30,7 +32,7 @@ test("布局配置默认横向并兼容旧配置", () => {
 test("Maker pane 将搜索和列表作为垂直布局左侧整体", () => {
   assert.match(contentSource, /gpt-paragraph-nav__maker-pane/);
   assert.match(contentSource, /function getMakerPane\(root = getRoot\(\)\)/);
-  assert.match(contentSource, /root\.classList\.toggle\("is-layout-vertical", state\.config\.navigationLayout === "vertical"\)/);
+  assert.match(contentSource, /root\.classList\.toggle\(\s*"is-layout-vertical",\s*VERTICAL_LAYOUT_ENABLED && state\.config\.navigationLayout === "vertical"\s*\)/);
   assert.match(styles, /#gpt-paragraph-nav\.is-layout-vertical \{[\s\S]*?display: grid;[\s\S]*?grid-template-columns: minmax\(0, 1fr\) auto;/);
   assert.match(styles, /#gpt-paragraph-nav\.is-layout-vertical \.gpt-paragraph-nav__maker-pane \{[\s\S]*?grid-column: 1;[\s\S]*?justify-self: stretch;[\s\S]*?width: 100%;/);
   assert.match(styles, /#gpt-paragraph-nav\.is-layout-vertical \.gpt-paragraph-nav__marker-row \{[\s\S]*?width: 100%;/);
@@ -77,7 +79,7 @@ test("垂直 Sidebar 的搜索栏默认仅显示图标并在聚焦时展开", ()
   assert.match(styles, /#gpt-paragraph-nav\.is-layout-vertical \.gpt-paragraph-nav__search:focus-within \.gpt-paragraph-nav__search-icon \{[\s\S]*?display: none;/);
 });
 
-test("设置面板提供可访问的布局单选项并同步本地化文案", () => {
+test("布局单选项保留兼容实现但不显示在设置面板", () => {
   assert.match(settingsPanelSource, /function createNavigationLayoutSelector\(model\)/);
   assert.match(settingsPanelSource, /function createNavigationLayoutPreview\(key\)/);
   assert.match(settingsPanelSource, /createNavigationLayoutPreview\(option\.key\)/);
@@ -88,6 +90,7 @@ test("设置面板提供可访问的布局单选项并同步本地化文案", ()
   assert.match(settingsPanelSource, /input\.type = "radio"/);
   assert.match(settingsPanelSource, /input\.setAttribute\("aria-label", option\.label\)/);
   assert.match(settingsPanelSource, /model\.navigationLayout\.options/);
+  assert.doesNotMatch(settingsPanelSource, /body\.append\(createNavigationLayoutSelector\(model\)/);
   assert.match(contentSource, /navigationLayout: \{/);
   assert.match(contentSource, /onNavigationLayoutChange\(layout\)/);
   assert.match(settingsStyles, /\.polaris-settings-layout-options \{[\s\S]*?grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);/);

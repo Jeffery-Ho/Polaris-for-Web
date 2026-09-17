@@ -233,6 +233,7 @@ import {
   const X_PROFILE_URL = "https://x.com/JefferyHo_";
   const RATING_DISMISSAL_DURATION_MS = 24 * 60 * 60 * 1000;
   const CONFIG_SCHEMA_VERSION = 8;
+  const VERTICAL_LAYOUT_ENABLED = false;
   const POINTER_DRAG_THRESHOLD = 4;
   const EXPLOSION_EMPTY_TEXT = t("chapters.empty");
   const EXPLOSION_BLOCK_SELECTOR = CHAPTER_BLOCK_SELECTOR;
@@ -835,7 +836,10 @@ import {
   }
 
   function syncNavigationLayout(root = getRoot()) {
-    root.classList.toggle("is-layout-vertical", state.config.navigationLayout === "vertical");
+    root.classList.toggle(
+      "is-layout-vertical",
+      VERTICAL_LAYOUT_ENABLED && state.config.navigationLayout === "vertical"
+    );
   }
 
   function syncControlTabIndicator(root = getRoot()) {
@@ -1777,7 +1781,7 @@ import {
   }
 
   function normalizeNavigationLayout(value) {
-    return value === "vertical" ? "vertical" : "horizontal";
+    return VERTICAL_LAYOUT_ENABLED && value === "vertical" ? "vertical" : "horizontal";
   }
 
   function normalizeConfig(config) {
