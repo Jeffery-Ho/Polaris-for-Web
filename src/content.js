@@ -353,6 +353,7 @@ import {
     collapsedListHeight: 0,
     ratingDismissedUntil: 0,
     releaseNotes: [],
+    releaseNoticePending: false,
     isReleaseNoticeOpen: false,
     releaseNoticeFocusPending: false,
     releaseNoticeReturnControlTab: null,
@@ -1504,6 +1505,37 @@ import {
     }
   }
 
+  function markReleaseNoticeReadIfNeeded() {
+    if (!state.shouldMarkReleaseNoticeRead) {
+      return;
+    }
+    state.shouldMarkReleaseNoticeRead = false;
+    saveReleaseNoticeVersion();
+  }
+
+  function showPendingReleaseNotice() {
+    if (!state.releaseNoticePending || state.isReleaseNoticeOpen || state.releaseNotes.length === 0) {
+      return;
+    }
+
+    state.releaseNoticePending = false;
+    state.isReleaseNoticeOpen = true;
+    state.releaseNoticeFocusPending = true;
+    state.shouldMarkReleaseNoticeRead = true;
+    lockPageScroll();
+  }
+
+  function closeReleaseNoticeForNonConversation() {
+    const wasOpen = state.isReleaseNoticeOpen;
+    state.isReleaseNoticeOpen = false;
+    state.releaseNoticeFocusPending = false;
+    state.releaseNoticeReturnControlTab = null;
+    if (wasOpen) {
+      markReleaseNoticeReadIfNeeded();
+    }
+    unlockPageScroll();
+  }
+
   function closeReleaseNotice() {
     if (!state.isReleaseNoticeOpen) {
       return;
@@ -1516,11 +1548,17 @@ import {
       state.releaseNoticeReturnControlTab = null;
     }
     unlockPageScroll();
-    if (state.shouldMarkReleaseNoticeRead) {
-      state.shouldMarkReleaseNoticeRead = false;
-      saveReleaseNoticeVersion();
-    }
+    markReleaseNoticeReadIfNeeded();
     render();
+  }
+
+  function clearNonConversationPageState() {
+    closeReleaseNoticeForNonConversation();
+    closeExplosionOverlay();
+    closeImagePreviewOverlay();
+    unlockPageScroll();
+    resetRouteState();
+    removeNavigationRoot();
   }
 
   function normalizeNumber(value, fallback, min, max) {
@@ -2062,9 +2100,10 @@ import {
       },
       onOpenReleaseNotes() {
         state.releaseNotes = releaseNotesForUpdate(null, extensionMetadata.releaseVersion, 1);
+        state.releaseNoticePending = false;
         state.isReleaseNoticeOpen = state.releaseNotes.length > 0;
         state.releaseNoticeFocusPending = state.isReleaseNoticeOpen;
-        state.shouldMarkReleaseNoticeRead = false;
+        state.shouldMarkReleaseNoticeRead = state.isReleaseNoticeOpen;
         if (state.isReleaseNoticeOpen) {
           state.releaseNoticeReturnControlTab = state.activeControlTab;
           lockPageScroll();
@@ -4759,12 +4798,7 @@ import {
     }
 
     if (!isSupportedRoute()) {
-      closeExplosionOverlay();
-      closeImagePreviewOverlay();
-      markerListReconciler.reset();
-      markerListActiveTracker.reset();
-      markerListScrollPersistence.reset();
-      removeNavigationRoot();
+      clearNonConversationPageState();
       return;
     }
 
@@ -4773,21 +4807,16 @@ import {
       ...renderSnapshot.assistantContainers,
       ...renderSnapshot.userContainers
     ];
+
+    if (!renderSnapshot.hasConversation) {
+      clearNonConversationPageState();
+      return;
+    }
+
+    showPendingReleaseNotice();
     const root = getRoot();
     updatePageTheme(root);
     getReleaseNoticeOverlay(root);
-
-    if (!renderSnapshot.hasConversation) {
-      closeExplosionOverlay();
-      closeImagePreviewOverlay();
-      markerListReconciler.reset();
-      markerListActiveTracker.reset();
-      markerListScrollPersistence.reset();
-      if (!state.isReleaseNoticeOpen) {
-        removeNavigationRoot();
-      }
-      return;
-    }
 
     updateHeaderOffset(root);
     getControlCapsule(root);
@@ -4958,14 +4987,15 @@ import {
 
     state.routeKey = nextRouteKey;
     recordDiagnosticEvent("route_change", { source: "route-bridge" });
-    closeExplosionOverlay();
-    closeImagePreviewOverlay();
-    resetRouteState();
-    state.awaitingRouteDom = true;
-    removeNavigationRoot();
     if (!isSupportedRoute()) {
+      clearNonConversationPageState();
+      state.awaitingRouteDom = true;
       return;
     }
+    closeExplosionOverlay();
+    closeImagePreviewOverlay();
+    state.awaitingRouteDom = true;
+    render();
   }
 
   function watchRouteChanges() {
@@ -5089,7 +5119,10 @@ import {
   }
 
   function updateFloatingActiveMarker(activeMarker) {
-    const root = getRoot();
+    const root = document.getElementById(ROOT_ID);
+    if (!(root instanceof HTMLElement)) {
+      return;
+    }
     const floating = getFloatingActive(root);
     if (!(activeMarker instanceof HTMLElement)
       || state.isCollapsed
@@ -5548,12 +5581,10 @@ import {
     const lastSeenReleaseVersion = await readReleaseNoticeVersion();
     if (isTopLevelFrame()) {
       state.releaseNotes = releaseNotesForUpdate(lastSeenReleaseVersion, extensionMetadata.releaseVersion);
-      state.isReleaseNoticeOpen = state.releaseNotes.length > 0;
-      state.releaseNoticeFocusPending = state.isReleaseNoticeOpen;
-      state.shouldMarkReleaseNoticeRead = state.isReleaseNoticeOpen;
-      if (state.isReleaseNoticeOpen) {
-        lockPageScroll();
-      }
+      state.releaseNoticePending = state.releaseNotes.length > 0;
+      state.isReleaseNoticeOpen = false;
+      state.releaseNoticeFocusPending = false;
+      state.shouldMarkReleaseNoticeRead = false;
     }
     watchConfigChanges();
     state.routeKey = currentRouteKey();
