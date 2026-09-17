@@ -233,7 +233,7 @@ import {
   const X_PROFILE_URL = "https://x.com/JefferyHo_";
   const RATING_DISMISSAL_DURATION_MS = 24 * 60 * 60 * 1000;
   const CONFIG_SCHEMA_VERSION = 8;
-  const VERTICAL_LAYOUT_ENABLED = false;
+  const VERTICAL_LAYOUT_ENABLED = true;
   const POINTER_DRAG_THRESHOLD = 4;
   const EXPLOSION_EMPTY_TEXT = t("chapters.empty");
   const EXPLOSION_BLOCK_SELECTOR = CHAPTER_BLOCK_SELECTOR;

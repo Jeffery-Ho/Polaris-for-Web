@@ -298,7 +298,7 @@ function createSettingsPanel(model) {
 
   const sliders = createElement("div", "polaris-settings-sliders");
   model.fields.forEach((field) => sliders.appendChild(createSlider(field, model)));
-  body.append(sliders, createSeparator());
+  body.append(createNavigationLayoutSelector(model), createSeparator(), sliders, createSeparator());
 
   const markerTypes = createElement("section", "polaris-settings-marker-types");
   markerTypes.setAttribute("aria-label", model.markerTypesLabel);
