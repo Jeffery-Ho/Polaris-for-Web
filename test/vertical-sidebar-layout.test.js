@@ -79,12 +79,27 @@ test("垂直 Sidebar 的搜索栏默认仅显示图标并在聚焦时展开", ()
 
 test("设置面板提供可访问的布局单选项并同步本地化文案", () => {
   assert.match(settingsPanelSource, /function createNavigationLayoutSelector\(model\)/);
+  assert.match(settingsPanelSource, /function createNavigationLayoutPreview\(key\)/);
+  assert.match(settingsPanelSource, /createNavigationLayoutPreview\(option\.key\)/);
+  assert.match(settingsPanelSource, /function createNavigationMakerListPreview\(\)/);
+  assert.match(settingsPanelSource, /createNavigationMakerListPreview\(\)/);
+  assert.doesNotMatch(settingsPanelSource, /polaris-settings-layout-preview-traffic-lights/);
+  assert.doesNotMatch(settingsPanelSource, /polaris-settings-layout-preview-dot/);
   assert.match(settingsPanelSource, /input\.type = "radio"/);
+  assert.match(settingsPanelSource, /input\.setAttribute\("aria-label", option\.label\)/);
   assert.match(settingsPanelSource, /model\.navigationLayout\.options/);
   assert.match(contentSource, /navigationLayout: \{/);
   assert.match(contentSource, /onNavigationLayoutChange\(layout\)/);
-  assert.match(settingsStyles, /\.polaris-settings-layout-options \{/);
-  assert.match(i18nSource, /"settings\.layout"/);
-  assert.match(i18nSource, /"settings\.layoutHorizontal"/);
-  assert.match(i18nSource, /"settings\.layoutVertical"/);
+  assert.match(settingsStyles, /\.polaris-settings-layout-options \{[\s\S]*?grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);/);
+  assert.match(settingsStyles, /\.polaris-settings-layout-preview \{/);
+  assert.match(settingsStyles, /\.polaris-settings-layout-preview-maker-list \{/);
+  assert.match(settingsStyles, /\.polaris-settings-layout-preview-sidebar--right/);
+  assert.doesNotMatch(settingsStyles, /\.polaris-settings-layout-preview-dot/);
+  assert.match(settingsStyles, /\.polaris-settings-layout-input:checked \+ \.polaris-settings-layout-content \.polaris-settings-layout-preview/);
+  assert.match(i18nSource, /"settings\.layout": "Tab Layout:"/);
+  assert.match(i18nSource, /"settings\.layoutHorizontal": "Top of Window"/);
+  assert.match(i18nSource, /"settings\.layoutVertical": "Sidebar"/);
+  assert.match(i18nSource, /"settings\.layout": "Tab 布局："/);
+  assert.match(i18nSource, /"settings\.layoutHorizontal": "窗口顶部"/);
+  assert.match(i18nSource, /"settings\.layoutVertical": "侧边栏"/);
 });

@@ -116,6 +116,57 @@ function createCheckbox({ label, isSelected, isDisabled, onChange }) {
   return wrapper;
 }
 
+function createNavigationMakerListPreview() {
+  const list = createElement("span", "polaris-settings-layout-preview-maker-list");
+  ["active", "default", "default", "default"].forEach((state) => {
+    const item = createElement("span", "polaris-settings-layout-preview-maker-item");
+    if (state === "active") {
+      item.classList.add("polaris-settings-layout-preview-maker-item--active");
+    }
+    list.appendChild(item);
+  });
+  return list;
+}
+
+function createNavigationLayoutPreview(key) {
+  const preview = createElement(
+    "span",
+    `polaris-settings-layout-preview polaris-settings-layout-preview--${key}`
+  );
+  preview.setAttribute("aria-hidden", "true");
+
+  const topbar = createElement("span", "polaris-settings-layout-preview-topbar");
+
+  const body = createElement("span", "polaris-settings-layout-preview-body");
+  if (key === "horizontal") {
+    const tabs = createElement("span", "polaris-settings-layout-preview-tabs");
+    [1, 2, 3].forEach(() => {
+      tabs.appendChild(createElement("span", "polaris-settings-layout-preview-tab"));
+    });
+    topbar.appendChild(tabs);
+    const canvas = createElement("span", "polaris-settings-layout-preview-canvas");
+    canvas.appendChild(createNavigationMakerListPreview());
+    body.appendChild(canvas);
+  } else {
+    const sidebar = createElement(
+      "span",
+      "polaris-settings-layout-preview-sidebar polaris-settings-layout-preview-sidebar--right"
+    );
+    [1, 2, 3].forEach(() => {
+      sidebar.appendChild(createElement("span", "polaris-settings-layout-preview-sidebar-item"));
+    });
+    const canvas = createElement("span", "polaris-settings-layout-preview-canvas");
+    canvas.appendChild(createNavigationMakerListPreview());
+    body.append(
+      canvas,
+      sidebar
+    );
+  }
+
+  preview.append(topbar, body);
+  return preview;
+}
+
 function createNavigationLayoutSelector(model) {
   const fieldset = createElement("fieldset", "polaris-settings-layout");
   const legend = createElement("legend", "polaris-settings-section-label");
@@ -130,10 +181,13 @@ function createNavigationLayoutSelector(model) {
     input.type = "radio";
     input.value = option.key;
     input.checked = option.isSelected;
+    input.setAttribute("aria-label", option.label);
     input.addEventListener("change", () => model.onNavigationLayoutChange(option.key));
 
     const content = createElement("span", "polaris-settings-layout-content");
-    content.textContent = option.label;
+    const label = createElement("span", "polaris-settings-layout-label");
+    label.textContent = option.label;
+    content.append(createNavigationLayoutPreview(option.key), label);
     wrapper.append(input, content);
     options.appendChild(wrapper);
   });

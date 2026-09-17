@@ -10,6 +10,27 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 216
+
+- Date: 2026-09-17
+- Version: 0.53.7
+- Summary: Removes decorative Mac traffic lights from layout previews.
+- Notes: Layout previews now keep only the browser frame, capsule navigation, and white-background Maker list illustration. Updated the current version to `0.53.7(216)`.
+
+## 215
+
+- Date: 2026-09-17
+- Version: 0.53.6
+- Summary: Refines layout previews with Mac controls and Maker list content.
+- Notes: Layout cards now show white-background Maker rows, larger capsule controls, and the Sidebar capsule group on the right.
+
+## 214
+
+- Date: 2026-09-15
+- Version: 0.53.5
+- Summary: Replaces layout setting pills with visual Top of Window and Sidebar previews.
+- Notes: The Layout setting now uses accessible radio cards with browser-style previews, localized captions, and selected/focus states.
+
 ## 213
 
 - Date: 2026-09-15
