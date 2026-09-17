@@ -89,9 +89,9 @@
 }
 
 #gpt-paragraph-nav.is-layout-vertical .gpt-paragraph-nav__search {
-  align-self: stretch;
-  width: 100%;
-  max-width: none;
+  align-self: flex-end;
+  width: min(var(--gpt-nav-controls-width, 360px), 100%);
+  max-width: calc(100vw - 48px);
 }
 
 #gpt-paragraph-nav.is-layout-vertical .gpt-paragraph-nav__search-icon {
