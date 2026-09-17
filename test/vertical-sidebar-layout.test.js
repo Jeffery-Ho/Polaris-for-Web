@@ -93,6 +93,8 @@ test("设置面板提供可访问的布局单选项并同步本地化文案", ()
   assert.match(settingsStyles, /\.polaris-settings-layout-options \{[\s\S]*?grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);/);
   assert.match(settingsStyles, /\.polaris-settings-layout-preview \{/);
   assert.match(settingsStyles, /\.polaris-settings-layout-preview-maker-list \{/);
+  assert.match(settingsStyles, /\.polaris-settings-layout-preview-maker-item:nth-child\(2\)/);
+  assert.match(settingsStyles, /\.polaris-settings-layout-preview-maker-item:nth-child\(3\)/);
   assert.match(settingsStyles, /\.polaris-settings-layout-preview-sidebar--right/);
   assert.doesNotMatch(settingsStyles, /\.polaris-settings-layout-preview-dot/);
   assert.match(settingsStyles, /\.polaris-settings-layout-input:checked \+ \.polaris-settings-layout-content \.polaris-settings-layout-preview/);

@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 217
+
+- Date: 2026-09-17
+- Version: 0.53.8
+- Summary: Staggers Maker bubbles in the layout previews.
+- Notes: Maker preview rows now use alternating offsets and widths so the list reads as separate staggered bubbles in both layout cards. Updated the current version to `0.53.8(217)`.
+
 ## 216
 
 - Date: 2026-09-17
