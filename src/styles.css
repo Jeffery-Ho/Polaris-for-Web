@@ -43,6 +43,10 @@
   pointer-events: none;
 }
 
+#gpt-paragraph-nav.is-window-managed {
+  display: none !important;
+}
+
 .gpt-paragraph-nav__maker-pane {
   display: flex;
   flex: 1 1 auto;

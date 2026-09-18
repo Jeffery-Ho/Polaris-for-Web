@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 220
+
+- Date: 2026-09-18
+- Version: 0.54.0
+- Summary: Moves Polaris navigation into a standalone browser window.
+- Notes: Clicking the extension icon opens or focuses one movable Polaris window. The window follows the active supported tab, renders Maker navigation, Chapter View, and settings with a Dia inspired glass layout, shows platform empty state on unsupported pages, and focuses the source tab after a Maker jump. Updated the current version to `0.54.0(220)`.
+
 ## 219
 
 - Date: 2026-09-18

@@ -5,9 +5,12 @@ import manifest from "./manifest.build.json" with { type: "json" };
 export default defineConfig({
   build: {
     rollupOptions: {
+      input: {
+        window: "window.html"
+      },
       output: {
         chunkFileNames: "assets/[name]",
-        entryFileNames: "assets/[name]"
+        entryFileNames: "assets/[name].js"
       }
     }
   },

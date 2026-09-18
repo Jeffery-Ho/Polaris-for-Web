@@ -2,7 +2,7 @@
 
 A browser extension that adds section navigation to AI-generated web responses.
 
-Polaris for Web automatically detects headings and list titles in AI responses and displays navigation markers along the right edge of the page. Click a marker to jump directly to the corresponding section—ideal for reading long answers, reports, step-by-step guides, and research results.
+Polaris for Web automatically detects headings and list titles in AI responses and displays them in a movable standalone window. Click a Maker to jump directly to the corresponding section—ideal for reading long answers, reports, step-by-step guides, and research results.
 
 ## Supported Platforms
 
@@ -30,6 +30,7 @@ Polaris for Web automatically detects headings and list titles in AI responses a
 
 ## Features
 
+- Click the browser extension icon to open or focus one Dia inspired Polaris window. The window follows the active supported tab and contains navigation, Chapter View, and About & Settings.
 - Maker navigation is generated only from currently mounted user and AI response DOM. A route change removes the previous list immediately; only a later non-Polaris page mutation can populate the new list. DOM removal also removes its Makers, and a DOM remount receives new runtime keys.
 - Progressive Maker rendering begins during streaming output as soon as the first non-empty supported marker is available; fixed 120ms render batches reuse existing Maker nodes and update only changed items, preserving list scrolling, focus, hover, and manual collapse state. Wheel, trackpad, or list-drag input on a Maker or group card immediately takes control from temporary Active Maker positioning, so any Maker can remain outside the list viewport while streaming continues.
 - Click-to-jump navigation, active-section highlighting, and a scrollable marker queue.
@@ -55,7 +56,7 @@ Polaris for Web automatically detects headings and list titles in AI responses a
 
 ## Settings
 
-Open **Settings** from the control area on the right to adjust:
+Open **Settings** from the Polaris window to adjust:
 
 - Maximum number of visible markers
 - User group limit
@@ -69,7 +70,7 @@ The Diagnostics section keeps a bounded session-only event log in the current ta
 
 ## Chapter View
 
-- Click **Chapter View** in the control area on the right, or press `Cmd/Ctrl+Shift+F`.
+- Click **Chapters** in the Polaris window.
 - Available on every supported platform: ChatGPT, Claude, Gemini, Grok, Doubao, Kimi, Qwen, Yuanbao, and Xiaohongshu Diandian AI.
 - Processes only AI response content on the current page; input fields, sidebars, and the extension's own interface are excluded.
 - Rebuilds supported rendered Markdown with a strict element and URL allowlist; images load from existing `http`/`https` page URLs and open in a new tab when clicked.
@@ -105,7 +106,7 @@ Load the generated `dist/` directory as an unpacked extension in Chromium-based 
 
 ## Version
 
-Current version: `0.53.10(219)`
+Current version: `0.54.0(220)`
 
 ## License
 

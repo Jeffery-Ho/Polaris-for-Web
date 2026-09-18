@@ -374,7 +374,8 @@ import {
     isExtensionContextInvalidated: false,
     markerSourceContainers: [],
     pageThemeWatcher: null,
-    diagnosticStatus: ""
+    diagnosticStatus: "",
+    windowSnapshotTimer: 0
   };
   const markerMotionSuppressor = createMarkerMotionSuppressor({
     setSuppressed: (isSuppressed) => {
@@ -592,6 +593,7 @@ import {
     markerListActiveTracker.reset();
     markerListScrollPersistence.reset();
     window.clearTimeout(state.markerNoticeTimer);
+    window.clearTimeout(state.windowSnapshotTimer);
     state.observer?.disconnect();
     state.pageThemeWatcher?.dispose();
     state.pageThemeWatcher = null;
@@ -612,6 +614,9 @@ import {
       root.setAttribute("aria-label", t("navigation.rootLabel"));
       root.setAttribute("role", "navigation");
       document.documentElement.appendChild(root);
+    }
+    if (isTopLevelFrame()) {
+      root.classList.add("is-window-managed");
     }
     return root;
   }
@@ -4802,6 +4807,208 @@ import {
     return items;
   }
 
+  function serializableWindowMarkerItem(item) {
+    return {
+      key: item.key,
+      type: item.type,
+      markerKey: item.markerKey || "",
+      groupKey: item.groupKey || "",
+      foldKey: item.foldKey || "",
+      title: item.title || "",
+      preview: item.preview || "",
+      remainder: item.remainder || "",
+      ariaLabel: item.ariaLabel || "",
+      isExpanded: Boolean(item.isExpanded),
+      level: item.level || 0,
+      thumbnailSrc: item.thumbnailSrc || "",
+      imageUrls: [],
+      imageCount: Number(item.imageCount) || 0,
+      isImageOnly: Boolean(item.isImageOnly)
+    };
+  }
+
+  function windowSnapshot() {
+    const filteredGroups = filteredMarkerGroups(state.markerGroups);
+    const { groups, earlierUserGroupCount } = limitedMarkerGroups(filteredGroups);
+    const items = markerRenderItems(groups, earlierUserGroupCount)
+      .map(serializableWindowMarkerItem);
+    const root = document.getElementById(ROOT_ID);
+    const fallbackTheme = window.matchMedia(PAGE_THEME_MEDIA_QUERY).matches ? "dark" : "light";
+    return {
+      activeMarkerKey: state.activeMarkerKey,
+      config: JSON.parse(JSON.stringify(state.config)),
+      hasConversation: state.markerSourceContainers.length > 0,
+      headings: state.headings.map((heading) => ({
+        id: heading.id,
+        markerKey: markerKeyForHeading(heading),
+        title: heading.title,
+        level: heading.level
+      })),
+      markerItems: items,
+      platform: currentPlatformKey(),
+      revision: Date.now(),
+      releaseNotes: releaseNotesForUpdate(null, extensionMetadata.releaseVersion, 1).map((note) => ({
+        changes: note[locale]?.changes || [],
+        title: note[locale]?.title || "",
+        version: note.version
+      })),
+      routeKey: currentRouteKey(),
+      supportedRoute: isSupportedRoute(),
+      theme: root?.dataset.pageTheme || fallbackTheme,
+      version: extensionMetadata.version || ""
+    };
+  }
+
+  function publishWindowSnapshot() {
+    if (!isTopLevelFrame() || !isExtensionContextValid()) {
+      return;
+    }
+    window.clearTimeout(state.windowSnapshotTimer);
+    state.windowSnapshotTimer = window.setTimeout(() => {
+      state.windowSnapshotTimer = 0;
+      try {
+        chrome.runtime.sendMessage({
+          type: "POLARIS_CONTENT_STATE",
+          snapshot: windowSnapshot()
+        });
+      } catch {
+        disposeInvalidExtensionContext();
+      }
+    }, 0);
+  }
+
+  function publishWindowChapters() {
+    if (!isTopLevelFrame() || !isExtensionContextValid()) {
+      return;
+    }
+    const sections = collectExplosionSections().map((section) => ({
+      id: section.id,
+      markerKey: section.markerKey,
+      blocks: (section.blocks || []).map((block) => ({
+        hasImage: Boolean(block.hasImage),
+        tagName: block.tagName || "p",
+        text: block.text || ""
+      })),
+      paragraphs: (section.paragraphs || []).filter(Boolean).slice(0, 240),
+      title: section.title
+    }));
+    try {
+      chrome.runtime.sendMessage({
+        type: "POLARIS_WINDOW_CHAPTERS",
+        chapters: sections
+      });
+    } catch {
+      disposeInvalidExtensionContext();
+    }
+  }
+
+  function mergeWindowConfigPatch(patch) {
+    const nextPatch = { ...(patch || {}) };
+    [
+      "enabledLevelsByPlatform",
+      "enabledOrderedListByPlatform",
+      "enabledStrongByPlatform",
+      "enabledUnorderedListByPlatform"
+    ].forEach((key) => {
+      if (nextPatch[key] && typeof nextPatch[key] === "object") {
+        nextPatch[key] = { ...state.config[key], ...nextPatch[key] };
+      }
+    });
+    state.config = normalizeConfig({ ...state.config, ...nextPatch });
+    saveConfig(state.config);
+    render();
+  }
+
+  function handleWindowCommand(message) {
+    if (!message || typeof message.command !== "string") {
+      return;
+    }
+    if (message.command === "request-state") {
+      publishWindowSnapshot();
+      return;
+    }
+    if (message.command === "request-chapters") {
+      publishWindowChapters();
+      return;
+    }
+    if (message.command === "request-image-preview") {
+      const group = state.markerGroups.find((item) => item.key === String(message.groupKey || ""));
+      try {
+        chrome.runtime.sendMessage({
+          type: "POLARIS_WINDOW_IMAGE",
+          imageUrls: group?.user?.imageUrls?.slice(0, 8) || []
+        });
+      } catch {
+        disposeInvalidExtensionContext();
+      }
+      return;
+    }
+    if (message.command === "update-config") {
+      mergeWindowConfigPatch(message.patch);
+      return;
+    }
+    if (message.command === "reset-config") {
+      state.config = normalizeConfig(DEFAULT_CONFIG);
+      resetCollapsedGroups();
+      saveConfig(state.config);
+      render();
+      return;
+    }
+    if (message.command === "download-diagnostics") {
+      handleDownloadDiagnostics();
+      return;
+    }
+    if (message.command === "send-diagnostics") {
+      handleSendDiagnostics();
+      return;
+    }
+    if (message.command === "toggle-user-group") {
+      const groupKey = String(message.groupKey || "");
+      if (state.collapsedUserMarkerKeys.has(groupKey)) {
+        state.collapsedUserMarkerKeys.delete(groupKey);
+      } else if (groupKey) {
+        state.collapsedUserMarkerKeys.add(groupKey);
+      }
+      render();
+      return;
+    }
+    if (message.command === "toggle-fold-group") {
+      toggleFoldGroupExpansion({
+        foldKey: String(message.foldKey || ""),
+        collapsedKeys: state.collapsedFoldGroups
+      });
+      render();
+      return;
+    }
+    if (message.command === "toggle-earlier-groups") {
+      state.areEarlierUserGroupsExpanded = !state.areEarlierUserGroupsExpanded;
+      render();
+      return;
+    }
+    if (message.command === "jump-to-marker" || message.command === "jump-to-chapter") {
+      const markerKey = String(message.markerKey || "");
+      const heading = state.headings.find((item) => markerKeyForHeading(item) === markerKey);
+      if (heading && jumpToHeading(heading)) {
+        state.activeMarkerKey = markerKey;
+        updateActiveMarker();
+        publishWindowSnapshot();
+      }
+    }
+  }
+
+  function registerWindowBridge() {
+    if (!isTopLevelFrame() || !isExtensionContextValid()) {
+      return;
+    }
+    chrome.runtime.onMessage.addListener((message) => {
+      if (message?.type === "POLARIS_WINDOW_REQUEST_STATE") {
+        publishWindowSnapshot();
+      } else if (message?.type === "POLARIS_WINDOW_COMMAND") {
+        handleWindowCommand(message);
+      }
+    });
+  }
+
   function collectMarkerRenderSnapshot() {
     if (state.awaitingRouteDom) {
       return {
@@ -4859,6 +5066,7 @@ import {
 
     if (!isSupportedRoute()) {
       clearNonConversationPageState();
+      publishWindowSnapshot();
       return;
     }
 
@@ -4870,6 +5078,7 @@ import {
 
     if (!renderSnapshot.hasConversation) {
       clearNonConversationPageState();
+      publishWindowSnapshot();
       return;
     }
 
@@ -4938,6 +5147,7 @@ import {
     if (state.isCollapsed) {
       updateFloatingActiveMarker(null);
       state.lastRenderedHeadingCount = headings.length;
+      publishWindowSnapshot();
       return;
     }
 
@@ -4968,6 +5178,7 @@ import {
     }
     state.lastRenderedHeadingCount = headings.length;
     updateActiveMarker();
+    publishWindowSnapshot();
   }
 
   function scheduleRender({ suppressMarkerMotion = false } = {}) {
@@ -5510,6 +5721,10 @@ import {
   }
 
   function handleKeydown(event) {
+    const managedRoot = document.getElementById(ROOT_ID);
+    if (managedRoot?.classList.contains("is-window-managed")) {
+      return;
+    }
     if (event.defaultPrevented) {
       return;
     }
@@ -5647,6 +5862,7 @@ import {
       state.shouldMarkReleaseNoticeRead = false;
     }
     watchConfigChanges();
+    registerWindowBridge();
     state.routeKey = currentRouteKey();
     try {
       await cleanupLegacyMakerSnapshots({ storage: chrome.storage.local });

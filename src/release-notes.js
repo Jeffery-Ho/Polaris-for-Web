@@ -1,5 +1,16 @@
 const RELEASE_NOTES = Object.freeze([
   {
+    version: "0.54.0",
+    en: {
+      title: "Standalone Polaris window",
+      changes: ["Click the extension icon to open one movable Polaris window for navigation, chapters, and settings. It follows the active supported tab and returns focus to the source page after a Maker jump."]
+    },
+    zh: {
+      title: "Polaris 独立窗口",
+      changes: ["点击扩展图标打开一个可移动的 Polaris 窗口，集中提供导航、章节和设置；窗口跟随当前支持的标签页，点击 Maker 后切回来源页面。"]
+    }
+  },
+  {
     version: "0.52.0",
     en: {
       title: "X profile in About & Settings",
