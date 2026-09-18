@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 219
+
+- Date: 2026-09-18
+- Version: 0.53.10
+- Summary: Reuses the main navigation chevron geometry in the Maker list.
+- Notes: User and folded-group Maker chevrons now share the main navigation's 6px border geometry and optical centering offsets. Updated the current version to `0.53.10(219)`.
+
 ## 218
 
 - Date: 2026-09-18

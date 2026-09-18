@@ -363,12 +363,17 @@ html.gpt-paragraph-nav--dragging * {
   transform-origin: center;
 }
 
-.gpt-paragraph-nav__control-tab-chevron {
+.gpt-paragraph-nav__control-tab-chevron,
+.gpt-paragraph-nav__user-chevron,
+.gpt-paragraph-nav__fold-chevron {
   flex: 0 0 6px;
   width: 6px;
   height: 6px;
   border-right: 1.5px solid currentColor;
   border-bottom: 1.5px solid currentColor;
+}
+
+.gpt-paragraph-nav__control-tab-chevron {
   transform: translateY(1px) rotate(-135deg);
   transition: transform 70ms ease;
 }
@@ -1527,11 +1532,6 @@ html.gpt-paragraph-nav--dragging * {
 }
 
 .gpt-paragraph-nav__user-chevron {
-  flex: 0 0 8px;
-  width: 8px;
-  height: 8px;
-  border-right: 1.5px solid currentColor;
-  border-bottom: 1.5px solid currentColor;
   transform: translateY(-1px) rotate(45deg);
   transition: transform 120ms ease;
 }
@@ -1618,11 +1618,6 @@ html.gpt-paragraph-nav--dragging * {
 }
 
 .gpt-paragraph-nav__fold-chevron {
-  flex: 0 0 auto;
-  width: 6px;
-  height: 6px;
-  border-right: 1.5px solid currentColor;
-  border-bottom: 1.5px solid currentColor;
   transform: translateY(-1px) rotate(45deg);
   transition: transform 120ms ease;
 }

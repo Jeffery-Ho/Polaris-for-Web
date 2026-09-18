@@ -40,8 +40,8 @@ test("Gemini 默认启用 H1-H3、无序列表和加粗标题，仅默认关闭�
 
 test("两个源 manifest 都会向 Gemini 注入内容脚本与路由桥", () => {
   manifests.forEach((manifest) => {
-    assert.equal(manifest.version, "0.53.9");
-    assert.equal(manifest.version_name, "0.53.9(218)");
+    assert.equal(manifest.version, "0.53.10");
+    assert.equal(manifest.version_name, "0.53.10(219)");
     assert.ok(manifest.host_permissions.includes("https://gemini.google.com/*"));
     assert.ok(manifest.web_accessible_resources[0].matches.includes("https://gemini.google.com/*"));
     assert.ok(manifest.content_scripts[0].matches.includes("https://gemini.google.com/*"));

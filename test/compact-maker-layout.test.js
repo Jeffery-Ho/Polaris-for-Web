@@ -34,10 +34,6 @@ test("缩小模式为用户 Maker 的标题、内边距和折叠箭头分别预�
     styles,
     /gpt-paragraph-nav__marker--user \.gpt-paragraph-nav__preview \{\n  max-width: 160px;/
   );
-  assert.match(
-    styles,
-    /gpt-paragraph-nav__user-chevron \{[\s\S]*?flex: 0 0 8px;[\s\S]*?width: 8px;[\s\S]*?height: 8px;/
-  );
 });
 
 test("用户 Maker 默认以单行末尾省略长标题，并保留折叠箭头", () => {
@@ -211,6 +207,16 @@ test("所有箭头和下拉 chevron 使用统一的视觉居中规则", () => {
   assert.match(contentSource, /previousButton\.className = "gpt-paragraph-nav__image-preview-nav is-previous";/);
   assert.doesNotMatch(contentSource, /previousButton\.textContent = "‹"/);
   assert.doesNotMatch(contentSource, /nextButton\.textContent = "›"/);
+});
+
+test("Maker 列表 chevron 复用主导航的 6px 几何和居中偏移", () => {
+  assert.match(
+    styles,
+    /\.gpt-paragraph-nav__control-tab-chevron,[\s\S]*?\.gpt-paragraph-nav__user-chevron,[\s\S]*?\.gpt-paragraph-nav__fold-chevron \{[\s\S]*?flex: 0 0 6px;[\s\S]*?width: 6px;[\s\S]*?height: 6px;[\s\S]*?border-right: 1\.5px solid currentColor;[\s\S]*?border-bottom: 1\.5px solid currentColor;/
+  );
+  assert.match(styles, /\.gpt-paragraph-nav__user-chevron \{[\s\S]*?transform: translateY\(-1px\) rotate\(45deg\);/);
+  assert.match(styles, /\.gpt-paragraph-nav__fold-chevron \{[\s\S]*?transform: translateY\(-1px\) rotate\(45deg\);/);
+  assert.doesNotMatch(styles, /\.gpt-paragraph-nav__user-chevron \{[\s\S]*?flex: 0 0 8px;/);
 });
 
 test("Maker 正文默认左对齐且不改变 AI 与用户分组的队列位置", () => {
