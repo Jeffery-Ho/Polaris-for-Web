@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 218
+
+- Date: 2026-09-18
+- Version: 0.53.9
+- Summary: Centers all navigation arrows and dropdown chevrons optically.
+- Notes: Control, Maker, fold, chapter-copy, and image-preview arrows now use fixed centered geometry with directional optical offsets. Updated the current version to `0.53.9(218)`.
+
 ## 217
 
 - Date: 2026-09-17

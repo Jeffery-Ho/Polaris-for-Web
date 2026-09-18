@@ -200,6 +200,19 @@ test("折叠 Maker 分组仅保留后置余量和箭头", () => {
   assert.match(contentSource, /gpt-paragraph-nav__fold-chevron/);
 });
 
+test("所有箭头和下拉 chevron 使用统一的视觉居中规则", () => {
+  assert.match(
+    styles,
+    /\.gpt-paragraph-nav__control-tab-chevron,[\s\S]*?\.gpt-paragraph-nav__explosion-copy-menu-trigger::after,[\s\S]*?\.gpt-paragraph-nav__image-preview-nav::before,[\s\S]*?\.gpt-paragraph-nav__fold-chevron \{[\s\S]*?display: block;[\s\S]*?box-sizing: border-box;[\s\S]*?transform-origin: center;/
+  );
+  assert.match(styles, /\.gpt-paragraph-nav__explosion-copy-menu-trigger::after \{[\s\S]*?flex: 0 0 6px;/);
+  assert.match(styles, /\.gpt-paragraph-nav__user-chevron \{[\s\S]*?transform: translateY\(-1px\) rotate\(45deg\);/);
+  assert.match(styles, /\.gpt-paragraph-nav__fold-chevron \{[\s\S]*?transform: translateY\(-1px\) rotate\(45deg\);/);
+  assert.match(contentSource, /previousButton\.className = "gpt-paragraph-nav__image-preview-nav is-previous";/);
+  assert.doesNotMatch(contentSource, /previousButton\.textContent = "‹"/);
+  assert.doesNotMatch(contentSource, /nextButton\.textContent = "›"/);
+});
+
 test("Maker 正文默认左对齐且不改变 AI 与用户分组的队列位置", () => {
   assert.match(
     styles,

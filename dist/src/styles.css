@@ -353,17 +353,28 @@ html.gpt-paragraph-nav--dragging * {
 
 
 
+.gpt-paragraph-nav__control-tab-chevron,
+.gpt-paragraph-nav__explosion-copy-menu-trigger::after,
+.gpt-paragraph-nav__image-preview-nav::before,
+.gpt-paragraph-nav__user-chevron,
+.gpt-paragraph-nav__fold-chevron {
+  display: block;
+  box-sizing: border-box;
+  transform-origin: center;
+}
+
 .gpt-paragraph-nav__control-tab-chevron {
+  flex: 0 0 6px;
   width: 6px;
   height: 6px;
   border-right: 1.5px solid currentColor;
   border-bottom: 1.5px solid currentColor;
-  transform: rotate(-135deg);
+  transform: translateY(1px) rotate(-135deg);
   transition: transform 70ms ease;
 }
 
 #gpt-paragraph-nav.is-collapsed .gpt-paragraph-nav__control-tab-chevron {
-  transform: rotate(45deg);
+  transform: translateY(-1px) rotate(45deg);
 }
 
 .gpt-paragraph-nav__control-tab:not(.is-active):hover,
@@ -529,8 +540,20 @@ html.gpt-paragraph-nav--dragging * {
   height: 38px;
   padding: 0;
   border-radius: 999px;
-  font: 400 28px/1 ui-sans-serif, system-ui, sans-serif;
   transform: translateY(-50%);
+}
+
+.gpt-paragraph-nav__image-preview-nav::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-top: 1.5px solid currentColor;
+  border-right: 1.5px solid currentColor;
+  transform: translateY(0.5px) rotate(-135deg);
+}
+
+.gpt-paragraph-nav__image-preview-nav.is-next::before {
+  transform: translateY(0.5px) rotate(45deg);
 }
 
 .gpt-paragraph-nav__image-preview-nav.is-previous {
@@ -883,12 +906,13 @@ html.gpt-paragraph-nav--dragging * {
 
 .gpt-paragraph-nav__explosion-copy-menu-trigger::after {
   content: "";
+  flex: 0 0 6px;
   width: 6px;
   height: 6px;
   margin-left: 7px;
   border-right: 1.5px solid currentColor;
   border-bottom: 1.5px solid currentColor;
-  transform: translateY(-2px) rotate(45deg);
+  transform: translateY(-1px) rotate(45deg);
   transition: transform 120ms ease;
 }
 
@@ -898,7 +922,7 @@ html.gpt-paragraph-nav--dragging * {
 }
 
 .gpt-paragraph-nav__explosion-copy-menu[open] .gpt-paragraph-nav__explosion-copy-menu-trigger::after {
-  transform: translateY(2px) rotate(225deg);
+  transform: translateY(1px) rotate(225deg);
 }
 
 .gpt-paragraph-nav__explosion-copy-menu-items {
@@ -1506,15 +1530,14 @@ html.gpt-paragraph-nav--dragging * {
   flex: 0 0 8px;
   width: 8px;
   height: 8px;
-  box-sizing: border-box;
   border-right: 1.5px solid currentColor;
   border-bottom: 1.5px solid currentColor;
-  transform: rotate(45deg) translateY(-2px);
+  transform: translateY(-1px) rotate(45deg);
   transition: transform 120ms ease;
 }
 
 .gpt-paragraph-nav__marker--user[aria-expanded="true"] .gpt-paragraph-nav__user-chevron {
-  transform: rotate(-135deg) translate(-2px, 0);
+  transform: translateY(1px) rotate(-135deg);
 }
 
 .gpt-paragraph-nav__marker:hover {
@@ -1600,12 +1623,12 @@ html.gpt-paragraph-nav--dragging * {
   height: 6px;
   border-right: 1.5px solid currentColor;
   border-bottom: 1.5px solid currentColor;
-  transform: rotate(45deg);
+  transform: translateY(-1px) rotate(45deg);
   transition: transform 120ms ease;
 }
 
 .gpt-paragraph-nav__fold.is-expanded .gpt-paragraph-nav__fold-chevron {
-  transform: rotate(-135deg);
+  transform: translateY(1px) rotate(-135deg);
 }
 
 .gpt-paragraph-nav__floating-active {

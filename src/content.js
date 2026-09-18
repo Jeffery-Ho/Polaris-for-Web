@@ -1231,7 +1231,6 @@ import {
       previousButton.className = "gpt-paragraph-nav__image-preview-nav is-previous";
       previousButton.setAttribute("aria-label", t("userMarker.previousImage"));
       previousButton.setAttribute("title", t("userMarker.previousImage"));
-      previousButton.textContent = "‹";
       previousButton.addEventListener("click", () => stepImagePreview(-1));
       viewport.appendChild(previousButton);
 
@@ -1266,7 +1265,6 @@ import {
       nextButton.className = "gpt-paragraph-nav__image-preview-nav is-next";
       nextButton.setAttribute("aria-label", t("userMarker.nextImage"));
       nextButton.setAttribute("title", t("userMarker.nextImage"));
-      nextButton.textContent = "›";
       nextButton.addEventListener("click", () => stepImagePreview(1));
       viewport.appendChild(nextButton);
       content.appendChild(viewport);
