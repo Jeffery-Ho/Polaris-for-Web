@@ -2,13 +2,14 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-const [manifest, buildManifest, background, content, windowSource, windowHtml] = await Promise.all([
+const [manifest, buildManifest, background, content, windowSource, windowHtml, windowCss] = await Promise.all([
   readFile(new URL("../manifest.json", import.meta.url), "utf8").then(JSON.parse),
   readFile(new URL("../manifest.build.json", import.meta.url), "utf8").then(JSON.parse),
   readFile(new URL("../src/background.js", import.meta.url), "utf8"),
   readFile(new URL("../src/content.js", import.meta.url), "utf8"),
   readFile(new URL("../src/window.js", import.meta.url), "utf8"),
-  readFile(new URL("../window.html", import.meta.url), "utf8")
+  readFile(new URL("../window.html", import.meta.url), "utf8"),
+  readFile(new URL("../src/window.css", import.meta.url), "utf8")
 ]);
 
 test("两个源 manifest 都声明独立 Polaris 窗口入口", () => {
@@ -24,7 +25,7 @@ test("后台窗口复用并跟随最近的普通标签页", () => {
   assert.match(background, /chrome\.action\.onClicked/);
   assert.match(background, /chrome\.windows\.create/);
   assert.match(background, /type: "popup"/);
-  assert.match(background, /chrome\.windows\.update\(existing\.id, \{ focused: true \}\)/);
+  assert.match(background, /chrome\.windows\.update\(existing\.id, restorePopupWindowUpdate\(\)\)/);
   assert.match(background, /active: true, lastFocusedWindow: true/);
   assert.match(background, /chrome\.tabs\.onUpdated/);
   assert.match(background, /sourceWindowId = tab\?\.windowId/);
@@ -61,4 +62,14 @@ test("独立窗口包含导航、章节、设置和无对话平台空状态", ()
   assert.match(windowSource, /state\.chapters = \[\]/);
   assert.match(windowSource, /matchesSearch/);
   assert.match(windowSource, /download-diagnostics/);
+});
+
+test("独立窗口使用浏览器原生关闭控制和工具窗层级", () => {
+  assert.doesNotMatch(windowSource, /window-close/);
+  assert.match(windowSource, /window-identity/);
+  assert.match(windowSource, /window-search/);
+  assert.match(windowSource, /window-tabs/);
+  assert.match(windowCss, /background: #f6f8fa/);
+  assert.match(windowCss, /border-bottom: 1px solid var\(--border\)/);
+  assert.match(windowCss, /min-width: 320px/);
 });

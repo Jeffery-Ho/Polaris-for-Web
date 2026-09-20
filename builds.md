@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 221
+
+- Date: 2026-09-20
+- Version: 0.54.1
+- Summary: Hardens standalone window reuse and refines the popup into a native utility-window surface.
+- Notes: Cached window IDs are validated against the popup type and extension window URL, minimized windows are restored before focus, and focus races recreate the popup. The window keeps the browser's native close controls, uses a flatter tool-window layout, and preserves navigation, Chapter View, settings, and source-tab switching. Updated the current version to `0.54.1(221)`.
+
 ## 220
 
 - Date: 2026-09-18

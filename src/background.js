@@ -1,3 +1,5 @@
+import { matchingPolarisTab, restorePopupWindowUpdate } from "./window-lifecycle.js";
+
 const WINDOW_STORAGE_KEY = "polaris-window-id";
 const WINDOW_TAB_STORAGE_KEY = "polaris-window-tab-id";
 const SOURCE_WINDOW_STORAGE_KEY = "polaris-source-window-id";
@@ -111,7 +113,17 @@ async function existingPolarisWindow() {
     return null;
   }
   try {
-    return await chrome.windows.get(polarisWindowId, { populate: true });
+    const existing = await chrome.windows.get(polarisWindowId, { populate: true });
+    const windowUrl = chrome.runtime.getURL("window.html");
+    const matchingTab = matchingPolarisTab(existing, windowUrl, polarisWindowTabId);
+    if (!matchingTab) {
+      await forgetWindowState();
+      return null;
+    }
+    if (matchingTab.id !== polarisWindowTabId) {
+      await writeWindowState(existing.id, matchingTab.id);
+    }
+    return existing;
   } catch {
     await forgetWindowState();
     return null;
@@ -225,9 +237,21 @@ async function openOrFocusWindow(tab) {
   const sourceTabId = tab?.id ?? currentTabId;
   const existing = await existingPolarisWindow();
   if (existing?.id !== undefined) {
-    await chrome.windows.update(existing.id, { focused: true });
-    await requestContentState();
-    return;
+    let restored = false;
+    try {
+      await chrome.windows.update(existing.id, restorePopupWindowUpdate());
+      restored = true;
+    } catch {
+      await forgetWindowState();
+    }
+    if (restored) {
+      try {
+        await requestContentState();
+      } catch {
+        // A transient source-tab failure must not create a duplicate popup.
+      }
+      return;
+    }
   }
 
   const created = await chrome.windows.create({

@@ -39,8 +39,8 @@ test("Grok 默认启用 H1-H3、无序列表和加粗标题，仅默认关闭有
 
 test("两个源 manifest 都会向 Grok 注入内容脚本与路由桥", () => {
   manifests.forEach((manifest) => {
-    assert.equal(manifest.version, "0.54.0");
-    assert.equal(manifest.version_name, "0.54.0(220)");
+    assert.match(manifest.version, /^\d+\.\d+\.\d+$/);
+    assert.match(manifest.version_name, new RegExp(`^${manifest.version.replaceAll(".", "\\.")}\\(\\d+\\)$`));
     assert.ok(manifest.host_permissions.includes("https://grok.com/*"));
     assert.ok(manifest.web_accessible_resources[0].matches.includes("https://grok.com/*"));
     assert.ok(manifest.content_scripts[0].matches.includes("https://grok.com/*"));

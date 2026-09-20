@@ -88,15 +88,10 @@ import "./i18n.js";
     identity.append(icon, element("div", "window-title", "Polaris"));
     const platform = element("span", "window-platform", activePlatformLabel(snapshot));
     identity.append(platform);
-    const close = element("button", "window-close", "×");
-    close.type = "button";
-    close.title = locale === "zh" ? "关闭窗口" : "Close window";
-    close.addEventListener("click", () => window.close());
-    header.append(identity, close);
+    header.append(identity);
 
     const search = element("label", "window-search");
     search.setAttribute("aria-label", locale === "zh" ? "搜索 Maker" : "Search Makers");
-    const searchIcon = element("span", "window-search-icon", "⌕");
     const input = document.createElement("input");
     input.type = "search";
     input.placeholder = locale === "zh" ? "搜索" : "Search";
@@ -111,19 +106,19 @@ import "./i18n.js";
         nextInput.setSelectionRange(nextInput.value.length, nextInput.value.length);
       }
     });
-    search.append(searchIcon, input);
+    search.append(input);
     header.append(search);
 
     const tabs = element("nav", "window-tabs");
     [
-      ["navigation", locale === "zh" ? "导航" : "Navigation", "☷"],
-      ["chapters", locale === "zh" ? "章节" : "Chapters", "▤"],
-      ["settings", locale === "zh" ? "设置" : "Settings", "≡"]
-    ].forEach(([key, label, glyph]) => {
+      ["navigation", locale === "zh" ? "导航" : "Navigation"],
+      ["chapters", locale === "zh" ? "章节" : "Chapters"],
+      ["settings", locale === "zh" ? "设置" : "Settings"]
+    ].forEach(([key, label]) => {
       const button = element("button", `window-tab${state.activeTab === key ? " is-active" : ""}`);
       button.type = "button";
       button.setAttribute("aria-pressed", String(state.activeTab === key));
-      button.append(element("span", "window-tab-icon", glyph), element("span", "window-tab-label", label));
+      button.append(element("span", "window-tab-label", label));
       button.addEventListener("click", () => {
         state.activeTab = key;
         if (key === "chapters") send({ command: "request-chapters" });
