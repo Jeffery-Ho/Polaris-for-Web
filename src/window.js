@@ -1,19 +1,21 @@
 import "./i18n.js";
+import { matchesSearch } from "./window-search.js";
 
 (() => {
+  const SYSTEM_THEME_QUERY = "(prefers-color-scheme: dark)";
   const root = document.getElementById("polaris-window");
   const i18n = globalThis.PolarisI18n || { locale: "en", t: (key) => key };
   const { locale, t } = i18n;
   const supportedPlatforms = [
-    ["chatgpt", "ChatGPT"],
-    ["claude", "Claude"],
-    ["gemini", "Gemini"],
-    ["grok", "Grok"],
-    ["doubao", "Doubao"],
-    ["kimi", "Kimi"],
-    ["qianwen", "Qwen"],
-    ["yuanbao", "Yuanbao"],
-    ["xiaohongshu", "点点 AI"]
+    { key: "chatgpt", label: "ChatGPT", favicon: "icons/platform-chatgpt.png" },
+    { key: "claude", label: "Claude", favicon: "icons/platform-claude.png" },
+    { key: "gemini", label: "Gemini", favicon: "icons/platform-gemini.png" },
+    { key: "grok", label: "Grok", favicon: "icons/platform-grok.png" },
+    { key: "doubao", label: "Doubao", favicon: "icons/platform-doubao.png" },
+    { key: "kimi", label: "Kimi", favicon: "icons/platform-kimi.png" },
+    { key: "qianwen", label: "Qwen", favicon: "icons/platform-qianwen.png" },
+    { key: "yuanbao", label: "Yuanbao", favicon: "icons/platform-yuanbao.png" },
+    { key: "xiaohongshu", label: "点点 AI", favicon: "icons/platform-xiaohongshu.png" }
   ];
   const state = {
     snapshot: null,
@@ -27,6 +29,42 @@ import "./i18n.js";
     sourceTabId: null,
     routeKey: ""
   };
+  let sourceRetryTimer = 0;
+
+  function requestSourceState() {
+    send({ command: "refresh-state" });
+  }
+
+  function stopSourceRetry() {
+    if (!sourceRetryTimer) return;
+    window.clearInterval(sourceRetryTimer);
+    sourceRetryTimer = 0;
+  }
+
+  function syncSourceRetry(snapshot) {
+    const shouldRetry = Boolean(snapshot?.supportedRoute && !snapshot?.hasConversation);
+    if (!shouldRetry) {
+      stopSourceRetry();
+      return;
+    }
+    if (!sourceRetryTimer) {
+      sourceRetryTimer = window.setInterval(requestSourceState, 1200);
+    }
+  }
+
+  function startSourceObserver() {
+    const refresh = () => requestSourceState();
+    chrome.tabs?.onActivated?.addListener?.(refresh);
+    chrome.tabs?.onUpdated?.addListener?.((_tabId, changeInfo) => {
+      if (changeInfo?.url || changeInfo?.status === "loading" || changeInfo?.status === "complete") {
+        refresh();
+      }
+    });
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) refresh();
+    });
+  }
 
   function send(message) {
     try {
@@ -43,7 +81,8 @@ import "./i18n.js";
       chrome.runtime.sendMessage({
         type: "POLARIS_WINDOW_READY",
         windowId: currentWindow.id,
-        windowTabId: currentTab?.id
+        windowTabId: currentTab?.id,
+        windowType: currentWindow.type
       });
     } catch {
       // The background worker will be recreated after an extension reload.
@@ -57,24 +96,41 @@ import "./i18n.js";
     return node;
   }
 
-  function iconLabel(platform) {
-    return platform === "xiaohongshu" ? "点" : (platform || "AI").slice(0, 2).toUpperCase();
-  }
-
   function activePlatformLabel(snapshot) {
-    return supportedPlatforms.find(([key]) => key === snapshot?.platform)?.[1] || "Polaris";
+    return supportedPlatforms.find(({ key }) => key === snapshot?.platform)?.label || "Polaris";
   }
 
   function applyTheme(snapshot) {
-    const theme = snapshot?.theme === "dark" ? "dark" : "light";
+    let theme = snapshot?.theme === "dark" ? "dark" : "light";
+    try {
+      theme = window.matchMedia(SYSTEM_THEME_QUERY).matches ? "dark" : "light";
+    } catch {
+      // Use the snapshot theme if matchMedia is unavailable.
+    }
     document.documentElement.dataset.theme = theme;
     document.body.dataset.theme = theme;
+  }
+
+  function startThemeObserver() {
+    let mediaQueryList;
+    try {
+      mediaQueryList = window.matchMedia(SYSTEM_THEME_QUERY);
+    } catch {
+      return;
+    }
+    const refresh = () => applyTheme(state.snapshot || {});
+    if (typeof mediaQueryList.addEventListener === "function") {
+      mediaQueryList.addEventListener("change", refresh);
+    } else if (typeof mediaQueryList.addListener === "function") {
+      mediaQueryList.addListener(refresh);
+    }
   }
 
   function render() {
     const snapshot = state.snapshot || { markerItems: [], hasConversation: false, supportedRoute: false };
     document.querySelector(".image-preview")?.remove();
     applyTheme(snapshot);
+    syncSourceRetry(state.snapshot);
     root.replaceChildren(renderHeader(snapshot), renderBody(snapshot));
     if (state.imageUrls.length) renderImagePreview();
   }
@@ -93,7 +149,10 @@ import "./i18n.js";
     const search = element("label", "window-search");
     search.setAttribute("aria-label", locale === "zh" ? "搜索 Maker" : "Search Makers");
     const input = document.createElement("input");
-    input.type = "search";
+    input.type = "text";
+    input.inputMode = "text";
+    input.autocomplete = "off";
+    input.lang = locale === "zh" ? "zh-CN" : "en";
     input.placeholder = locale === "zh" ? "搜索" : "Search";
     input.value = state.activeTab === "chapters" ? state.chapterQuery : state.markerQuery;
     input.addEventListener("input", () => {
@@ -148,14 +207,19 @@ import "./i18n.js";
     const panel = element("div", "navigation-panel");
     if (!snapshot.supportedRoute || !snapshot.hasConversation) {
       const empty = element("div", "empty-state");
-      empty.append(element("div", "empty-symbol", "◌"));
       empty.append(element("h1", "empty-title", locale === "zh" ? "这里还没有对话" : "No conversation here"));
       empty.append(element("p", "empty-copy", locale === "zh" ? "打开支持的 AI 对话后，Maker 会出现在这里。" : "Open a supported AI conversation to see its Makers here."));
-      const platforms = element("div", "platform-grid");
-      supportedPlatforms.forEach(([key, label]) => {
-        const chip = element("span", "platform-chip");
-        chip.append(element("span", "platform-icon", iconLabel(key)), element("span", "platform-name", label));
-        platforms.appendChild(chip);
+      const platforms = element("div", "platform-stack");
+      platforms.setAttribute("role", "list");
+      platforms.setAttribute("aria-label", locale === "zh" ? "支持的平台" : "Supported platforms");
+      supportedPlatforms.forEach(({ label, favicon }) => {
+        const icon = element("img", "platform-favicon");
+        icon.src = chrome.runtime.getURL(favicon);
+        icon.alt = label;
+        icon.title = label;
+        icon.loading = "lazy";
+        icon.setAttribute("role", "listitem");
+        platforms.appendChild(icon);
       });
       empty.append(platforms);
       panel.appendChild(empty);
@@ -174,20 +238,8 @@ import "./i18n.js";
   }
 
   function filterItems(items, query) {
-    const normalized = String(query || "").trim().toLowerCase();
-    if (!normalized) return items;
-    return items.filter((item) => matchesSearch(normalized, item.title || ""));
-  }
-
-  function matchesSearch(query, title) {
-    const needle = Array.from(String(query || "").toLocaleLowerCase()).filter((character) => character.trim());
-    const haystack = Array.from(String(title || "").toLocaleLowerCase()).filter((character) => character.trim());
-    let index = 0;
-    for (const character of haystack) {
-      if (character === needle[index]) index += 1;
-      if (index === needle.length) return true;
-    }
-    return needle.length === 0;
+    if (!String(query || "").trim()) return items;
+    return items.filter((item) => matchesSearch(query, item.title || ""));
   }
 
   function renderMarker(item) {
@@ -212,7 +264,10 @@ import "./i18n.js";
       });
       button.append(image);
     }
-    button.append(copy, element("span", "maker-chevron", item.isExpanded ? "⌃" : "⌄"));
+    button.append(copy);
+    if (item.type === "user") {
+      button.append(element("span", "maker-chevron", item.isExpanded ? "⌃" : "⌄"));
+    }
     button.addEventListener("click", () => {
       if (item.type === "ai") send({ command: "jump-to-marker", markerKey: item.markerKey });
       if (item.type === "user") send({ command: "toggle-user-group", groupKey: item.groupKey });
@@ -398,6 +453,8 @@ import "./i18n.js";
   });
 
   render();
+  startThemeObserver();
+  startSourceObserver();
   window.addEventListener("keydown", (event) => {
     if ((event.metaKey || event.ctrlKey) && !event.altKey && event.key.toLowerCase() === "f") {
       event.preventDefault();

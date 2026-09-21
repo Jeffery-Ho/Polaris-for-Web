@@ -25,7 +25,7 @@ function createEvent() {
 }
 
 async function runAction({ storedWindow, getError = null, updateError = null, syncGetError = null }) {
-  const windowUrl = "chrome-extension://test/window.html";
+  const windowUrl = "chrome-extension://test/polaris-home.html";
   const sourceTab = { id: 42, windowId: 9, active: true, url: "https://chatgpt.com/c/test" };
   const local = {
     "polaris-window-id": storedWindow?.id ?? null,
@@ -98,6 +98,72 @@ async function runAction({ storedWindow, getError = null, updateError = null, sy
   return calls;
 }
 
+async function runWindowReady() {
+  const windowUrl = "chrome-extension://test/polaris-home.html";
+  const sourceTab = { id: 42, windowId: 7, active: false, url: "https://chatgpt.com/c/test" };
+  const extensionTab = { id: 99, windowId: 7, active: true, url: windowUrl };
+  const local = {
+    "polaris-source-window-id": sourceTab.windowId,
+    "polaris-source-tab-id": sourceTab.id
+  };
+  const runtimeMessage = createEvent();
+  const sends = [];
+  const noOpEvent = () => createEvent();
+  const chrome = {
+    action: { onClicked: noOpEvent() },
+    runtime: {
+      getURL(path) { return `chrome-extension://test/${path}`; },
+      async sendMessage() {},
+      onMessage: runtimeMessage
+    },
+    storage: {
+      local: {
+        async get(key) {
+          if (typeof key === "string") return { [key]: local[key] };
+          return { ...local };
+        },
+        async set(values) { Object.assign(local, values); },
+        async remove(keys) {
+          for (const key of [].concat(keys)) delete local[key];
+        }
+      },
+      sync: {
+        async get() { return {}; },
+        async set() {},
+        async remove() {}
+      }
+    },
+    windows: {
+      WINDOW_ID_NONE: -1,
+      onFocusChanged: noOpEvent(),
+      onRemoved: noOpEvent()
+    },
+    tabs: {
+      async query(query) {
+        if (query?.active) return [extensionTab];
+        return [sourceTab, extensionTab];
+      },
+      async get(tabId) {
+        return tabId === sourceTab.id ? sourceTab : extensionTab;
+      },
+      async sendMessage(tabId) { sends.push(tabId); },
+      onActivated: noOpEvent(),
+      onUpdated: noOpEvent(),
+      onRemoved: noOpEvent()
+    }
+  };
+
+  vm.runInNewContext(executableBackgroundSource, { chrome, URL, Number, Date, Promise, console });
+  runtimeMessage.emit({
+    type: "POLARIS_WINDOW_READY",
+    windowId: extensionTab.windowId,
+    windowTabId: extensionTab.id,
+    windowType: "normal"
+  });
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  return sends;
+}
+
 test("缓存 ID 指向普通窗口时，点击扩展图标会创建新的 Polaris popup", async () => {
   const calls = await runAction({
     storedWindow: {
@@ -120,7 +186,7 @@ test("有效的 Polaris popup 会恢复为正常状态并聚焦，不会重复�
       type: "popup",
       state: "minimized",
       focused: false,
-      tabs: [{ id: 42, url: "chrome-extension://test/window.html" }]
+      tabs: [{ id: 42, url: "chrome-extension://test/polaris-home.html" }]
     }
   });
 
@@ -137,7 +203,7 @@ test("有效窗口在聚焦竞态失败后会清理并重建", async () => {
       id: 9,
       type: "popup",
       focused: true,
-      tabs: [{ id: 42, url: "chrome-extension://test/window.html" }]
+      tabs: [{ id: 42, url: "chrome-extension://test/polaris-home.html" }]
     },
     updateError: new Error("window closed")
   });
@@ -149,7 +215,7 @@ test("有效窗口在聚焦竞态失败后会清理并重建", async () => {
 
 test("缓存窗口已关闭时会清理状态并创建新的 Polaris popup", async () => {
   const calls = await runAction({
-    storedWindow: { id: 9, type: "popup", tabs: [{ id: 42, url: "chrome-extension://test/window.html" }] },
+    storedWindow: { id: 9, type: "popup", tabs: [{ id: 42, url: "chrome-extension://test/polaris-home.html" }] },
     getError: new Error("window closed")
   });
 
@@ -163,11 +229,16 @@ test("复用窗口后的状态请求失败不会重复创建 popup", async () =>
     storedWindow: {
       id: 9,
       type: "popup",
-      tabs: [{ id: 42, url: "chrome-extension://test/window.html" }]
+      tabs: [{ id: 42, url: "chrome-extension://test/polaris-home.html" }]
     },
     syncGetError: new Error("temporary storage failure")
   });
 
   assert.equal(calls.updates.length, 1);
   assert.equal(calls.creates.length, 0);
+});
+
+test("直接打开普通浏览器标签中的插件页面时仍请求已生成会话", async () => {
+  const sends = await runWindowReady();
+  assert.deepEqual(sends, [42]);
 });

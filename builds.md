@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 222
+
+- Date: 2026-09-20
+- Version: 0.55.0
+- Summary: Refines the Polaris Maker surface and unrestricted search.
+- Notes: The standalone window now uses a low-saturation blue-orange glass background, search accepts Chinese and unrestricted Unicode text while preserving Unicode-aware title matching, only user groups show chevrons, Maker cards use larger corners, the search and Tab controls use larger rounded corners with a neutral iOS-like light-gray segmented Tab surface, and the empty state shows bundled platform favicons below its explanatory copy. The window observes browser tab activation, URL updates, focus changes, and `prefers-color-scheme`, retrying supported-page state until the content script responds. Opening the extension page as a regular browser tab now keeps the existing conversation tab as the source instead of treating the whole browser window as Polaris. The source and built window entries load those images as regular image URLs. Updated the current version to `0.55.0(222)`.
+
 ## 221
 
 - Date: 2026-09-20

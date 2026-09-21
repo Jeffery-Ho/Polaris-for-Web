@@ -1,5 +1,16 @@
 const RELEASE_NOTES = Object.freeze([
   {
+    version: "0.55.0",
+    en: {
+      title: "Softer Maker navigation",
+      changes: ["The Polaris window now uses a low-saturation blue-orange glass background, accepts unrestricted Unicode search text, keeps chevrons only on user groups, uses larger Maker corners, rounds the search and Tab controls more generously with a neutral iOS-like light-gray segmented Tab surface, and shows bundled platform favicons below the empty-state copy without treating them as module scripts. It also refreshes supported-page state when browser tabs or focus change, follows browser `prefers-color-scheme` changes immediately, retries until the content script responds, and keeps an existing conversation tab as the source when the extension page is opened as a regular browser tab."]
+    },
+    zh: {
+      title: "更柔和的 Maker 导航",
+      changes: ["Polaris 窗口现在使用低饱和度蓝橙玻璃背景，搜索支持中文及任意 Unicode 文本，只有用户分组显示 chevron，统一增大 Maker 圆角，搜索框和 Tab 使用更大圆角并采用接近 iOS 分段控件的中性浅灰背景，同时在空提示下方显示平台 favicon；源代码和构建产物都能正确加载这些图片。切换浏览器标签页或焦点后，窗口会自动刷新支持平台状态，浏览器切换 `prefers-color-scheme` 后也会立即同步亮暗主题，并在内容脚本尚未就绪时重试；如果把插件页作为普通浏览器标签打开，也会继续使用已记录的会话标签获取 Maker。"]
+    }
+  },
+  {
     version: "0.54.0",
     en: {
       title: "Standalone Polaris window",

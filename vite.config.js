@@ -6,7 +6,7 @@ export default defineConfig({
   build: {
     rollupOptions: {
       input: {
-        window: "window.html"
+        "polaris-home": "polaris-home.html"
       },
       output: {
         chunkFileNames: "assets/[name]",

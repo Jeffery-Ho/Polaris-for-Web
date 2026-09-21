@@ -9,7 +9,7 @@ const DEFAULT_WINDOW = {
   width: 420,
   height: 760,
   focused: true,
-  url: "window.html"
+  url: "polaris-home.html"
 };
 
 let polarisWindowId = null;
@@ -44,7 +44,21 @@ function isSupportedCandidateUrl(url) {
   }
 }
 
-async function publishEmptySnapshot(tabId) {
+function isPolarisTab(tab) {
+  if (!tab || tab.id === undefined) {
+    return false;
+  }
+  if (tab.id === polarisWindowTabId) {
+    return true;
+  }
+  return tab.url === chrome.runtime.getURL("polaris-home.html");
+}
+
+function isNormalSourceTab(tab) {
+  return Boolean(tab?.id !== undefined && tab.windowId !== polarisWindowId && !isPolarisTab(tab));
+}
+
+async function publishEmptySnapshot(tabId, supportedRoute = false) {
   const stored = await chrome.storage.sync.get("gpt-paragraph-nav-config");
   const config = latestSnapshot?.config || stored["gpt-paragraph-nav-config"] || {};
   try {
@@ -61,7 +75,7 @@ async function publishEmptySnapshot(tabId) {
         revision: Date.now(),
         releaseNotes: [],
         routeKey: "",
-        supportedRoute: false,
+        supportedRoute,
         theme: "light",
         version: ""
       }
@@ -114,7 +128,7 @@ async function existingPolarisWindow() {
   }
   try {
     const existing = await chrome.windows.get(polarisWindowId, { populate: true });
-    const windowUrl = chrome.runtime.getURL("window.html");
+    const windowUrl = chrome.runtime.getURL("polaris-home.html");
     const matchingTab = matchingPolarisTab(existing, windowUrl, polarisWindowTabId);
     if (!matchingTab) {
       await forgetWindowState();
@@ -131,7 +145,7 @@ async function existingPolarisWindow() {
 }
 
 async function rememberNormalTab(tab) {
-  if (!tab || tab.windowId === polarisWindowId || tab.id === polarisWindowTabId) {
+  if (!isNormalSourceTab(tab)) {
     return;
   }
   lastNormalWindowId = tab.windowId;
@@ -146,25 +160,54 @@ async function activeNormalTab() {
   await restoreWindowState();
   if (lastNormalWindowId !== null) {
     const tabs = await chrome.tabs.query({ active: true, windowId: lastNormalWindowId });
-    if (tabs[0]?.id !== undefined) {
-      await rememberNormalTab(tabs[0]);
-      return tabs[0];
+    const activeTab = tabs.find(isNormalSourceTab);
+    if (activeTab) {
+      await rememberNormalTab(activeTab);
+      return activeTab;
+    }
+    if (currentTabId !== null) {
+      try {
+        const rememberedTab = await chrome.tabs.get(currentTabId);
+        if (rememberedTab.windowId === lastNormalWindowId && isNormalSourceTab(rememberedTab)) {
+          await rememberNormalTab(rememberedTab);
+          return rememberedTab;
+        }
+      } catch {
+        // The remembered source tab may have been closed.
+      }
+    }
+    const windowTabs = await chrome.tabs.query({ windowId: lastNormalWindowId });
+    const fallbackTab = windowTabs.find((tab) => isNormalSourceTab(tab) && isSupportedCandidateUrl(tab.url))
+      || windowTabs.find(isNormalSourceTab);
+    if (fallbackTab) {
+      await rememberNormalTab(fallbackTab);
+      return fallbackTab;
     }
   }
 
-  const tabs = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
-  const tab = tabs.find((candidate) => candidate.windowId !== polarisWindowId) || null;
+  const activeTabs = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+  const activeTab = activeTabs.find(isNormalSourceTab);
+  if (activeTab) {
+    await rememberNormalTab(activeTab);
+    return activeTab;
+  }
+  const focusedTabs = await chrome.tabs.query({ lastFocusedWindow: true });
+  const tab = focusedTabs.find((candidate) => isNormalSourceTab(candidate) && isSupportedCandidateUrl(candidate.url))
+    || focusedTabs.find(isNormalSourceTab)
+    || null;
   await rememberNormalTab(tab);
   return tab;
 }
 
-async function requestContentState(tab) {
+async function requestContentState(tab, { publishEmpty = true } = {}) {
   const targetTab = tab || await activeNormalTab();
-  if (!targetTab?.id || targetTab.id === polarisWindowTabId) {
+  if (!isNormalSourceTab(targetTab)) {
     return;
   }
   currentTabId = targetTab.id;
-  await publishEmptySnapshot(targetTab.id);
+  if (publishEmpty) {
+    await publishEmptySnapshot(targetTab.id, isSupportedCandidateUrl(targetTab.url));
+  }
   if (!isSupportedCandidateUrl(targetTab.url)) {
     return;
   }
@@ -256,7 +299,7 @@ async function openOrFocusWindow(tab) {
 
   const created = await chrome.windows.create({
     ...DEFAULT_WINDOW,
-    url: chrome.runtime.getURL("window.html")
+    url: chrome.runtime.getURL("polaris-home.html")
   });
   const windowTab = created?.tabs?.[0];
   if (created?.id !== undefined && windowTab?.id !== undefined) {
@@ -276,6 +319,28 @@ async function openOrFocusWindow(tab) {
   await requestContentState(tab);
 }
 
+async function rememberWindowReadyState(message, sender) {
+  const readyWindowId = Number.isInteger(message.windowId) ? message.windowId : sender.tab?.windowId;
+  const readyTabId = Number.isInteger(message.windowTabId) ? message.windowTabId : sender.tab?.id;
+  if (readyWindowId === undefined || readyTabId === undefined) {
+    return;
+  }
+  const isPopup = message.windowType === undefined || message.windowType === "popup";
+  if (isPopup) {
+    polarisWindowId = readyWindowId;
+    polarisWindowTabId = readyTabId;
+    await chrome.storage.local.set({
+      [WINDOW_STORAGE_KEY]: polarisWindowId,
+      [WINDOW_TAB_STORAGE_KEY]: polarisWindowTabId
+    });
+    return;
+  }
+  polarisWindowId = null;
+  polarisWindowTabId = readyTabId;
+  await chrome.storage.local.remove(WINDOW_STORAGE_KEY);
+  await chrome.storage.local.set({ [WINDOW_TAB_STORAGE_KEY]: polarisWindowTabId });
+}
+
 chrome.action.onClicked.addListener((tab) => {
   void openOrFocusWindow(tab);
 });
@@ -286,21 +351,17 @@ chrome.runtime.onMessage.addListener((message, sender) => {
   }
 
   if (message.type === "POLARIS_WINDOW_READY") {
-    const readyWindowId = Number.isInteger(message.windowId) ? message.windowId : sender.tab?.windowId;
-    const readyTabId = Number.isInteger(message.windowTabId) ? message.windowTabId : sender.tab?.id;
-    if (readyWindowId !== undefined && readyTabId !== undefined) {
-      polarisWindowId = readyWindowId;
-      polarisWindowTabId = readyTabId;
-      void chrome.storage.local.set({
-        [WINDOW_STORAGE_KEY]: polarisWindowId,
-        [WINDOW_TAB_STORAGE_KEY]: polarisWindowTabId
-      });
-    }
-    void requestContentState();
+    void rememberWindowReadyState(message, sender)
+      .then(() => requestContentState())
+      .catch(() => {});
     return;
   }
 
   if (message.type === "POLARIS_WINDOW_COMMAND") {
+    if (message.command === "refresh-state") {
+      void requestContentState(undefined, { publishEmpty: false });
+      return;
+    }
     if (message.command === "update-config" || message.command === "reset-config") {
       void persistWindowConfigCommand(message).catch(() => {});
     }
