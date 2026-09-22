@@ -77,8 +77,11 @@ jobs:
         run: |
           mkdir -p release
           archive="Polaris-AI-${VERSION}-build-${BUILD}.zip"
+          stable_archive="release/Polaris-AI.zip"
           (cd dist && zip -qr "../release/${archive}" . -x '*.DS_Store')
+          cp "release/${archive}" "$stable_archive"
           unzip -Z1 "release/${archive}" | grep -qx 'manifest.json'
+          unzip -Z1 "$stable_archive" | grep -qx 'manifest.json'
 
       - name: Create or update GitHub Release
         env:
@@ -88,12 +91,33 @@ jobs:
           TAG: v${{ steps.metadata.outputs.version }}-build.${{ steps.metadata.outputs.build }}
         run: |
           archive="release/Polaris-AI-${VERSION}-build-${BUILD}.zip"
+          stable_archive="release/Polaris-AI.zip"
+          latest_url="https://github.com/${GITHUB_REPOSITORY}/releases/latest/download/Polaris-AI.zip"
+          release_is_draft=false
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release delete-asset "$TAG" "Polaris-AI.zip" --yes --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || true
-            gh release upload "$TAG" "$archive" --clobber --repo "$GITHUB_REPOSITORY"
+            release_is_draft="$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft)"
           else
-            gh release create "$TAG" "$archive" \
+            gh release create "$TAG" \
+              --draft \
               --title "Polaris AI ${VERSION} build ${BUILD}" \
               --generate-notes \
               --repo "$GITHUB_REPOSITORY"
+            release_is_draft=true
           fi
+
+          gh release upload "$TAG" "$archive" "$stable_archive" --clobber --repo "$GITHUB_REPOSITORY"
+
+          unzip -t "$stable_archive" >/dev/null
+          unzip -Z1 "$stable_archive" | grep -qx 'manifest.json'
+
+          if [[ "$release_is_draft" == "true" ]]; then
+            gh release edit "$TAG" --draft=false --repo "$GITHUB_REPOSITORY"
+          fi
+
+          download_check="$(mktemp)"
+          trap 'rm -f "$download_check"' EXIT
+          curl --fail --silent --show-error --location --retry 5 --retry-delay 2 --max-time 30 \
+            "$latest_url" \
+            -o "$download_check"
+          unzip -t "$download_check" >/dev/null
+          unzip -Z1 "$download_check" | grep -qx 'manifest.json'
