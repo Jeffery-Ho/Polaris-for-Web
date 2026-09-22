@@ -102,7 +102,7 @@ pnpm test
 pnpm build
 ```
 
-Load the generated `dist/` directory as an unpacked extension in Chromium-based browsers. Do not use `dist.zip` as a source artifact; the release workflow creates a versioned ZIP and the stable `Polaris-AI.zip` alias from the freshly generated `dist/` directory. It validates both archives, uploads them to a Draft Release, verifies the stable Latest download URL, and only then publishes the release.
+Load the generated `dist/` directory as an unpacked extension in Chromium-based browsers. Do not use `dist.zip` as a source artifact; the release workflow creates a versioned ZIP and the stable `Polaris-AI.zip` alias from the freshly generated `dist/` directory. It validates both remote assets while the Release is still Draft, publishes only after that check, and then verifies the public Latest download URL.
 
 ## Version
 

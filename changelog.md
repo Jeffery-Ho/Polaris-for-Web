@@ -2,7 +2,7 @@
 
 ## 2026-09-22
 
-- 发布：扩展 Release 现在同时上传版本化 ZIP 和固定名称的 `Polaris-AI.zip`，先完成 Draft Release 资产校验与 Latest 下载验证后再公开发布，保证 landing 始终可下载最新完整版本。
+- 发布：扩展 Release 现在同时上传版本化 ZIP 和固定名称的 `Polaris-AI.zip`，先在 Draft Release 中校验两份远端资产，发布后再验证 Latest 下载地址，保证 landing 始终可下载最新完整版本。
 
 ## 2026-09-20
 

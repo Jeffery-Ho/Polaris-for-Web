@@ -183,7 +183,6 @@ jobs:
               --title "Polaris AI ${VERSION} build ${BUILD}" \
               --generate-notes \
               --repo "$GITHUB_REPOSITORY"
-            release_is_draft=true
           fi
 
           gh release upload "$TAG" "$archive" "$stable_archive" --clobber --repo "$GITHUB_REPOSITORY"

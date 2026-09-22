@@ -35,9 +35,12 @@ test("发布工作流为最新版本提供经过校验的稳定 ZIP 资产", () 
   assert.match(workflow, /unzip -t/);
   assert.doesNotMatch(workflow, /gh release delete-asset/);
 
-  const remoteVerificationIndex = workflow.indexOf('--pattern "${archive##*/}"');
   const publishIndex = workflow.indexOf('gh release edit "$TAG" --draft=false');
-  const latestVerificationIndex = workflow.lastIndexOf("verify_latest_release");
-  assert.ok(remoteVerificationIndex >= 0 && remoteVerificationIndex < publishIndex);
-  assert.ok(latestVerificationIndex > publishIndex);
+  const assetCalls = [...workflow.matchAll(/^[ \t]+download_release_assets$/gm)].map((match) => match.index);
+  const latestCalls = [...workflow.matchAll(/^[ \t]+verify_latest_release$/gm)].map((match) => match.index);
+  assert.equal(assetCalls.length, 2);
+  assert.equal(latestCalls.length, 2);
+  assert.ok(assetCalls.at(-1) < publishIndex);
+  assert.ok(latestCalls[0] < publishIndex);
+  assert.ok(latestCalls.at(-1) > publishIndex);
 });
