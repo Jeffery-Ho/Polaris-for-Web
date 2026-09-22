@@ -57,9 +57,14 @@ import {
   openDiagnosticEmail
 } from "./diagnostic-export.js";
 import {
+  inlineUserMessageImageSource,
+  isOwnedUserAttachmentCandidate,
   safeUserMessageImageUrl,
+  userMessageImageSelectorForPlatform,
   userMessageThumbnailForSources
 } from "./user-message-images.js";
+import { bindSearchInput } from "./search-input.js";
+import { sendRuntimeMessage } from "./runtime-message.js";
 
 (() => {
   const { locale, t } = globalThis.PolarisI18n;
@@ -87,8 +92,6 @@ import {
   const GEMINI_USER_MESSAGE_SELECTOR = "user-query";
   const GEMINI_USER_MESSAGE_FALLBACK_SELECTOR = "user-query-content, .user-query-content, .user-query-container";
   const GEMINI_USER_TEXT_SELECTOR = ".query-content, .query-text-line, .query-text";
-  const GEMINI_USER_IMAGE_SELECTOR = "user-query-file-preview img, user-query-file-carousel img";
-  const USER_MESSAGE_IMAGE_SELECTOR = "img";
   const USER_MESSAGE_IMAGE_ATTRIBUTE_FILTER = ["src", "srcset", "data-src", "data-original", "data-url"];
   const USER_MESSAGE_AVATAR_SELECTOR = '[class*="avatar" i], [class*="profile" i], [data-testid*="avatar" i]';
   const GEMINI_USER_ROLE_PREFIX_PATTERN = /^\s*(?:You said|你说|你話|你话)\s*[:：]?\s*/i;
@@ -312,6 +315,8 @@ import {
   });
   const liquidGlassSignatures = new WeakMap();
   const userImagePreviewSources = new WeakMap();
+  const standaloneWindowImageCache = new Map();
+  const standaloneWindowImagePromises = new Map();
   const settingsPanelControllers = new WeakMap();
   const settingsPanelRenderSignatures = new WeakMap();
   const extensionMetadata = {
@@ -765,13 +770,21 @@ import {
       input.placeholder = t("search.markers.placeholder");
       input.setAttribute("aria-label", t("search.markers.placeholder"));
       input.autocomplete = "off";
+      input.inputMode = "text";
+      input.spellcheck = false;
+      input.dir = "auto";
+      input.lang = locale === "zh" ? "zh-CN" : "en";
       input.value = state.markerSearchQuery;
-      input.addEventListener("input", () => {
-        state.markerSearchQuery = input.value;
-        if (input.value) {
-          state.isCollapsed = false;
+      bindSearchInput(input, {
+        onInput: (value) => {
+          state.markerSearchQuery = value;
+        },
+        onCommit: () => {
+          if (input.value) {
+            state.isCollapsed = false;
+          }
+          render();
         }
-        render();
       });
       input.addEventListener("focus", () => {
         if (state.isCollapsed) {
@@ -1121,10 +1134,18 @@ import {
       searchInput.placeholder = t("search.chapters.placeholder");
       searchInput.setAttribute("aria-label", t("search.chapters.placeholder"));
       searchInput.autocomplete = "off";
+      searchInput.inputMode = "text";
+      searchInput.spellcheck = false;
+      searchInput.dir = "auto";
+      searchInput.lang = locale === "zh" ? "zh-CN" : "en";
       searchInput.value = state.explosionSearchQuery;
-      searchInput.addEventListener("input", () => {
-        state.explosionSearchQuery = searchInput.value;
-        syncExplosionOverlay(overlay);
+      bindSearchInput(searchInput, {
+        onInput: (value) => {
+          state.explosionSearchQuery = value;
+        },
+        onCommit: () => {
+          syncExplosionOverlay(overlay);
+        }
       });
       header.appendChild(searchInput);
 
@@ -3363,19 +3384,41 @@ import {
   }
 
   function userMessageImageSelector() {
-    return isGeminiPage() ? GEMINI_USER_IMAGE_SELECTOR : USER_MESSAGE_IMAGE_SELECTOR;
+    return userMessageImageSelectorForPlatform(currentPlatformKey());
+  }
+
+  function matchingUserContainerSelector(messageElement) {
+    for (const selectorGroup of getUserContainerSelectors()) {
+      for (const selector of selectorGroup.split(",")) {
+        const candidate = selector.trim();
+        if (candidate && messageElement.matches(candidate)) {
+          return candidate;
+        }
+      }
+    }
+    return "";
   }
 
   function isUserMessageImage(image, messageElement) {
     if (!(image instanceof HTMLImageElement) || isInsideNavigationRoot(image)) {
       return false;
     }
+    let excluded = false;
     for (let node = image; node && node !== messageElement; node = node.parentElement) {
       if (node.matches?.(USER_MESSAGE_AVATAR_SELECTOR)) {
-        return false;
+        excluded = true;
+        break;
       }
     }
-    return true;
+    const platform = currentPlatformKey();
+    const imageSelector = userMessageImageSelector();
+    const ownerSelector = matchingUserContainerSelector(messageElement);
+    return isOwnedUserAttachmentCandidate({
+      platform,
+      ownerMatches: Boolean(ownerSelector) && image.closest(ownerSelector) === messageElement,
+      inAttachmentRegion: Boolean(imageSelector) && image.matches(imageSelector),
+      excluded
+    });
   }
 
   function firstImageSrcsetUrl(image) {
@@ -3399,9 +3442,10 @@ import {
   }
 
   function userMessageThumbnail(element) {
-    const sources = Array.from(element.querySelectorAll(userMessageImageSelector()))
+    const selector = userMessageImageSelector();
+    const sources = selector ? Array.from(element.querySelectorAll(selector))
       .filter((image) => isUserMessageImage(image, element))
-      .map(userMessageImageSource);
+      .map(userMessageImageSource) : [];
     return userMessageThumbnailForSources(sources, window.location.href);
   }
 
@@ -4820,11 +4864,66 @@ import {
       ariaLabel: item.ariaLabel || "",
       isExpanded: Boolean(item.isExpanded),
       level: item.level || 0,
-      thumbnailSrc: item.thumbnailSrc || "",
+      thumbnailSrc: standaloneWindowImageSource(item.thumbnailSrc),
       imageUrls: [],
       imageCount: Number(item.imageCount) || 0,
       isImageOnly: Boolean(item.isImageOnly)
     };
+  }
+
+  function standaloneWindowImageSource(source) {
+    const value = safeUserMessageImageUrl(source, window.location.href);
+    if (!value) {
+      return "";
+    }
+    if (standaloneWindowImageCache.has(value)) {
+      return standaloneWindowImageCache.get(value) || "";
+    }
+    if (!standaloneWindowImagePromises.has(value)) {
+      const promise = inlineUserMessageImageSource(value, { pageUrl: window.location.href }).then((dataUrl) => {
+        const resolved = dataUrl || (value.startsWith("blob:") ? "" : value);
+        standaloneWindowImageCache.set(value, resolved);
+        return resolved;
+      }).catch(() => {
+        const resolved = value.startsWith("blob:") ? "" : value;
+        standaloneWindowImageCache.set(value, resolved);
+        return resolved;
+      }).finally(() => {
+        standaloneWindowImagePromises.delete(value);
+      });
+      standaloneWindowImagePromises.set(value, promise);
+      void promise.then((resolved) => {
+        if (resolved) {
+          publishWindowSnapshot();
+        }
+      });
+    }
+    return "";
+  }
+
+  async function standaloneWindowImageUrlsForSources(sources) {
+    const values = Array.from(new Set(Array.isArray(sources) ? sources : []))
+      .map((source) => safeUserMessageImageUrl(source, window.location.href))
+      .filter(Boolean)
+      .slice(0, 8);
+    const result = {
+      imageUrls: await Promise.all(values.map((value) => {
+        if (standaloneWindowImageCache.has(value)) {
+          return standaloneWindowImageCache.get(value) || "";
+        }
+        return standaloneWindowImagePromises.get(value)
+          || inlineUserMessageImageSource(value, { pageUrl: window.location.href }).then((dataUrl) => {
+            const resolved = dataUrl || (value.startsWith("blob:") ? "" : value);
+            standaloneWindowImageCache.set(value, resolved);
+            return resolved;
+          }).catch(() => {
+            const resolved = value.startsWith("blob:") ? "" : value;
+            standaloneWindowImageCache.set(value, resolved);
+            return resolved;
+          });
+      }))
+    };
+    return result.imageUrls.filter(Boolean);
   }
 
   function windowSnapshot() {
@@ -4866,14 +4965,10 @@ import {
     window.clearTimeout(state.windowSnapshotTimer);
     state.windowSnapshotTimer = window.setTimeout(() => {
       state.windowSnapshotTimer = 0;
-      try {
-        chrome.runtime.sendMessage({
-          type: "POLARIS_CONTENT_STATE",
-          snapshot: windowSnapshot()
-        });
-      } catch {
-        disposeInvalidExtensionContext();
-      }
+      sendRuntimeMessage(chrome, {
+        type: "POLARIS_CONTENT_STATE",
+        snapshot: windowSnapshot()
+      });
     }, 0);
   }
 
@@ -4892,14 +4987,10 @@ import {
       paragraphs: (section.paragraphs || []).filter(Boolean).slice(0, 240),
       title: section.title
     }));
-    try {
-      chrome.runtime.sendMessage({
-        type: "POLARIS_WINDOW_CHAPTERS",
-        chapters: sections
-      });
-    } catch {
-      disposeInvalidExtensionContext();
-    }
+    sendRuntimeMessage(chrome, {
+      type: "POLARIS_WINDOW_CHAPTERS",
+      chapters: sections
+    });
   }
 
   function mergeWindowConfigPatch(patch) {
@@ -4933,14 +5024,13 @@ import {
     }
     if (message.command === "request-image-preview") {
       const group = state.markerGroups.find((item) => item.key === String(message.groupKey || ""));
-      try {
-        chrome.runtime.sendMessage({
-          type: "POLARIS_WINDOW_IMAGE",
-          imageUrls: group?.user?.imageUrls?.slice(0, 8) || []
+      void standaloneWindowImageUrlsForSources(group?.user?.imageUrls?.slice(0, 8) || [])
+        .then((imageUrls) => {
+          sendRuntimeMessage(chrome, {
+            type: "POLARIS_WINDOW_IMAGE",
+            imageUrls
+          });
         });
-      } catch {
-        disposeInvalidExtensionContext();
-      }
       return;
     }
     if (message.command === "update-config") {

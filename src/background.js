@@ -70,6 +70,7 @@ async function publishEmptySnapshot(tabId, supportedRoute = false) {
         config,
         hasConversation: false,
         headings: [],
+        loading: Boolean(supportedRoute),
         markerItems: [],
         platform: "default",
         revision: Date.now(),
@@ -202,6 +203,9 @@ async function activeNormalTab() {
 async function requestContentState(tab, { publishEmpty = true } = {}) {
   const targetTab = tab || await activeNormalTab();
   if (!isNormalSourceTab(targetTab)) {
+    if (publishEmpty) {
+      await publishEmptySnapshot(null);
+    }
     return;
   }
   currentTabId = targetTab.id;

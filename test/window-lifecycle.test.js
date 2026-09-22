@@ -34,13 +34,13 @@ async function runAction({ storedWindow, getError = null, updateError = null, sy
     "polaris-source-tab-id": sourceTab.id
   };
   const action = createEvent();
-  const calls = { creates: [], updates: [] };
+  const calls = { creates: [], updates: [], contentRequests: [], runtimeMessages: [] };
   const noOpEvent = () => createEvent();
   const chrome = {
     action: { onClicked: action },
     runtime: {
       getURL(path) { return `chrome-extension://test/${path}`; },
-      sendMessage: async () => {},
+      async sendMessage(message) { calls.runtimeMessages.push(message); },
       onMessage: noOpEvent()
     },
     storage: {
@@ -83,7 +83,7 @@ async function runAction({ storedWindow, getError = null, updateError = null, sy
     },
     tabs: {
       async query() { return [sourceTab]; },
-      async sendMessage() {},
+      async sendMessage(tabId, message) { calls.contentRequests.push({ tabId, message }); },
       async update() {},
       async get() { return sourceTab; },
       onActivated: noOpEvent(),
@@ -236,6 +236,17 @@ test("复用窗口后的状态请求失败不会重复创建 popup", async () =>
 
   assert.equal(calls.updates.length, 1);
   assert.equal(calls.creates.length, 0);
+});
+
+test("启动时支持会话先请求内容状态，不先显示无会话空快照", async () => {
+  const calls = await runAction({ storedWindow: null });
+
+  assert.equal(calls.contentRequests.length, 1);
+  assert.equal(calls.contentRequests[0].tabId, 42);
+  assert.equal(calls.contentRequests[0].message.type, "POLARIS_WINDOW_REQUEST_STATE");
+  const stateMessage = calls.runtimeMessages.find((message) => message.type === "POLARIS_WINDOW_STATE");
+  assert.ok(stateMessage);
+  assert.equal(stateMessage.snapshot.loading, true);
 });
 
 test("直接打开普通浏览器标签中的插件页面时仍请求已生成会话", async () => {

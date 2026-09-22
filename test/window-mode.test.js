@@ -3,14 +3,15 @@ import assert from "node:assert/strict";
 import { access, readFile } from "node:fs/promises";
 
 const platformFaviconFiles = ["chatgpt", "claude", "gemini", "grok", "doubao", "kimi", "qianwen", "yuanbao", "xiaohongshu"];
-const [manifest, buildManifest, background, content, windowSource, windowHtml, windowCss] = await Promise.all([
+const [manifest, buildManifest, background, content, windowSource, windowHtml, windowCss, searchInputSource] = await Promise.all([
   readFile(new URL("../manifest.json", import.meta.url), "utf8").then(JSON.parse),
   readFile(new URL("../manifest.build.json", import.meta.url), "utf8").then(JSON.parse),
   readFile(new URL("../src/background.js", import.meta.url), "utf8"),
   readFile(new URL("../src/content.js", import.meta.url), "utf8"),
   readFile(new URL("../src/window.js", import.meta.url), "utf8"),
   readFile(new URL("../polaris-home.html", import.meta.url), "utf8"),
-  readFile(new URL("../src/window.css", import.meta.url), "utf8")
+  readFile(new URL("../src/window.css", import.meta.url), "utf8"),
+  readFile(new URL("../src/search-input.js", import.meta.url), "utf8")
 ]);
 
 test("两个源 manifest 都声明独立 Polaris 窗口入口", () => {
@@ -69,6 +70,9 @@ test("独立窗口包含导航、章节、设置和无对话平台空状态", ()
   assert.match(windowSource, /chrome\.tabs\?\.onActivated/);
   assert.match(windowSource, /chrome\.tabs\?\.onUpdated/);
   assert.match(windowSource, /setInterval\(requestSourceState, 1200\)/);
+  assert.match(windowSource, /const shouldRetry = !snapshot \|\| Boolean\(snapshot\.supportedRoute && !snapshot\.hasConversation\)/);
+  assert.match(windowSource, /if \(isLoading \|\| snapshot\.loading\)/);
+  assert.match(windowSource, /Reading conversation/);
   assert.match(windowSource, /windowType: currentWindow\.type/);
   assert.match(windowSource, /No conversation here/);
   assert.match(windowSource, /jump-to-marker/);
@@ -84,6 +88,25 @@ test("独立窗口包含导航、章节、设置和无对话平台空状态", ()
   assert.match(windowSource, /platform-favicon/);
   assert.match(windowSource, /icon\.alt = label/);
   assert.match(windowSource, /download-diagnostics/);
+});
+
+test("独立窗口图片预览使用纯黑 60% 遮罩", () => {
+  assert.match(windowCss, /\.image-preview \{[^}]*background: rgba\(0, 0, 0, \.6\);/);
+});
+
+test("独立窗口缩略图加载失败后移除破图并保留 Maker 文本", () => {
+  assert.match(windowSource, /image\.addEventListener\("error", \(\) => \{[\s\S]*?image\.remove\(\)/);
+  assert.match(windowSource, /button\.append\(image\);[\s\S]*?button\.append\(copy\)/);
+});
+
+test("搜索输入支持中文输入法组合态并在提交后刷新", () => {
+  for (const source of [searchInputSource]) {
+    assert.match(source, /compositionstart/);
+    assert.match(source, /compositionend/);
+    assert.match(source, /event\.isComposing/);
+  }
+  assert.match(windowSource, /bindSearchInput/);
+  assert.match(content, /bindSearchInput/);
 });
 
 test("空状态使用每个平台打包的 favicon 资源", async () => {
@@ -105,6 +128,10 @@ test("独立窗口使用浏览器原生关闭控制和工具窗层级", () => {
   assert.match(windowCss, /background: #f6f8fa/);
   assert.match(windowCss, /radial-gradient\(90% 70% at 5% 0%/);
   assert.match(windowCss, /rgba\(211, 143, 88, \.16\)/);
+  assert.match(windowCss, /--window-header-background: rgba\(255, 255, 255, \.6\)/);
+  assert.match(windowCss, /--window-search-background: rgba\(255, 255, 255, \.85\)/);
+  assert.match(windowCss, /--window-header-background: rgba\(0, 0, 0, \.6\)/);
+  assert.match(windowCss, /--window-search-background: rgba\(0, 0, 0, \.85\)/);
   assert.match(windowCss, /border-radius: 18px/);
   assert.match(windowCss, /\.window-search[^}]*border-radius: 18px/);
   assert.match(windowCss, /\.window-tabs[^}]*background: #dedee3/);

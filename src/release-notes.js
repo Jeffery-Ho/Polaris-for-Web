@@ -1,5 +1,16 @@
 const RELEASE_NOTES = Object.freeze([
   {
+    version: "0.55.1",
+    en: {
+      title: "Reliable Maker image ownership",
+      changes: ["User Makers now show only verified image attachments owned by that exact user message. Avatars, icons, decorative images, and unrelated page images are excluded, and failed thumbnails no longer leave broken-image placeholders in the standalone window."]
+    },
+    zh: {
+      title: "更可靠的 Maker 图片归属",
+      changes: ["用户 Maker 现在只显示明确属于该条用户消息的上传图片附件；头像、图标、装饰图片和其他页面图片会被排除，加载失败的缩略图也不会再在独立窗口中留下破图占位符。"]
+    }
+  },
+  {
     version: "0.55.0",
     en: {
       title: "Softer Maker navigation",

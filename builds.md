@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 223
+
+- Date: 2026-09-22
+- Version: 0.55.1
+- Summary: Prevents unrelated page images from being assigned to user Makers.
+- Notes: Maker thumbnails now accept only verified ChatGPT or Gemini user-upload attachment images owned by the same user message. Other platform images remain disabled until a semantic attachment selector is verified. Broken thumbnails are removed from the standalone window while preserving Maker text. Updated the current version to `0.55.1(223)`.
+
 ## 222
 
 - Date: 2026-09-20

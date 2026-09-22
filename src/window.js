@@ -1,5 +1,7 @@
 import "./i18n.js";
 import { matchesSearch } from "./window-search.js";
+import { bindSearchInput } from "./search-input.js";
+import { sendRuntimeMessage } from "./runtime-message.js";
 
 (() => {
   const SYSTEM_THEME_QUERY = "(prefers-color-scheme: dark)";
@@ -42,7 +44,7 @@ import { matchesSearch } from "./window-search.js";
   }
 
   function syncSourceRetry(snapshot) {
-    const shouldRetry = Boolean(snapshot?.supportedRoute && !snapshot?.hasConversation);
+    const shouldRetry = !snapshot || Boolean(snapshot.supportedRoute && !snapshot.hasConversation);
     if (!shouldRetry) {
       stopSourceRetry();
       return;
@@ -67,18 +69,14 @@ import { matchesSearch } from "./window-search.js";
   }
 
   function send(message) {
-    try {
-      chrome.runtime.sendMessage({ type: "POLARIS_WINDOW_COMMAND", ...message });
-    } catch {
-      // The extension can be reloaded while this window is still open.
-    }
+    sendRuntimeMessage(chrome, { type: "POLARIS_WINDOW_COMMAND", ...message });
   }
 
   async function sendReady() {
     try {
       const currentWindow = await chrome.windows.getCurrent({ populate: true });
       const currentTab = currentWindow.tabs?.find((tab) => tab.active) || currentWindow.tabs?.[0];
-      chrome.runtime.sendMessage({
+      sendRuntimeMessage(chrome, {
         type: "POLARIS_WINDOW_READY",
         windowId: currentWindow.id,
         windowTabId: currentTab?.id,
@@ -128,10 +126,11 @@ import { matchesSearch } from "./window-search.js";
 
   function render() {
     const snapshot = state.snapshot || { markerItems: [], hasConversation: false, supportedRoute: false };
+    const isLoading = !state.snapshot;
     document.querySelector(".image-preview")?.remove();
     applyTheme(snapshot);
     syncSourceRetry(state.snapshot);
-    root.replaceChildren(renderHeader(snapshot), renderBody(snapshot));
+    root.replaceChildren(renderHeader(snapshot), renderBody(snapshot, { isLoading }));
     if (state.imageUrls.length) renderImagePreview();
   }
 
@@ -152,17 +151,23 @@ import { matchesSearch } from "./window-search.js";
     input.type = "text";
     input.inputMode = "text";
     input.autocomplete = "off";
+    input.spellcheck = false;
+    input.dir = "auto";
     input.lang = locale === "zh" ? "zh-CN" : "en";
     input.placeholder = locale === "zh" ? "搜索" : "Search";
     input.value = state.activeTab === "chapters" ? state.chapterQuery : state.markerQuery;
-    input.addEventListener("input", () => {
-      if (state.activeTab === "chapters") state.chapterQuery = input.value;
-      else state.markerQuery = input.value;
-      render();
-      const nextInput = document.querySelector(".window-search input");
-      if (nextInput instanceof HTMLInputElement) {
-        nextInput.focus();
-        nextInput.setSelectionRange(nextInput.value.length, nextInput.value.length);
+    bindSearchInput(input, {
+      onInput: (value) => {
+        if (state.activeTab === "chapters") state.chapterQuery = value;
+        else state.markerQuery = value;
+      },
+      onCommit: () => {
+        render();
+        const nextInput = document.querySelector(".window-search input");
+        if (nextInput instanceof HTMLInputElement) {
+          nextInput.focus();
+          nextInput.setSelectionRange(nextInput.value.length, nextInput.value.length);
+        }
       }
     });
     search.append(input);
@@ -189,7 +194,7 @@ import { matchesSearch } from "./window-search.js";
     return header;
   }
 
-  function renderBody(snapshot) {
+  function renderBody(snapshot, { isLoading = false } = {}) {
     const body = element("section", "window-body");
     if (state.activeTab === "settings") {
       body.appendChild(renderSettings(snapshot));
@@ -199,12 +204,19 @@ import { matchesSearch } from "./window-search.js";
       body.appendChild(renderChapters(snapshot));
       return body;
     }
-    body.appendChild(renderNavigation(snapshot));
+    body.appendChild(renderNavigation(snapshot, { isLoading }));
     return body;
   }
 
-  function renderNavigation(snapshot) {
+  function renderNavigation(snapshot, { isLoading = false } = {}) {
     const panel = element("div", "navigation-panel");
+    if (isLoading || snapshot.loading) {
+      const loading = element("div", "empty-state");
+      loading.append(element("h1", "empty-title", locale === "zh" ? "正在读取会话" : "Reading conversation"));
+      loading.append(element("p", "empty-copy", locale === "zh" ? "正在检查当前标签页是否为支持的 AI 会话。" : "Checking the current tab for a supported AI conversation."));
+      panel.appendChild(loading);
+      return panel;
+    }
     if (!snapshot.supportedRoute || !snapshot.hasConversation) {
       const empty = element("div", "empty-state");
       empty.append(element("h1", "empty-title", locale === "zh" ? "这里还没有对话" : "No conversation here"));
@@ -258,6 +270,13 @@ import { matchesSearch } from "./window-search.js";
       const image = element("img", "maker-thumb");
       image.src = item.thumbnailSrc;
       image.alt = "";
+      image.classList.add("is-loading");
+      image.addEventListener("load", () => {
+        image.classList.remove("is-loading");
+      }, { once: true });
+      image.addEventListener("error", () => {
+        image.remove();
+      }, { once: true });
       image.addEventListener("click", (event) => {
         event.stopPropagation();
         send({ command: "request-image-preview", groupKey: item.groupKey });

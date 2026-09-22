@@ -9,10 +9,18 @@ export default defineConfig({
         "polaris-home": "polaris-home.html"
       },
       output: {
-        chunkFileNames: "assets/[name]",
+        chunkFileNames: (chunkInfo) => {
+          const name = chunkInfo.name.endsWith(".js") ? chunkInfo.name : `${chunkInfo.name}.js`;
+          return `assets/${name}`;
+        },
         entryFileNames: "assets/[name].js"
       }
     }
   },
-  plugins: [crx({ manifest })]
+  plugins: [crx({
+    manifest,
+    contentScripts: {
+      standaloneFiles: ["src/content.js"]
+    }
+  })]
 });
