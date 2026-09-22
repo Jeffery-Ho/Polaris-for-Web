@@ -93,9 +93,68 @@ jobs:
           archive="release/Polaris-AI-${VERSION}-build-${BUILD}.zip"
           stable_archive="release/Polaris-AI.zip"
           latest_url="https://github.com/${GITHUB_REPOSITORY}/releases/latest/download/Polaris-AI.zip"
-          release_is_draft=false
+          verification_dir="$(mktemp -d)"
+          download_check="$verification_dir/latest.zip"
+          trap 'rm -rf "$verification_dir"' EXIT
+
+          verify_archive() {
+            local archive_path="$1"
+            local manifest_path
+
+            unzip -t "$archive_path" >/dev/null
+            unzip -Z1 "$archive_path" | grep -qx 'manifest.json'
+            manifest_path="$(mktemp "$verification_dir/manifest.XXXXXX")"
+            unzip -p "$archive_path" manifest.json > "$manifest_path"
+            EXPECTED_VERSION="$VERSION" EXPECTED_VERSION_NAME="${VERSION}(${BUILD})" \
+              node - "$manifest_path" <<'NODE'
+          const fs = require("node:fs");
+
+          const [manifestPath] = process.argv.slice(2);
+          const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+          if (manifest.version !== process.env.EXPECTED_VERSION) {
+            throw new Error(`Unexpected manifest version: ${manifest.version}`);
+          }
+          if (manifest.version_name !== process.env.EXPECTED_VERSION_NAME) {
+            throw new Error(`Unexpected manifest version_name: ${manifest.version_name}`);
+          }
+          NODE
+            rm -f "$manifest_path"
+          }
+
+          archive_fingerprint() {
+            local archive_path="$1"
+
+            unzip -Z1 "$archive_path" \
+              | sed '/\/$/d' \
+              | LC_ALL=C sort \
+              | while IFS= read -r entry; do
+                  printf '%s\0' "$entry"
+                  unzip -p "$archive_path" "$entry" | sha256sum
+                done \
+              | sha256sum \
+              | awk '{print $1}'
+          }
+
+          verify_archive "$archive"
+          verify_archive "$stable_archive"
+          cmp --silent "$archive" "$stable_archive"
+
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             release_is_draft="$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft)"
+            if [[ "$release_is_draft" != "true" ]]; then
+              gh release download "$TAG" \
+                --pattern "Polaris-AI.zip" \
+                --dir "$verification_dir" \
+                --clobber \
+                --repo "$GITHUB_REPOSITORY"
+              verify_archive "$verification_dir/Polaris-AI.zip"
+              if [[ "$(archive_fingerprint "$stable_archive")" != "$(archive_fingerprint "$verification_dir/Polaris-AI.zip")" ]]; then
+                echo "::error::Release $TAG is already published with different assets; increment the version or build before publishing again."
+                exit 1
+              fi
+              echo "Release $TAG is already published with matching assets; nothing to update."
+              exit 0
+            fi
           else
             gh release create "$TAG" \
               --draft \
@@ -107,17 +166,20 @@ jobs:
 
           gh release upload "$TAG" "$archive" "$stable_archive" --clobber --repo "$GITHUB_REPOSITORY"
 
-          unzip -t "$stable_archive" >/dev/null
-          unzip -Z1 "$stable_archive" | grep -qx 'manifest.json'
+          gh release download "$TAG" \
+            --pattern "${archive##*/}" \
+            --pattern "Polaris-AI.zip" \
+            --dir "$verification_dir" \
+            --clobber \
+            --repo "$GITHUB_REPOSITORY"
+          verify_archive "$verification_dir/${archive##*/}"
+          verify_archive "$verification_dir/Polaris-AI.zip"
+          cmp --silent "$verification_dir/${archive##*/}" "$verification_dir/Polaris-AI.zip"
 
-          if [[ "$release_is_draft" == "true" ]]; then
-            gh release edit "$TAG" --draft=false --repo "$GITHUB_REPOSITORY"
-          fi
+          gh release edit "$TAG" --draft=false --repo "$GITHUB_REPOSITORY"
 
-          download_check="$(mktemp)"
-          trap 'rm -f "$download_check"' EXIT
           curl --fail --silent --show-error --location --retry 5 --retry-delay 2 --max-time 30 \
             "$latest_url" \
             -o "$download_check"
-          unzip -t "$download_check" >/dev/null
-          unzip -Z1 "$download_check" | grep -qx 'manifest.json'
+          verify_archive "$download_check"
+          cmp --silent "$stable_archive" "$download_check"
