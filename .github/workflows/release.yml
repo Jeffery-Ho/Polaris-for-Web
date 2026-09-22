@@ -135,6 +135,32 @@ jobs:
               | awk '{print $1}'
           }
 
+          verify_latest_release() {
+            curl --fail --silent --show-error --location --retry 8 --retry-all-errors --retry-delay 2 --max-time 30 \
+              "$latest_url" \
+              -o "$download_check"
+            verify_archive "$download_check"
+            if [[ "$(archive_fingerprint "$stable_archive")" != "$(archive_fingerprint "$download_check")" ]]; then
+              echo "::error::Latest download does not match the validated stable asset."
+              exit 1
+            fi
+          }
+
+          download_release_assets() {
+            gh release download "$TAG" \
+              --pattern "${archive##*/}" \
+              --pattern "Polaris-AI.zip" \
+              --dir "$verification_dir" \
+              --clobber \
+              --repo "$GITHUB_REPOSITORY"
+            verify_archive "$verification_dir/${archive##*/}"
+            verify_archive "$verification_dir/Polaris-AI.zip"
+            if [[ "$(archive_fingerprint "$verification_dir/${archive##*/}")" != "$(archive_fingerprint "$verification_dir/Polaris-AI.zip")" ]]; then
+              echo "::error::Versioned and stable Release assets differ."
+              exit 1
+            fi
+          }
+
           verify_archive "$archive"
           verify_archive "$stable_archive"
           cmp --silent "$archive" "$stable_archive"
@@ -142,16 +168,12 @@ jobs:
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             release_is_draft="$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft)"
             if [[ "$release_is_draft" != "true" ]]; then
-              gh release download "$TAG" \
-                --pattern "Polaris-AI.zip" \
-                --dir "$verification_dir" \
-                --clobber \
-                --repo "$GITHUB_REPOSITORY"
-              verify_archive "$verification_dir/Polaris-AI.zip"
+              download_release_assets
               if [[ "$(archive_fingerprint "$stable_archive")" != "$(archive_fingerprint "$verification_dir/Polaris-AI.zip")" ]]; then
                 echo "::error::Release $TAG is already published with different assets; increment the version or build before publishing again."
                 exit 1
               fi
+              verify_latest_release
               echo "Release $TAG is already published with matching assets; nothing to update."
               exit 0
             fi
@@ -165,21 +187,7 @@ jobs:
           fi
 
           gh release upload "$TAG" "$archive" "$stable_archive" --clobber --repo "$GITHUB_REPOSITORY"
-
-          gh release download "$TAG" \
-            --pattern "${archive##*/}" \
-            --pattern "Polaris-AI.zip" \
-            --dir "$verification_dir" \
-            --clobber \
-            --repo "$GITHUB_REPOSITORY"
-          verify_archive "$verification_dir/${archive##*/}"
-          verify_archive "$verification_dir/Polaris-AI.zip"
-          cmp --silent "$verification_dir/${archive##*/}" "$verification_dir/Polaris-AI.zip"
+          download_release_assets
 
           gh release edit "$TAG" --draft=false --repo "$GITHUB_REPOSITORY"
-
-          curl --fail --silent --show-error --location --retry 5 --retry-delay 2 --max-time 30 \
-            "$latest_url" \
-            -o "$download_check"
-          verify_archive "$download_check"
-          cmp --silent "$stable_archive" "$download_check"
+          verify_latest_release
