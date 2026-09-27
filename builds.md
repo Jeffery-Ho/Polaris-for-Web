@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 228
+
+- Date: 2026-09-27
+- Version: 0.56.4
+- Summary: Recovers side-panel sections after the route bridge changes the URL.
+- Notes: The injected `src/route-bridge.js` tag means the content script has started. A later `pushState` or `replaceState` cleared the snapshot and waited for a message mutation that does not arrive when the conversation DOM is already mounted. The side panel then kept republishing that empty cache. If that wait sees no new message node, a short fallback reads the DOM already on the page. A state request during the wait still republishes the cleared snapshot, so the previous conversation does not return before the new DOM arrives. A request with no cached containers scans again. A route-bridge load error is logged with `[Polaris]`. Updated the current version to `0.56.4(228)`.
+
 ## 227
 
 - Date: 2026-09-27

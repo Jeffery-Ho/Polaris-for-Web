@@ -15,15 +15,20 @@ test("路由切换立即清空旧列表，并等待宿主 DOM 变更后才扫描
   const routeChange = functionSource("handleRouteChange", "watchRouteChanges");
   const mutations = functionSource("handleDocumentMutations", "getSelectedHeading");
   const renderSnapshot = functionSource("collectMarkerRenderSnapshot", "render");
+  const windowBridge = functionSource("registerWindowBridge", "collectMarkerRenderSnapshot");
 
   assert.match(routeChange, /clearNonConversationPageState\(\)/);
   assert.match(routeChange, /state\.awaitingRouteDom = true/);
+  assert.match(routeChange, /scheduleRouteDomFallback\(\)/);
   assert.match(routeChange, /render\(\)/);
   assert.doesNotMatch(routeChange, /scheduleRender/);
+  assert.match(contentSource, /Route bridge changed the URL, but no later message mutation arrived/);
   assert.match(contentSource, /function isPolarisOwnedMutationNode/);
   assert.match(contentSource, /changedNodes\.every\(isPolarisOwnedMutationNode\)/);
   assert.match(mutations, /state\.awaitingRouteDom = false/);
   assert.match(renderSnapshot, /if \(state\.awaitingRouteDom\)/);
+  assert.match(windowBridge, /!state\.awaitingRouteDom && state\.markerSourceContainers\.length === 0/);
+  assert.match(windowBridge, /publishWindowSnapshot\(\)/);
 });
 
 test("Maker 分组只使用当前挂载 DOM，AI 标题跟随当前用户容器", () => {

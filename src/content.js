@@ -5129,6 +5129,10 @@ import { sendRuntimeMessage } from "./runtime-message.js";
     }
     chrome.runtime.onMessage.addListener((message) => {
       if (message?.type === "POLARIS_WINDOW_REQUEST_STATE") {
+        if (!state.awaitingRouteDom && state.markerSourceContainers.length === 0) {
+          render();
+          return;
+        }
         publishWindowSnapshot();
       } else if (message?.type === "POLARIS_WINDOW_COMMAND") {
         handleWindowCommand(message);
@@ -5377,6 +5381,21 @@ import { sendRuntimeMessage } from "./runtime-message.js";
     document.documentElement.removeAttribute(DEBUG_ATTR);
   }
 
+  let routeDomFallbackTimer = 0;
+
+  function scheduleRouteDomFallback() {
+    window.clearTimeout(routeDomFallbackTimer);
+    routeDomFallbackTimer = window.setTimeout(() => {
+      routeDomFallbackTimer = 0;
+      if (!state.awaitingRouteDom) {
+        return;
+      }
+      state.awaitingRouteDom = false;
+      console.warn("[Polaris] Route bridge changed the URL, but no later message mutation arrived. Reading sections from the DOM already on the page.");
+      render();
+    }, 400);
+  }
+
   function handleRouteChange() {
     const nextRouteKey = currentRouteKey();
     if (nextRouteKey === state.routeKey) {
@@ -5393,6 +5412,7 @@ import { sendRuntimeMessage } from "./runtime-message.js";
     closeExplosionOverlay();
     closeImagePreviewOverlay();
     state.awaitingRouteDom = true;
+    scheduleRouteDomFallback();
     render();
   }
 
@@ -5410,6 +5430,9 @@ import { sendRuntimeMessage } from "./runtime-message.js";
     const bridge = document.createElement("script");
     bridge.src = extensionMetadata.routeBridgeUrl;
     bridge.dataset.polarisRouteBridge = "true";
+    bridge.addEventListener("error", () => {
+      console.warn("[Polaris] Route bridge script did not load. Startup DOM can still be read, but later SPA navigations may not refresh the side panel.", bridge.src);
+    });
     (document.head || document.documentElement).appendChild(bridge);
   }
 
@@ -5445,6 +5468,8 @@ import { sendRuntimeMessage } from "./runtime-message.js";
     })) {
       return;
     }
+    window.clearTimeout(routeDomFallbackTimer);
+    routeDomFallbackTimer = 0;
     state.awaitingRouteDom = false;
     markerRenderStateMachine.request();
   }
