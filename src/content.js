@@ -68,12 +68,27 @@ import { sendRuntimeMessage } from "./runtime-message.js";
 
 (() => {
   const CONTENT_SCRIPT_INSTANCE_KEY = "__POLARIS_CONTENT_SCRIPT_ACTIVE__";
+
+  function polarisI18n() {
+    const i18n = globalThis.PolarisI18n;
+    if (i18n && typeof i18n.locale === "string" && typeof i18n.t === "function") {
+      return i18n;
+    }
+    console.warn("[Polaris] PolarisI18n is unavailable; using a fallback translator so page observation can continue.");
+    return {
+      locale: "en",
+      t(key, values = {}) {
+        return String(key ?? "").replace(/\{(\w+)\}/g, (_, name) => String(values[name] ?? `{${name}}`));
+      }
+    };
+  }
+
   if (globalThis[CONTENT_SCRIPT_INSTANCE_KEY]) {
     return;
   }
   globalThis[CONTENT_SCRIPT_INSTANCE_KEY] = true;
 
-  const { locale, t } = globalThis.PolarisI18n;
+  const { locale, t } = polarisI18n();
   const ROOT_ID = "gpt-paragraph-nav";
   const MAX_USER_PREVIEW_LENGTH = 160;
   const MARKER_MOTION_SUPPRESSION_CLASS = "is-marker-motion-suppressed";

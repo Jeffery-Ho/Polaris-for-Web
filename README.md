@@ -4,6 +4,19 @@ A browser extension that adds section navigation to AI-generated web responses.
 
 Polaris for Web automatically detects headings and list titles in AI responses and displays them in a movable standalone window. Click a Maker to jump directly to the corresponding section—ideal for reading long answers, reports, step-by-step guides, and research results.
 
+## Install locally
+
+The only extension package is `dist/`. Build it, then load that directory:
+
+```bash
+pnpm install
+pnpm build
+```
+
+In Chrome, open `chrome://extensions`, turn on Developer mode, and click **Load unpacked**. Choose the `dist/` directory.
+
+Do not load the repository root. The root is source, not an extension package. `manifest.build.json` is the only manifest source; `pnpm build` writes the loadable manifest to `dist/manifest.json`. A root `manifest.json` must not be added back.
+
 ## Supported Platforms
 
 - ChatGPT
@@ -102,11 +115,11 @@ pnpm test
 pnpm build
 ```
 
-Load the generated `dist/` directory as an unpacked extension in Chromium-based browsers. Do not use `dist.zip` as a source artifact; the release workflow creates a versioned ZIP and the stable `Polaris-AI.zip` alias from the freshly generated `dist/` directory. It validates both remote assets while the Release is still Draft, publishes only after that check, and then verifies the public Latest download URL.
+Load the generated `dist/` directory as an unpacked extension (**Load unpacked**). Never load the repository root. `manifest.build.json` is the only manifest source, and the release check fails if a root `manifest.json` reappears or if `dist/manifest.json` points at a file that is not in `dist/`. Do not use `dist.zip` as a source artifact; the release workflow creates a versioned ZIP and the stable `Polaris-AI.zip` alias from the freshly generated `dist/` directory (`cd dist && zip`). It validates both remote assets while the Release is still Draft, publishes only after that check, and then verifies the public Latest download URL.
 
 ## Version
 
-Current version: `0.56.1(225)`
+Current version: `0.56.2(226)`
 
 ## License
 

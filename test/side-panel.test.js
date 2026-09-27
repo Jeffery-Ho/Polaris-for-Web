@@ -2,21 +2,18 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-const [manifest, buildManifest, viteConfig, sidePanelHtml, windowSource] = await Promise.all([
-  readFile(new URL("../manifest.json", import.meta.url), "utf8").then(JSON.parse),
+const [buildManifest, viteConfig, sidePanelHtml, windowSource] = await Promise.all([
   readFile(new URL("../manifest.build.json", import.meta.url), "utf8").then(JSON.parse),
   readFile(new URL("../vite.config.js", import.meta.url), "utf8"),
   readFile(new URL("../sidepanel.html", import.meta.url), "utf8"),
   readFile(new URL("../src/window.js", import.meta.url), "utf8")
 ]);
 
-for (const [name, currentManifest] of [["source", manifest], ["build", buildManifest]]) {
-  test(`${name} manifest declares Polaris side panel`, () => {
-    assert.ok(currentManifest.permissions.includes("sidePanel"));
-    assert.ok(currentManifest.permissions.includes("scripting"));
-    assert.deepEqual(currentManifest.side_panel, { default_path: "sidepanel.html" });
-  });
-}
+test("manifest.build.json declares Polaris side panel", () => {
+  assert.ok(buildManifest.permissions.includes("sidePanel"));
+  assert.ok(buildManifest.permissions.includes("scripting"));
+  assert.deepEqual(buildManifest.side_panel, { default_path: "sidepanel.html" });
+});
 
 test("side panel reuses the Polaris window UI entry", () => {
   assert.match(sidePanelHtml, /data-window-type="sidepanel"/);

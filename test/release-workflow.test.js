@@ -2,7 +2,10 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-const workflow = await readFile(new URL("../.github/workflows/release.yml", import.meta.url), "utf8");
+const [workflow, validator] = await Promise.all([
+  readFile(new URL("../.github/workflows/release.yml", import.meta.url), "utf8"),
+  readFile(new URL("../scripts/validate-extension-package.js", import.meta.url), "utf8")
+]);
 
 test("发布工作流保留扩展构建与发布门槛", () => {
   assert.match(workflow, /push:\s+branches:\s+- main/);
@@ -12,8 +15,11 @@ test("发布工作流保留扩展构建与发布门槛", () => {
   assert.match(workflow, /run: pnpm check/);
   assert.match(workflow, /run: pnpm test/);
   assert.match(workflow, /run: pnpm build/);
-  assert.match(workflow, /files = \["manifest\.json", "manifest\.build\.json", "dist\/manifest\.json"\]/);
-  assert.match(workflow, /manifest\.version !== first\.version/);
+  assert.match(workflow, /node scripts\/validate-extension-package\.js/);
+  assert.match(validator, /Root manifest\.json must not exist/);
+  assert.match(validator, /built\.version !== source\.version/);
+  assert.match(validator, /references files missing from dist/);
+  assert.doesNotMatch(workflow, /files = \["manifest\.json"/);
   assert.match(workflow, /-x '\*\.DS_Store'/);
 });
 

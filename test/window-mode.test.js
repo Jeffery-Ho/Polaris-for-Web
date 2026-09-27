@@ -3,8 +3,7 @@ import assert from "node:assert/strict";
 import { access, readFile } from "node:fs/promises";
 
 const platformFaviconFiles = ["chatgpt", "claude", "gemini", "grok", "doubao", "kimi", "qianwen", "yuanbao", "xiaohongshu"];
-const [manifest, buildManifest, background, content, windowSource, windowHtml, windowCss, searchInputSource] = await Promise.all([
-  readFile(new URL("../manifest.json", import.meta.url), "utf8").then(JSON.parse),
+const [buildManifest, background, content, windowSource, windowHtml, windowCss, searchInputSource] = await Promise.all([
   readFile(new URL("../manifest.build.json", import.meta.url), "utf8").then(JSON.parse),
   readFile(new URL("../src/background.js", import.meta.url), "utf8"),
   readFile(new URL("../src/content.js", import.meta.url), "utf8"),
@@ -14,14 +13,12 @@ const [manifest, buildManifest, background, content, windowSource, windowHtml, w
   readFile(new URL("../src/search-input.js", import.meta.url), "utf8")
 ]);
 
-test("两个源 manifest 都声明 Polaris 窗口和系统 side panel 入口", () => {
-  for (const source of [manifest, buildManifest]) {
-    assert.deepEqual(source.permissions, ["storage", "tabs", "sidePanel", "scripting"]);
-    assert.equal(source.action.default_title, "Open Polaris");
-    assert.deepEqual(source.side_panel, { default_path: "sidepanel.html" });
-    assert.equal(source.background.service_worker, "src/background.js");
-    assert.equal(source.background.type, "module");
-  }
+test("manifest.build.json 声明 Polaris 窗口和系统 side panel 入口", () => {
+  assert.deepEqual(buildManifest.permissions, ["storage", "tabs", "sidePanel", "scripting"]);
+  assert.equal(buildManifest.action.default_title, "Open Polaris");
+  assert.deepEqual(buildManifest.side_panel, { default_path: "sidepanel.html" });
+  assert.equal(buildManifest.background.service_worker, "src/background.js");
+  assert.equal(buildManifest.background.type, "module");
 });
 
 test("后台窗口复用并跟随最近的普通标签页", () => {
@@ -116,10 +113,8 @@ test("空状态使用每个平台打包的 favicon 资源", async () => {
   assert.equal((windowSource.match(/icons\/platform-[^"']+\.png/g) || []).length, platformFaviconFiles.length);
   assert.doesNotMatch(windowSource, /from ["']\.\/assets\/platform-favicons\/[^"']+\.png["']/);
   assert.match(windowSource, /chrome\.runtime\.getURL\(favicon\)/);
-  for (const source of [manifest, buildManifest]) {
-    const resources = source.web_accessible_resources?.flatMap((entry) => entry.resources) || [];
-    for (const name of platformFaviconFiles) assert.ok(resources.includes(`icons/platform-${name}.png`));
-  }
+  const resources = buildManifest.web_accessible_resources?.flatMap((entry) => entry.resources) || [];
+  for (const name of platformFaviconFiles) assert.ok(resources.includes(`icons/platform-${name}.png`));
 });
 
 test("独立窗口使用浏览器原生关闭控制和工具窗层级", () => {

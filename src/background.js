@@ -223,8 +223,40 @@ async function requestContentState(tab, { publishEmpty = true } = {}) {
   }
 }
 
+function uniqueExtensionFiles(files) {
+  const seen = new Set();
+  const unique = [];
+  for (const file of files) {
+    if (typeof file !== "string" || !file || seen.has(file)) {
+      continue;
+    }
+    seen.add(file);
+    unique.push(file);
+  }
+  return unique;
+}
+
+function packagedContentScriptFiles() {
+  try {
+    const entries = chrome.runtime.getManifest?.()?.content_scripts;
+    if (!Array.isArray(entries)) {
+      return null;
+    }
+    const css = uniqueExtensionFiles(entries.flatMap((entry) => entry?.css || []));
+    const js = uniqueExtensionFiles(entries.flatMap((entry) => entry?.js || []));
+    if (js.length === 0) {
+      return null;
+    }
+    return { css, js };
+  } catch (error) {
+    console.warn("[Polaris] Could not read content script paths from the extension manifest.", error);
+    return null;
+  }
+}
+
 async function injectContentScript(tabId) {
   if (typeof chrome.scripting?.executeScript !== "function") {
+    console.warn("[Polaris] chrome.scripting.executeScript is unavailable; content script injection was skipped.", tabId);
     return false;
   }
   const existing = contentInjectionPromises.get(tabId);
@@ -232,23 +264,30 @@ async function injectContentScript(tabId) {
     return existing;
   }
   const injection = (async () => {
+    // Built manifest order, including hashed filenames, is the injection list.
+    const files = packagedContentScriptFiles();
+    if (!files) {
+      console.warn("[Polaris] Extension manifest has no content script files to inject.", tabId);
+      return false;
+    }
     try {
-      if (typeof chrome.scripting.insertCSS === "function") {
+      if (files.css.length > 0 && typeof chrome.scripting.insertCSS === "function") {
         try {
           await chrome.scripting.insertCSS({
-            files: ["src/styles.css"],
+            files: files.css,
             target: { tabId }
           });
-        } catch {
-          // A previously injected stylesheet must not block the script.
+        } catch (error) {
+          console.warn("[Polaris] Content stylesheet injection failed.", { tabId, css: files.css, error });
         }
       }
       await chrome.scripting.executeScript({
-        files: ["src/content.js"],
+        files: files.js,
         target: { allFrames: false, tabId }
       });
       return true;
-    } catch {
+    } catch (error) {
+      console.warn("[Polaris] Content script injection failed.", { tabId, js: files.js, error });
       return false;
     }
   })().finally(() => {
@@ -279,6 +318,7 @@ async function sendContentMessage(tabId, message, { injectIfMissing = false } = 
       // The injected content script may still be finishing its startup.
     }
   }
+  console.warn("[Polaris] Content script did not respond after injection.", tabId);
   return false;
 }
 

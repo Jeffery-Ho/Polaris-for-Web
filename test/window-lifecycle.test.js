@@ -3,6 +3,11 @@ import assert from "node:assert/strict";
 import vm from "node:vm";
 import { readFile } from "node:fs/promises";
 
+const packagedContentScripts = [{
+  css: ["assets/content-styles-HASH.css"],
+  js: ["assets/i18n-HASH.js", "assets/content-HASH.js"]
+}];
+
 const [backgroundSource, lifecycleSource] = await Promise.all([
   readFile(new URL("../src/background.js", import.meta.url), "utf8"),
   readFile(new URL("../src/window-lifecycle.js", import.meta.url), "utf8")
@@ -24,7 +29,7 @@ function createEvent() {
   };
 }
 
-async function runAction({ storedWindow, getError = null, updateError = null, syncGetError = null, sidePanel = false, contentScriptFailures = 0, scripting = false }) {
+async function runAction({ storedWindow, getError = null, updateError = null, syncGetError = null, sidePanel = false, contentScriptFailures = 0, scripting = false, cssError = null, scriptError = null, contentScripts = packagedContentScripts, settleMs = 0 }) {
   const windowUrl = "chrome-extension://test/polaris-home.html";
   const sourceTab = { id: 42, windowId: 9, active: true, url: "https://chatgpt.com/c/test" };
   const local = {
@@ -34,7 +39,7 @@ async function runAction({ storedWindow, getError = null, updateError = null, sy
     "polaris-source-tab-id": sourceTab.id
   };
   const action = createEvent();
-  const calls = { creates: [], updates: [], contentRequests: [], runtimeMessages: [], sidePanelBehaviors: [], cssInjections: [], scriptInjections: [] };
+  const calls = { creates: [], updates: [], contentRequests: [], runtimeMessages: [], sidePanelBehaviors: [], cssInjections: [], scriptInjections: [], warnings: [] };
   let contentRequestAttempts = 0;
   const noOpEvent = () => createEvent();
   const chrome = {
@@ -43,10 +48,19 @@ async function runAction({ storedWindow, getError = null, updateError = null, sy
       async setPanelBehavior(behavior) { calls.sidePanelBehaviors.push(behavior); }
     } : undefined,
     scripting: scripting ? {
-      async insertCSS(details) { calls.cssInjections.push(details); },
-      async executeScript(details) { calls.scriptInjections.push(details); }
+      async insertCSS(details) {
+        calls.cssInjections.push(details);
+        if (cssError) throw cssError;
+      },
+      async executeScript(details) {
+        calls.scriptInjections.push(details);
+        if (scriptError) throw scriptError;
+      }
     } : undefined,
     runtime: {
+      getManifest() {
+        return { content_scripts: contentScripts };
+      },
       getURL(path) { return `chrome-extension://test/${path}`; },
       async sendMessage(message) { calls.runtimeMessages.push(message); },
       onMessage: noOpEvent()
@@ -106,9 +120,22 @@ async function runAction({ storedWindow, getError = null, updateError = null, sy
     }
   };
 
-  vm.runInNewContext(executableBackgroundSource, { chrome, URL, Number, Date, Promise, console });
+  vm.runInNewContext(executableBackgroundSource, {
+    chrome,
+    URL,
+    Number,
+    Date,
+    Promise,
+    setTimeout,
+    clearTimeout,
+    console: {
+      warn(...args) { calls.warnings.push(args); },
+      log() {},
+      error(...args) { calls.warnings.push(args); }
+    }
+  });
   action.emit(sourceTab);
-  await new Promise((resolve) => setTimeout(resolve, 0));
+  await new Promise((resolve) => setTimeout(resolve, settleMs));
   return calls;
 }
 
@@ -281,11 +308,51 @@ test("目标平台缺少 content script 时会动态注入并重试 DOM 状态�
   assert.equal(calls.contentRequests.length, 2);
   assert.equal(calls.cssInjections.length, 1);
   assert.equal(calls.cssInjections[0].target.tabId, 42);
-  assert.equal(calls.cssInjections[0].files[0], "src/styles.css");
+  assert.deepEqual([...calls.cssInjections[0].files], packagedContentScripts[0].css);
   assert.equal(calls.scriptInjections.length, 1);
   assert.equal(calls.scriptInjections[0].target.tabId, 42);
   assert.equal(calls.scriptInjections[0].target.allFrames, false);
-  assert.equal(calls.scriptInjections[0].files[0], "src/content.js");
+  assert.deepEqual([...calls.scriptInjections[0].files], packagedContentScripts[0].js);
+});
+
+test("动态注入按 manifest 顺序合并脚本，并去掉重复路径", async () => {
+  const calls = await runAction({
+    storedWindow: null,
+    contentScriptFailures: 1,
+    scripting: true,
+    contentScripts: [
+      { js: ["assets/i18n-HASH.js"], css: ["assets/content-styles-HASH.css"] },
+      { js: ["assets/i18n-HASH.js", "assets/content-HASH.js"], css: ["assets/content-styles-HASH.css"] }
+    ]
+  });
+
+  assert.deepEqual([...calls.cssInjections[0].files], ["assets/content-styles-HASH.css"]);
+  assert.deepEqual([...calls.scriptInjections[0].files], ["assets/i18n-HASH.js", "assets/content-HASH.js"]);
+});
+
+test("样式注入失败不会阻止脚本注入，脚本注入失败会留下日志", async () => {
+  const calls = await runAction({
+    storedWindow: null,
+    contentScriptFailures: 1,
+    scripting: true,
+    cssError: new Error("duplicate stylesheet"),
+    scriptError: new Error("inject failed")
+  });
+
+  assert.equal(calls.scriptInjections.length, 1);
+  assert.equal(calls.warnings.some((args) => String(args[0]).includes("[Polaris] Content script injection failed.")), true);
+});
+
+test("同一次回退只注入一次，消息仍然失败时会记录日志", async () => {
+  const calls = await runAction({
+    storedWindow: null,
+    contentScriptFailures: 5,
+    scripting: true,
+    settleMs: 200
+  });
+
+  assert.equal(calls.scriptInjections.length, 1);
+  assert.equal(calls.warnings.some((args) => String(args[0]).includes("[Polaris] Content script did not respond after injection.")), true);
 });
 
 test("有效窗口在聚焦竞态失败后会清理并重建", async () => {

@@ -45,30 +45,7 @@ jobs:
 
       - name: Validate build metadata
         id: metadata
-        run: |
-          node <<'NODE'
-          const fs = require("node:fs");
-
-          const files = ["manifest.json", "manifest.build.json", "dist/manifest.json"];
-          const manifests = files.map((file) => JSON.parse(fs.readFileSync(file, "utf8")));
-          const [first, ...rest] = manifests;
-          for (const manifest of rest) {
-            if (manifest.version !== first.version || manifest.version_name !== first.version_name) {
-              throw new Error(`Manifest mismatch in ${files[manifests.indexOf(manifest)]}`);
-            }
-          }
-
-          const match = /^(\d+)$/.exec(first.version_name.match(/\((\d+)\)$/)?.[1] || "");
-          if (!match || first.version_name !== `${first.version}(${match[1]})`) {
-            throw new Error(`Invalid version_name: ${first.version_name}`);
-          }
-
-          fs.appendFileSync(process.env.GITHUB_OUTPUT, [
-            `version=${first.version}`,
-            `version_name=${first.version_name}`,
-            `build=${match[1]}`
-          ].join("\n") + "\n");
-          NODE
+        run: node scripts/validate-extension-package.js
 
       - name: Package release assets
         env:

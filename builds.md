@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 226
+
+- Date: 2026-09-27
+- Version: 0.56.2
+- Summary: Restores page snapshots when an already-open tab is injected without the i18n script.
+- Notes: The declarative content script still runs `assets/i18n.js` before `src/content.js`. The scripting fallback now injects every content-script CSS and JS file from `chrome.runtime.getManifest()`, in that order, so Vite hashing cannot leave `content.js` without `PolarisI18n`. `content.js` logs `[Polaris]` and keeps observing the page if i18n is missing, and the existing instance guard still skips a second mount. Injection failures are logged. The repository root is no longer an extension package: root `manifest.json` is removed, `manifest.build.json` is the only manifest source, and the release check rejects a root manifest or a built manifest that points at a missing `dist/` file. Updated the current version to `0.56.2(226)`.
+
 ## 225
 
 - Date: 2026-09-26
