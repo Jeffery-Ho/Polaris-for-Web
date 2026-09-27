@@ -4,18 +4,22 @@ A browser extension that adds section navigation to AI-generated web responses.
 
 Polaris for Web automatically detects headings and list titles in AI responses and displays them in a movable standalone window. Click a Maker to jump directly to the corresponding section—ideal for reading long answers, reports, step-by-step guides, and research results.
 
-## Install locally
+## Development
 
-The only extension package is `dist/`. Build it, then load that directory:
+`dist/` is the only extension package Chrome should load, and it is not committed. After cloning, run this once:
 
 ```bash
+corepack enable
 pnpm install
-pnpm build
 ```
 
-In Chrome, open `chrome://extensions`, turn on Developer mode, and click **Load unpacked**. Choose the `dist/` directory.
+`pnpm install` builds `dist/` and enables the git hooks in `.githooks/`. Then open `chrome://extensions`, turn on Developer mode, click **Load unpacked**, and choose the `dist/` directory.
 
-Do not load the repository root. The root is source, not an extension package. `manifest.build.json` is the only manifest source; `pnpm build` writes the loadable manifest to `dist/manifest.json`. A root `manifest.json` must not be added back.
+After that, `dist/` stays current without a manual build. Switching branches, merging, pulling, and rebasing run `pnpm build`, and run `pnpm install` only when `pnpm-lock.yaml` changed. Click **refresh** on the Polaris card in `chrome://extensions` to load the new files. A checkout of individual files does not rebuild. If a rebuild fails, git still finishes and prints a `[Polaris]` warning; run `pnpm build`, then click refresh.
+
+While editing, `pnpm dev` rebuilds `dist/` after each save. Click refresh in `chrome://extensions` after that rebuild finishes.
+
+Do not load the repository root. The root is source, not an extension package. `manifest.build.json` is the only manifest source. A root `manifest.json` must not be added back.
 
 ## Supported Platforms
 
@@ -103,19 +107,9 @@ Polaris for Web processes only currently mounted AI response content locally in 
 
 Visit the [Polaris support page](https://jeffery-ho.github.io/polaris-landing/entry/extension/) for the extension, issue tracker, and optional PayPal support link.
 
-## Build on another device
+## Release
 
-The repository tracks the source, build configuration, dependency lockfile, tests, and the latest `dist/` release bundle. On a new device, install a Node.js version supported by `package.json`, then run:
-
-```bash
-corepack enable
-pnpm install --frozen-lockfile
-pnpm check
-pnpm test
-pnpm build
-```
-
-Load the generated `dist/` directory as an unpacked extension (**Load unpacked**). Never load the repository root. `manifest.build.json` is the only manifest source, and the release check fails if a root `manifest.json` reappears or if `dist/manifest.json` points at a file that is not in `dist/`. Do not use `dist.zip` as a source artifact; the release workflow creates a versioned ZIP and the stable `Polaris-AI.zip` alias from the freshly generated `dist/` directory (`cd dist && zip`). It validates both remote assets while the Release is still Draft, publishes only after that check, and then verifies the public Latest download URL.
+Do not commit `dist/` or load `dist.zip` as the extension. The release workflow builds from source and creates a versioned ZIP plus the stable `Polaris-AI.zip` alias from that fresh `dist/` directory (`cd dist && zip`). It validates both remote assets while the Release is still Draft, publishes only after that check, and then verifies the public Latest download URL. The same check fails if a root `manifest.json` reappears or if `dist/manifest.json` points at a file that is not in `dist/`. Git hooks do not run in CI.
 
 ## Version
 

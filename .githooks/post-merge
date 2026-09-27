@@ -1,0 +1,10 @@
+#!/bin/sh
+
+if [ -n "${CI:-}" ] || [ -n "${GITHUB_ACTIONS:-}" ]; then
+  exit 0
+fi
+
+root=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
+prev=$(git rev-parse -q --verify ORIG_HEAD 2>/dev/null) || prev=""
+sh "$root/scripts/refresh-extension.sh" merge "$prev" HEAD
+exit 0
