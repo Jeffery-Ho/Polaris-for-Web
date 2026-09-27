@@ -1,0 +1,28 @@
+#!/bin/sh
+# post-checkout <previous-head> <new-head> <flag>
+# flag 0 is a file checkout and must return immediately.
+
+if [ -n "${CI:-}" ] || [ -n "${GITHUB_ACTIONS:-}" ]; then
+  exit 0
+fi
+
+if [ "${3:-1}" = "0" ]; then
+  exit 0
+fi
+
+if [ "${1:-}" = "${2:-}" ]; then
+  exit 0
+fi
+
+rebase_merge=$(git rev-parse --git-path rebase-merge 2>/dev/null) || rebase_merge=""
+rebase_apply=$(git rev-parse --git-path rebase-apply 2>/dev/null) || rebase_apply=""
+if [ -n "$rebase_merge" ] && [ -d "$rebase_merge" ]; then
+  exit 0
+fi
+if [ -n "$rebase_apply" ] && [ -d "$rebase_apply" ]; then
+  exit 0
+fi
+
+root=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
+sh "$root/scripts/refresh-extension.sh" checkout "$1" "$2"
+exit 0

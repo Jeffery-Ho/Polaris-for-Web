@@ -4,10 +4,7 @@ import { readFile } from "node:fs/promises";
 
 const contentSource = await readFile(new URL("../src/content.js", import.meta.url), "utf8");
 const settingsPanelSource = await readFile(new URL("../src/settings-panel.jsx", import.meta.url), "utf8");
-const sourceManifests = await Promise.all([
-  "../manifest.json",
-  "../manifest.build.json"
-].map(async (path) => JSON.parse(await readFile(new URL(path, import.meta.url), "utf8"))));
+const sourceManifest = JSON.parse(await readFile(new URL("../manifest.build.json", import.meta.url), "utf8"));
 
 function functionSource(name, nextName) {
   const start = contentSource.indexOf(`  function ${name}(`);
@@ -39,10 +36,6 @@ test("有序列表与编号标题使用不同筛选规则", () => {
 });
 
 test("源清单同步版本与构建号", () => {
-  const [manifest, buildManifest] = sourceManifests;
-
-  assert.equal(buildManifest.version, manifest.version);
-  assert.equal(buildManifest.version_name, manifest.version_name);
-  assert.match(manifest.version, /^\d+\.\d+\.\d+$/);
-  assert.equal(manifest.version_name, `${manifest.version}(${Number(manifest.version_name.match(/\((\d+)\)$/)?.[1])})`);
+  assert.match(sourceManifest.version, /^\d+\.\d+\.\d+$/);
+  assert.equal(sourceManifest.version_name, `${sourceManifest.version}(${Number(sourceManifest.version_name.match(/\((\d+)\)$/)?.[1])})`);
 });

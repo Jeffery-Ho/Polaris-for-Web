@@ -65,15 +65,42 @@ import {
 } from "./user-message-images.js";
 import { bindSearchInput } from "./search-input.js";
 import { sendRuntimeMessage } from "./runtime-message.js";
+import {
+  HASHED_HEADING_SELECTOR,
+  HASHED_MARKDOWN_ROOT_SELECTOR,
+  hashedMarkdownHeadingLevel
+} from "./hashed-markdown.js";
+import {
+  CHATGPT_LEGACY_ASSISTANT_SELECTOR,
+  CHATGPT_LEGACY_USER_SELECTOR,
+  CHATGPT_PROSE_SELECTOR,
+  mergeChatGptAssistantNodes
+} from "./chatgpt-messages.js";
+import { routeFallbackLogLevel } from "./snapshot-delivery.js";
 
 (() => {
   const CONTENT_SCRIPT_INSTANCE_KEY = "__POLARIS_CONTENT_SCRIPT_ACTIVE__";
+
+  function polarisI18n() {
+    const i18n = globalThis.PolarisI18n;
+    if (i18n && typeof i18n.locale === "string" && typeof i18n.t === "function") {
+      return i18n;
+    }
+    console.warn("[Polaris] PolarisI18n is unavailable; using a fallback translator so page observation can continue.");
+    return {
+      locale: "en",
+      t(key, values = {}) {
+        return String(key ?? "").replace(/\{(\w+)\}/g, (_, name) => String(values[name] ?? `{${name}}`));
+      }
+    };
+  }
+
   if (globalThis[CONTENT_SCRIPT_INSTANCE_KEY]) {
     return;
   }
   globalThis[CONTENT_SCRIPT_INSTANCE_KEY] = true;
 
-  const { locale, t } = globalThis.PolarisI18n;
+  const { locale, t } = polarisI18n();
   const ROOT_ID = "gpt-paragraph-nav";
   const MAX_USER_PREVIEW_LENGTH = 160;
   const MARKER_MOTION_SUPPRESSION_CLASS = "is-marker-motion-suppressed";
@@ -2371,9 +2398,15 @@ import { sendRuntimeMessage } from "./runtime-message.js";
     if (scanContext) {
       return scanContext.isVisible(element);
     }
-    const rect = element.getBoundingClientRect();
     const style = window.getComputedStyle(element);
-    return rect.width > 0 && rect.height > 0 && style.visibility !== "hidden" && style.display !== "none";
+    if (style.visibility === "hidden" || style.display === "none") {
+      return false;
+    }
+    if (style.display === "contents") {
+      return Array.from(element.children || []).some((child) => child instanceof Element && isVisible(child));
+    }
+    const rect = element.getBoundingClientRect();
+    return rect.width > 0 && rect.height > 0;
   }
 
   function elementFromNode(node) {
@@ -3212,61 +3245,130 @@ import { sendRuntimeMessage } from "./runtime-message.js";
     return "default";
   }
 
+  function withHashedMarkdownSelectors(selectors) {
+    return [...selectors, HASHED_MARKDOWN_ROOT_SELECTOR, MARKDOWN_FALLBACK_SELECTOR];
+  }
+
   function getAssistantContainerSelectors() {
     if (isUnsupportedXiaohongshuMainPage()) {
       return [];
     }
 
-    if (isXiaohongshuPage()) {
+    if (isChatGPTPage()) {
       return [
-        XIAOHONGSHU_ASSISTANT_MARKDOWN_SELECTOR,
-        XIAOHONGSHU_ASSISTANT_FALLBACK_SELECTOR,
-        ASSISTANT_MESSAGE_SELECTOR,
+        CHATGPT_LEGACY_ASSISTANT_SELECTOR,
+        HASHED_MARKDOWN_ROOT_SELECTOR,
+        CHATGPT_PROSE_SELECTOR,
         MARKDOWN_FALLBACK_SELECTOR
       ];
     }
 
+    if (isXiaohongshuPage()) {
+      return withHashedMarkdownSelectors([
+        XIAOHONGSHU_ASSISTANT_MARKDOWN_SELECTOR,
+        XIAOHONGSHU_ASSISTANT_FALLBACK_SELECTOR,
+        ASSISTANT_MESSAGE_SELECTOR
+      ]);
+    }
+
     if (isClaudePage()) {
-      return [CLAUDE_ASSISTANT_MESSAGE_SELECTOR, ASSISTANT_MESSAGE_SELECTOR, MARKDOWN_FALLBACK_SELECTOR];
+      return withHashedMarkdownSelectors([CLAUDE_ASSISTANT_MESSAGE_SELECTOR, ASSISTANT_MESSAGE_SELECTOR]);
     }
 
     if (isGeminiPage()) {
-      return [GEMINI_ASSISTANT_MESSAGE_SELECTOR, ASSISTANT_MESSAGE_SELECTOR, MARKDOWN_FALLBACK_SELECTOR];
+      return withHashedMarkdownSelectors([GEMINI_ASSISTANT_MESSAGE_SELECTOR, ASSISTANT_MESSAGE_SELECTOR]);
     }
 
     if (isGrokPage()) {
-      return [GROK_ASSISTANT_MESSAGE_SELECTOR, ASSISTANT_MESSAGE_SELECTOR, MARKDOWN_FALLBACK_SELECTOR];
+      return withHashedMarkdownSelectors([GROK_ASSISTANT_MESSAGE_SELECTOR, ASSISTANT_MESSAGE_SELECTOR]);
     }
 
     if (isYuanbaoPage()) {
-      return [YUANBAO_ASSISTANT_MESSAGE_SELECTOR, ASSISTANT_MESSAGE_SELECTOR, MARKDOWN_FALLBACK_SELECTOR];
+      return withHashedMarkdownSelectors([YUANBAO_ASSISTANT_MESSAGE_SELECTOR, ASSISTANT_MESSAGE_SELECTOR]);
     }
 
     if (isKimiPage()) {
-      return [KIMI_ASSISTANT_MESSAGE_SELECTOR, ASSISTANT_MESSAGE_SELECTOR, MARKDOWN_FALLBACK_SELECTOR];
+      return withHashedMarkdownSelectors([KIMI_ASSISTANT_MESSAGE_SELECTOR, ASSISTANT_MESSAGE_SELECTOR]);
     }
 
     if (isQianwenPage()) {
-      return [QIANWEN_ASSISTANT_MESSAGE_SELECTOR, ASSISTANT_MESSAGE_SELECTOR, MARKDOWN_FALLBACK_SELECTOR];
+      return withHashedMarkdownSelectors([QIANWEN_ASSISTANT_MESSAGE_SELECTOR, ASSISTANT_MESSAGE_SELECTOR]);
     }
 
     if (isDoubaoPage()) {
-      return [DOUBAO_ASSISTANT_MESSAGE_SELECTOR, ASSISTANT_MESSAGE_SELECTOR, MARKDOWN_FALLBACK_SELECTOR];
+      return withHashedMarkdownSelectors([DOUBAO_ASSISTANT_MESSAGE_SELECTOR, ASSISTANT_MESSAGE_SELECTOR]);
     }
 
-    return [ASSISTANT_MESSAGE_SELECTOR, MARKDOWN_FALLBACK_SELECTOR];
+    return withHashedMarkdownSelectors([ASSISTANT_MESSAGE_SELECTOR]);
+  }
+
+  let discardedConversationWarningRoute = "";
+
+  function visibleConversationNodes(selector, scanContext) {
+    return Array.from(document.querySelectorAll(selector))
+      .filter((node) => node instanceof HTMLElement
+        && !isInsideNavigationRoot(node)
+        && !isUserInputContext(node)
+        && isVisible(node, scanContext));
+  }
+
+  function getChatGptAssistantContainers(scanContext = null) {
+    const selectors = getAssistantContainerSelectors();
+    let matched = 0;
+    const visible = {};
+    selectors.forEach((selector) => {
+      const nodes = Array.from(document.querySelectorAll(selector))
+        .filter((node) => node instanceof HTMLElement
+          && !isInsideNavigationRoot(node)
+          && !isUserInputContext(node));
+      matched += nodes.length;
+      visible[selector] = nodes.filter((node) => isVisible(node, scanContext));
+    });
+    const merged = mergeChatGptAssistantNodes({
+      legacy: visible[CHATGPT_LEGACY_ASSISTANT_SELECTOR] || [],
+      hashed: visible[HASHED_MARKDOWN_ROOT_SELECTOR] || [],
+      prose: visible[CHATGPT_PROSE_SELECTOR] || [],
+      users: visibleConversationNodes(CHATGPT_LEGACY_USER_SELECTOR, scanContext)
+    });
+    if (merged.length > 0) {
+      return merged.map((item) => item.node);
+    }
+    const fallback = visible[MARKDOWN_FALLBACK_SELECTOR] || [];
+    if (fallback.length > 0) {
+      return fallback;
+    }
+    const routeKey = currentRouteKey();
+    if (matched > 0 && discardedConversationWarningRoute !== routeKey) {
+      discardedConversationWarningRoute = routeKey;
+      console.warn("[Polaris] Assistant message nodes were found but none were visible, so no sections will be sent to the side panel.", { matched });
+    }
+    return [];
   }
 
   function getAssistantContainers(scanContext = null) {
+    if (isChatGPTPage()) {
+      return getChatGptAssistantContainers(scanContext);
+    }
+    let matched = 0;
     for (const selector of getAssistantContainerSelectors()) {
-      const containers = Array.from(document.querySelectorAll(selector))
+      const nodes = Array.from(document.querySelectorAll(selector))
         .filter((node) => node instanceof HTMLElement
-          && isVisible(node, scanContext)
           && !isInsideNavigationRoot(node)
           && !isUserInputContext(node));
+      matched += nodes.length;
+      const visibleNodes = nodes.filter((node) => isVisible(node, scanContext));
+      const containers = selector === HASHED_MARKDOWN_ROOT_SELECTOR
+        ? visibleNodes.filter((node) => !visibleNodes.some((other) => other !== node && other.contains(node)))
+        : visibleNodes;
       if (containers.length > 0) {
         return containers;
       }
+    }
+
+    const routeKey = currentRouteKey();
+    if (matched > 0 && discardedConversationWarningRoute !== routeKey) {
+      discardedConversationWarningRoute = routeKey;
+      console.warn("[Polaris] Assistant message nodes were found but none were visible, so no sections will be sent to the side panel.", { matched });
     }
 
     return [];
@@ -3311,6 +3413,10 @@ import { sendRuntimeMessage } from "./runtime-message.js";
 
     if (isDoubaoPage()) {
       return [DOUBAO_USER_MESSAGE_SELECTOR, USER_MESSAGE_SELECTOR];
+    }
+
+    if (isChatGPTPage()) {
+      return [CHATGPT_LEGACY_USER_SELECTOR, USER_MESSAGE_SELECTOR];
     }
 
     return [USER_MESSAGE_SELECTOR];
@@ -3576,15 +3682,15 @@ import { sendRuntimeMessage } from "./runtime-message.js";
     state.latestUserMarkerKey = latestUserMarkerKey(groups);
   }
 
-  function clampLevel(level) {
+  function clampLevel(level, max = 4) {
     if (Number.isNaN(level)) {
       return 2;
     }
-    return Math.min(Math.max(level, 1), 4);
+    return Math.min(Math.max(level, 1), max);
   }
 
   function headingLevelFor(element) {
-    if (/^H[1-4]$/.test(element.tagName)) {
+    if (/^H[1-6]$/.test(element.tagName)) {
       return Number(element.tagName.slice(1));
     }
     return clampLevel(Number(element.getAttribute("aria-level")));
@@ -3593,7 +3699,7 @@ import { sendRuntimeMessage } from "./runtime-message.js";
   function makeHeadingItem(element, index, level, sourceType = "heading") {
     return {
       element,
-      level: clampLevel(level),
+      level: clampLevel(level, sourceType === "hashed-markdown" ? 6 : 4),
       title: normalizeTitle(element.textContent || ""),
       id: element.id || `gpt-paragraph-heading-${index + 1}`,
       sourceType
@@ -3904,9 +4010,23 @@ import { sendRuntimeMessage } from "./runtime-message.js";
     const headings = [];
 
     containers.forEach((container) => {
-      container.querySelectorAll(MARKER_CANDIDATE_SELECTOR).forEach((heading) => {
+      const hashedMarkdownRoot = container.matches(HASHED_MARKDOWN_ROOT_SELECTOR)
+        || Boolean(container.querySelector(HASHED_MARKDOWN_ROOT_SELECTOR));
+      const candidateSelector = hashedMarkdownRoot
+        ? `${MARKER_CANDIDATE_SELECTOR}, h5, h6, ${HASHED_HEADING_SELECTOR}`
+        : MARKER_CANDIDATE_SELECTOR;
+      container.querySelectorAll(candidateSelector).forEach((heading) => {
         if (!(heading instanceof HTMLElement) || !isVisible(heading, scanContext) || seen.has(heading)) {
           return;
+        }
+
+        if (hashedMarkdownRoot && (heading.matches("h1, h2, h3, h4, h5, h6") || heading.matches(HASHED_HEADING_SELECTOR))) {
+          const level = hashedMarkdownHeadingLevel(heading);
+          if (level) {
+            seen.add(heading);
+            headings.push(makeHeadingItem(heading, headings.length, level, "hashed-markdown"));
+            return;
+          }
         }
 
         if (heading.matches(`${HEADING_SELECTOR}, ${ROLE_HEADING_SELECTOR}`)) {
@@ -3978,6 +4098,9 @@ import { sendRuntimeMessage } from "./runtime-message.js";
     const usableHeadings = headings.filter((item) => {
       if (item.title.length <= 0) {
         return false;
+      }
+      if (item.sourceType === "hashed-markdown") {
+        return item.level >= 1 && item.level <= 6;
       }
       if (!applyConfig) {
         return item.level <= maxHeadingLevel;
@@ -4097,6 +4220,9 @@ import { sendRuntimeMessage } from "./runtime-message.js";
 
   function isHeadingEnabledForCurrentConfig(heading) {
     const platformKey = currentPlatformKey();
+    if (heading.sourceType === "hashed-markdown") {
+      return heading.level >= 1 && heading.level <= 6;
+    }
     if (heading.sourceType === "unordered-list") {
       return enabledUnorderedListForPlatform(platformKey);
     }
@@ -4964,16 +5090,61 @@ import { sendRuntimeMessage } from "./runtime-message.js";
     };
   }
 
-  function publishWindowSnapshot() {
-    if (!isTopLevelFrame() || !isExtensionContextValid()) {
+  let reportNextSnapshotDelivery = false;
+
+  function routeFallbackDetails(snapshot, response, error) {
+    return {
+      hostname: window.location.hostname,
+      messageNodes: state.markerSourceContainers.length,
+      hashedMarkdownRoots: document.querySelectorAll(HASHED_MARKDOWN_ROOT_SELECTOR).length,
+      sections: Array.isArray(snapshot?.headings) ? snapshot.headings.length : 0,
+      markerCount: Array.isArray(snapshot?.markerItems) ? snapshot.markerItems.length : 0,
+      sentToBackground: !error,
+      acceptedBySidePanel: Boolean(response?.acceptedBySidePanel),
+      reason: error ? (error?.message || String(error)) : (response?.reason || "")
+    };
+  }
+
+  function logRouteFallbackDelivery(snapshot, response, error) {
+    const details = routeFallbackDetails(snapshot, response, error);
+    if (routeFallbackLogLevel(details) === "warn") {
+      console.warn("[Polaris] Route fallback did not deliver sections to the side panel.", details);
       return;
     }
+    console.info("[Polaris] Route bridge changed the URL, but no later message mutation arrived. Reading sections from the DOM already on the page.", details);
+  }
+
+  function publishWindowSnapshot() {
+    if (!isTopLevelFrame() || !isExtensionContextValid()) {
+      reportNextSnapshotDelivery = false;
+      return;
+    }
+    const reportDelivery = reportNextSnapshotDelivery;
+    reportNextSnapshotDelivery = false;
     window.clearTimeout(state.windowSnapshotTimer);
     state.windowSnapshotTimer = window.setTimeout(() => {
       state.windowSnapshotTimer = 0;
-      sendRuntimeMessage(chrome, {
+      const snapshot = windowSnapshot();
+      const message = {
         type: "POLARIS_CONTENT_STATE",
-        snapshot: windowSnapshot()
+        snapshot,
+        reportDelivery
+      };
+      if (!reportDelivery) {
+        sendRuntimeMessage(chrome, message);
+        return;
+      }
+      let pending = null;
+      try {
+        pending = chrome.runtime.sendMessage(message);
+      } catch (error) {
+        logRouteFallbackDelivery(snapshot, null, error);
+        return;
+      }
+      Promise.resolve(pending).then((response) => {
+        logRouteFallbackDelivery(snapshot, response, null);
+      }).catch((error) => {
+        logRouteFallbackDelivery(snapshot, null, error);
       });
     }, 0);
   }
@@ -5098,6 +5269,10 @@ import { sendRuntimeMessage } from "./runtime-message.js";
     }
     chrome.runtime.onMessage.addListener((message) => {
       if (message?.type === "POLARIS_WINDOW_REQUEST_STATE") {
+        if (!state.awaitingRouteDom && state.markerSourceContainers.length === 0) {
+          render();
+          return;
+        }
         publishWindowSnapshot();
       } else if (message?.type === "POLARIS_WINDOW_COMMAND") {
         handleWindowCommand(message);
@@ -5346,6 +5521,21 @@ import { sendRuntimeMessage } from "./runtime-message.js";
     document.documentElement.removeAttribute(DEBUG_ATTR);
   }
 
+  let routeDomFallbackTimer = 0;
+
+  function scheduleRouteDomFallback() {
+    window.clearTimeout(routeDomFallbackTimer);
+    routeDomFallbackTimer = window.setTimeout(() => {
+      routeDomFallbackTimer = 0;
+      if (!state.awaitingRouteDom) {
+        return;
+      }
+      state.awaitingRouteDom = false;
+      reportNextSnapshotDelivery = true;
+      render();
+    }, 400);
+  }
+
   function handleRouteChange() {
     const nextRouteKey = currentRouteKey();
     if (nextRouteKey === state.routeKey) {
@@ -5362,6 +5552,7 @@ import { sendRuntimeMessage } from "./runtime-message.js";
     closeExplosionOverlay();
     closeImagePreviewOverlay();
     state.awaitingRouteDom = true;
+    scheduleRouteDomFallback();
     render();
   }
 
@@ -5379,6 +5570,9 @@ import { sendRuntimeMessage } from "./runtime-message.js";
     const bridge = document.createElement("script");
     bridge.src = extensionMetadata.routeBridgeUrl;
     bridge.dataset.polarisRouteBridge = "true";
+    bridge.addEventListener("error", () => {
+      console.warn("[Polaris] Route bridge script did not load. Startup DOM can still be read, but later SPA navigations may not refresh the side panel.", bridge.src);
+    });
     (document.head || document.documentElement).appendChild(bridge);
   }
 
@@ -5414,6 +5608,8 @@ import { sendRuntimeMessage } from "./runtime-message.js";
     })) {
       return;
     }
+    window.clearTimeout(routeDomFallbackTimer);
+    routeDomFallbackTimer = 0;
     state.awaitingRouteDom = false;
     markerRenderStateMachine.request();
   }

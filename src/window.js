@@ -451,7 +451,7 @@ import { sendRuntimeMessage } from "./runtime-message.js";
     document.body.appendChild(overlay);
   }
 
-  chrome.runtime.onMessage.addListener((message) => {
+  chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     if (!message || typeof message.type !== "string") return;
     if (message.type === "POLARIS_WINDOW_STATE" && message.snapshot) {
       const nextTabId = message.tabId ?? null;
@@ -467,6 +467,13 @@ import { sendRuntimeMessage } from "./runtime-message.js";
       state.snapshot = message.snapshot;
       if (state.activeTab === "chapters" && !state.chapters.length && message.snapshot.hasConversation) send({ command: "request-chapters" });
       render();
+      if (message.expectAck && typeof sendResponse === "function") {
+        sendResponse({
+          accepted: true,
+          hasConversation: Boolean(message.snapshot.hasConversation),
+          markerCount: Array.isArray(message.snapshot.markerItems) ? message.snapshot.markerItems.length : 0
+        });
+      }
     }
     if (message.type === "POLARIS_WINDOW_CHAPTERS") {
       state.chapters = Array.isArray(message.chapters) ? message.chapters : [];

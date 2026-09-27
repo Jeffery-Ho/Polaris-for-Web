@@ -1,4 +1,5 @@
 import { matchingPolarisTab, restorePopupWindowUpdate } from "./window-lifecycle.js";
+import { snapshotDeliveryResult } from "./snapshot-delivery.js";
 
 const WINDOW_STORAGE_KEY = "polaris-window-id";
 const WINDOW_TAB_STORAGE_KEY = "polaris-window-tab-id";
@@ -223,8 +224,40 @@ async function requestContentState(tab, { publishEmpty = true } = {}) {
   }
 }
 
+function uniqueExtensionFiles(files) {
+  const seen = new Set();
+  const unique = [];
+  for (const file of files) {
+    if (typeof file !== "string" || !file || seen.has(file)) {
+      continue;
+    }
+    seen.add(file);
+    unique.push(file);
+  }
+  return unique;
+}
+
+function packagedContentScriptFiles() {
+  try {
+    const entries = chrome.runtime.getManifest?.()?.content_scripts;
+    if (!Array.isArray(entries)) {
+      return null;
+    }
+    const css = uniqueExtensionFiles(entries.flatMap((entry) => entry?.css || []));
+    const js = uniqueExtensionFiles(entries.flatMap((entry) => entry?.js || []));
+    if (js.length === 0) {
+      return null;
+    }
+    return { css, js };
+  } catch (error) {
+    console.warn("[Polaris] Could not read content script paths from the extension manifest.", error);
+    return null;
+  }
+}
+
 async function injectContentScript(tabId) {
   if (typeof chrome.scripting?.executeScript !== "function") {
+    console.warn("[Polaris] chrome.scripting.executeScript is unavailable; content script injection was skipped.", tabId);
     return false;
   }
   const existing = contentInjectionPromises.get(tabId);
@@ -232,23 +265,30 @@ async function injectContentScript(tabId) {
     return existing;
   }
   const injection = (async () => {
+    // Built manifest order, including hashed filenames, is the injection list.
+    const files = packagedContentScriptFiles();
+    if (!files) {
+      console.warn("[Polaris] Extension manifest has no content script files to inject.", tabId);
+      return false;
+    }
     try {
-      if (typeof chrome.scripting.insertCSS === "function") {
+      if (files.css.length > 0 && typeof chrome.scripting.insertCSS === "function") {
         try {
           await chrome.scripting.insertCSS({
-            files: ["src/styles.css"],
+            files: files.css,
             target: { tabId }
           });
-        } catch {
-          // A previously injected stylesheet must not block the script.
+        } catch (error) {
+          console.warn("[Polaris] Content stylesheet injection failed.", { tabId, css: files.css, error });
         }
       }
       await chrome.scripting.executeScript({
-        files: ["src/content.js"],
+        files: files.js,
         target: { allFrames: false, tabId }
       });
       return true;
-    } catch {
+    } catch (error) {
+      console.warn("[Polaris] Content script injection failed.", { tabId, js: files.js, error });
       return false;
     }
   })().finally(() => {
@@ -279,6 +319,7 @@ async function sendContentMessage(tabId, message, { injectIfMissing = false } = 
       // The injected content script may still be finishing its startup.
     }
   }
+  console.warn("[Polaris] Content script did not respond after injection.", tabId);
   return false;
 }
 
@@ -413,6 +454,60 @@ async function rememberWindowReadyState(message, sender) {
   await chrome.storage.local.set({ [WINDOW_TAB_STORAGE_KEY]: polarisWindowTabId });
 }
 
+function replyToSnapshotDelivery(sendResponse, payload) {
+  if (typeof sendResponse !== "function") {
+    return;
+  }
+  try {
+    sendResponse(payload);
+  } catch {
+    // The content script already stopped waiting for this delivery report.
+  }
+}
+
+async function forwardContentSnapshot(message, sender, sendResponse) {
+  try {
+    const isCurrent = await isCurrentSourceTab(sender.tab);
+    if (!isCurrent) {
+      const markerCount = message.snapshot?.markerItems?.length || 0;
+      const headingCount = message.snapshot?.headings?.length || 0;
+      if (markerCount > 0 || headingCount > 0 || message.snapshot?.hasConversation) {
+        console.warn("[Polaris] Page sections were not forwarded to the side panel because this tab is not the current source tab.", {
+          tabId: sender.tab?.id ?? null,
+          currentTabId,
+          polarisWindowId,
+          markerCount,
+          headingCount
+        });
+      }
+      replyToSnapshotDelivery(sendResponse, snapshotDeliveryResult({ isCurrentSource: false }));
+      return;
+    }
+    latestSnapshot = message.snapshot;
+    try {
+      const pending = chrome.runtime.sendMessage({
+        type: "POLARIS_WINDOW_STATE",
+        tabId: sender.tab?.id ?? null,
+        snapshot: message.snapshot,
+        expectAck: Boolean(message.reportDelivery)
+      });
+      const ack = pending && typeof pending.then === "function" ? await pending : null;
+      replyToSnapshotDelivery(sendResponse, snapshotDeliveryResult({ isCurrentSource: true, ack }));
+    } catch (error) {
+      replyToSnapshotDelivery(sendResponse, snapshotDeliveryResult({
+        isCurrentSource: true,
+        errorMessage: error?.message || String(error)
+      }));
+    }
+  } catch (error) {
+    console.warn("[Polaris] Failed while forwarding page sections to the side panel.", error);
+    replyToSnapshotDelivery(sendResponse, snapshotDeliveryResult({
+      isCurrentSource: true,
+      errorMessage: "forward-failed"
+    }));
+  }
+}
+
 function configureAction() {
   if (typeof chrome.sidePanel?.setPanelBehavior === "function") {
     void chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => {
@@ -429,7 +524,7 @@ function configureAction() {
 
 configureAction();
 
-chrome.runtime.onMessage.addListener((message, sender) => {
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (!message || typeof message.type !== "string") {
     return;
   }
@@ -454,16 +549,9 @@ chrome.runtime.onMessage.addListener((message, sender) => {
   }
 
   if (message.type === "POLARIS_CONTENT_STATE") {
-    void isCurrentSourceTab(sender.tab).then((isCurrent) => {
-      if (!isCurrent) return;
-      latestSnapshot = message.snapshot;
-      return chrome.runtime.sendMessage({
-        type: "POLARIS_WINDOW_STATE",
-        tabId: sender.tab?.id ?? null,
-        snapshot: message.snapshot
-      });
-    }).catch(() => {});
-    return;
+    const reportDelivery = message.reportDelivery === true;
+    void forwardContentSnapshot(message, sender, reportDelivery ? sendResponse : null);
+    return reportDelivery ? true : undefined;
   }
 
   if (message.type === "POLARIS_WINDOW_CHAPTERS") {

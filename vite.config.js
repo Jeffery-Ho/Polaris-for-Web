@@ -4,6 +4,8 @@ import manifest from "./manifest.build.json" with { type: "json" };
 
 export default defineConfig({
   build: {
+    outDir: "dist",
+    emptyOutDir: true,
     rollupOptions: {
       input: {
         "polaris-home": "polaris-home.html",

@@ -10,6 +10,41 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 230
+
+- Date: 2026-09-27
+- Version: 0.56.6
+- Summary: ChatGPT adapter reads both legacy role messages and hashed CSS-module responses.
+- Notes: chatgpt.com now renders assistant bodies as `MarkdownRoot-*` with `Heading-*`, `Paragraph-*`, `Blockquote-*`, `HorizontalRule-*`, and `VisualizationBlock-*`. The ChatGPT adapter keeps `[data-message-author-role]` and `[data-message-role]` user and assistant nodes, plus `.markdown` / `.prose`, and also treats an unwrapped `MarkdownRoot-*` as the assistant message. Inner bodies are not counted as a second message. Fixture tests cover the legacy conversation and the hashed response, including both in one thread. Updated the current version to `0.56.6(230)`.
+
+## 229
+
+- Date: 2026-09-27
+- Version: 0.56.5
+- Summary: Reads sections from hashed CSS-module markdown roots.
+- Notes: `MarkdownRoot-*` and `Heading-*` class hashes did not match the platform selectors. The shared `[class*="markdown"]` fallback is case-sensitive, so the route fallback scanned the page, found no message nodes, and the side panel stayed empty. Prefix selectors now match those hash suffixes, including `h1`-`h6` inside the markdown root. The routine route fallback log is `console.info` and includes message-node, section, background, and side-panel delivery counts. Real delivery failures stay `console.warn`. Updated the current version to `0.56.5(229)`.
+
+## 228
+
+- Date: 2026-09-27
+- Version: 0.56.4
+- Summary: Recovers side-panel sections after the route bridge changes the URL.
+- Notes: The injected `src/route-bridge.js` tag means the content script has started. A later `pushState` or `replaceState` cleared the snapshot and waited for a message mutation that does not arrive when the conversation DOM is already mounted. The side panel then kept republishing that empty cache. If that wait sees no new message node, a short fallback reads the DOM already on the page. A state request during the wait still republishes the cleared snapshot, so the previous conversation does not return before the new DOM arrives. A request with no cached containers scans again. A route-bridge load error is logged with `[Polaris]`. Updated the current version to `0.56.4(228)`.
+
+## 227
+
+- Date: 2026-09-27
+- Version: 0.56.3
+- Summary: Sends sections from display:contents message wrappers to the side panel.
+- Notes: ChatGPT and Gemini often wrap a message in `display:contents`, which has no layout box. The scanner treated those wrappers as invisible, published an empty snapshot, and the side panel stayed on "No conversation here" while the headings were on the page. A contents wrapper is now visible when one of its children has a box. If assistant nodes are still discarded, the content script logs `[Polaris]`. A page snapshot that is not forwarded because the tab is not the current source tab is also logged. Updated the current version to `0.56.3(227)`.
+
+## 226
+
+- Date: 2026-09-27
+- Version: 0.56.2
+- Summary: Restores page snapshots when an already-open tab is injected without the i18n script.
+- Notes: The declarative content script still runs `assets/i18n.js` before `src/content.js`. The scripting fallback now injects every content-script CSS and JS file from `chrome.runtime.getManifest()`, in that order, so Vite hashing cannot leave `content.js` without `PolarisI18n`. `content.js` logs `[Polaris]` and keeps observing the page if i18n is missing, and the existing instance guard still skips a second mount. Injection failures are logged. The repository root is no longer an extension package: root `manifest.json` is removed, `manifest.build.json` is the only manifest source, and the release check rejects a root manifest or a built manifest that points at a missing `dist/` file. Updated the current version to `0.56.2(226)`.
+
 ## 225
 
 - Date: 2026-09-26
