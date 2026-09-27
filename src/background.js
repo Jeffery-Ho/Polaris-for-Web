@@ -1,4 +1,5 @@
 import { matchingPolarisTab, restorePopupWindowUpdate } from "./window-lifecycle.js";
+import { snapshotDeliveryResult } from "./snapshot-delivery.js";
 
 const WINDOW_STORAGE_KEY = "polaris-window-id";
 const WINDOW_TAB_STORAGE_KEY = "polaris-window-tab-id";
@@ -453,6 +454,60 @@ async function rememberWindowReadyState(message, sender) {
   await chrome.storage.local.set({ [WINDOW_TAB_STORAGE_KEY]: polarisWindowTabId });
 }
 
+function replyToSnapshotDelivery(sendResponse, payload) {
+  if (typeof sendResponse !== "function") {
+    return;
+  }
+  try {
+    sendResponse(payload);
+  } catch {
+    // The content script already stopped waiting for this delivery report.
+  }
+}
+
+async function forwardContentSnapshot(message, sender, sendResponse) {
+  try {
+    const isCurrent = await isCurrentSourceTab(sender.tab);
+    if (!isCurrent) {
+      const markerCount = message.snapshot?.markerItems?.length || 0;
+      const headingCount = message.snapshot?.headings?.length || 0;
+      if (markerCount > 0 || headingCount > 0 || message.snapshot?.hasConversation) {
+        console.warn("[Polaris] Page sections were not forwarded to the side panel because this tab is not the current source tab.", {
+          tabId: sender.tab?.id ?? null,
+          currentTabId,
+          polarisWindowId,
+          markerCount,
+          headingCount
+        });
+      }
+      replyToSnapshotDelivery(sendResponse, snapshotDeliveryResult({ isCurrentSource: false }));
+      return;
+    }
+    latestSnapshot = message.snapshot;
+    try {
+      const pending = chrome.runtime.sendMessage({
+        type: "POLARIS_WINDOW_STATE",
+        tabId: sender.tab?.id ?? null,
+        snapshot: message.snapshot,
+        expectAck: Boolean(message.reportDelivery)
+      });
+      const ack = pending && typeof pending.then === "function" ? await pending : null;
+      replyToSnapshotDelivery(sendResponse, snapshotDeliveryResult({ isCurrentSource: true, ack }));
+    } catch (error) {
+      replyToSnapshotDelivery(sendResponse, snapshotDeliveryResult({
+        isCurrentSource: true,
+        errorMessage: error?.message || String(error)
+      }));
+    }
+  } catch (error) {
+    console.warn("[Polaris] Failed while forwarding page sections to the side panel.", error);
+    replyToSnapshotDelivery(sendResponse, snapshotDeliveryResult({
+      isCurrentSource: true,
+      errorMessage: "forward-failed"
+    }));
+  }
+}
+
 function configureAction() {
   if (typeof chrome.sidePanel?.setPanelBehavior === "function") {
     void chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => {
@@ -469,7 +524,7 @@ function configureAction() {
 
 configureAction();
 
-chrome.runtime.onMessage.addListener((message, sender) => {
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (!message || typeof message.type !== "string") {
     return;
   }
@@ -494,38 +549,9 @@ chrome.runtime.onMessage.addListener((message, sender) => {
   }
 
   if (message.type === "POLARIS_CONTENT_STATE") {
-    void isCurrentSourceTab(sender.tab).then(async (isCurrent) => {
-      if (!isCurrent) {
-        const markerCount = message.snapshot?.markerItems?.length || 0;
-        const headingCount = message.snapshot?.headings?.length || 0;
-        if (markerCount > 0 || headingCount > 0 || message.snapshot?.hasConversation) {
-          console.warn("[Polaris] Page sections were not forwarded to the side panel because this tab is not the current source tab.", {
-            tabId: sender.tab?.id ?? null,
-            currentTabId,
-            polarisWindowId,
-            markerCount,
-            headingCount
-          });
-        }
-        return;
-      }
-      latestSnapshot = message.snapshot;
-      try {
-        const pending = chrome.runtime.sendMessage({
-          type: "POLARIS_WINDOW_STATE",
-          tabId: sender.tab?.id ?? null,
-          snapshot: message.snapshot
-        });
-        if (pending && typeof pending.then === "function") {
-          await pending;
-        }
-      } catch {
-        // A side panel that does not call sendResponse still received the snapshot.
-      }
-    }).catch((error) => {
-      console.warn("[Polaris] Failed while forwarding page sections to the side panel.", error);
-    });
-    return;
+    const reportDelivery = message.reportDelivery === true;
+    void forwardContentSnapshot(message, sender, reportDelivery ? sendResponse : null);
+    return reportDelivery ? true : undefined;
   }
 
   if (message.type === "POLARIS_WINDOW_CHAPTERS") {

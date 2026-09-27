@@ -8,14 +8,20 @@ const packagedContentScripts = [{
   js: ["assets/i18n-HASH.js", "assets/content-HASH.js"]
 }];
 
-const [backgroundSource, lifecycleSource] = await Promise.all([
+const [backgroundSource, lifecycleSource, deliverySource] = await Promise.all([
   readFile(new URL("../src/background.js", import.meta.url), "utf8"),
-  readFile(new URL("../src/window-lifecycle.js", import.meta.url), "utf8")
+  readFile(new URL("../src/window-lifecycle.js", import.meta.url), "utf8"),
+  readFile(new URL("../src/snapshot-delivery.js", import.meta.url), "utf8")
 ]);
-const executableBackgroundSource = backgroundSource.replace(
-  'import { matchingPolarisTab, restorePopupWindowUpdate } from "./window-lifecycle.js";\n',
-  lifecycleSource.replaceAll("export ", "")
-);
+const executableBackgroundSource = backgroundSource
+  .replace(
+    'import { matchingPolarisTab, restorePopupWindowUpdate } from "./window-lifecycle.js";\n',
+    lifecycleSource.replaceAll("export ", "")
+  )
+  .replace(
+    'import { snapshotDeliveryResult } from "./snapshot-delivery.js";\n',
+    deliverySource.replaceAll("export ", "")
+  );
 
 function createEvent() {
   let listener = null;

@@ -22,7 +22,8 @@ test("路由切换立即清空旧列表，并等待宿主 DOM 变更后才扫描
   assert.match(routeChange, /scheduleRouteDomFallback\(\)/);
   assert.match(routeChange, /render\(\)/);
   assert.doesNotMatch(routeChange, /scheduleRender/);
-  assert.match(contentSource, /Route bridge changed the URL, but no later message mutation arrived/);
+  assert.match(contentSource, /console\.info\("\[Polaris\] Route bridge changed the URL, but no later message mutation arrived/);
+  assert.doesNotMatch(contentSource, /console\.warn\("\[Polaris\] Route bridge changed the URL/);
   assert.match(contentSource, /function isPolarisOwnedMutationNode/);
   assert.match(contentSource, /changedNodes\.every\(isPolarisOwnedMutationNode\)/);
   assert.match(mutations, /state\.awaitingRouteDom = false/);

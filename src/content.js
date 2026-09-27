@@ -65,6 +65,12 @@ import {
 } from "./user-message-images.js";
 import { bindSearchInput } from "./search-input.js";
 import { sendRuntimeMessage } from "./runtime-message.js";
+import {
+  HASHED_HEADING_SELECTOR,
+  HASHED_MARKDOWN_ROOT_SELECTOR,
+  hashedMarkdownHeadingLevel
+} from "./hashed-markdown.js";
+import { routeFallbackLogLevel } from "./snapshot-delivery.js";
 
 (() => {
   const CONTENT_SCRIPT_INSTANCE_KEY = "__POLARIS_CONTENT_SCRIPT_ACTIVE__";
@@ -3233,49 +3239,52 @@ import { sendRuntimeMessage } from "./runtime-message.js";
     return "default";
   }
 
+  function withHashedMarkdownSelectors(selectors) {
+    return [...selectors, HASHED_MARKDOWN_ROOT_SELECTOR, MARKDOWN_FALLBACK_SELECTOR];
+  }
+
   function getAssistantContainerSelectors() {
     if (isUnsupportedXiaohongshuMainPage()) {
       return [];
     }
 
     if (isXiaohongshuPage()) {
-      return [
+      return withHashedMarkdownSelectors([
         XIAOHONGSHU_ASSISTANT_MARKDOWN_SELECTOR,
         XIAOHONGSHU_ASSISTANT_FALLBACK_SELECTOR,
-        ASSISTANT_MESSAGE_SELECTOR,
-        MARKDOWN_FALLBACK_SELECTOR
-      ];
+        ASSISTANT_MESSAGE_SELECTOR
+      ]);
     }
 
     if (isClaudePage()) {
-      return [CLAUDE_ASSISTANT_MESSAGE_SELECTOR, ASSISTANT_MESSAGE_SELECTOR, MARKDOWN_FALLBACK_SELECTOR];
+      return withHashedMarkdownSelectors([CLAUDE_ASSISTANT_MESSAGE_SELECTOR, ASSISTANT_MESSAGE_SELECTOR]);
     }
 
     if (isGeminiPage()) {
-      return [GEMINI_ASSISTANT_MESSAGE_SELECTOR, ASSISTANT_MESSAGE_SELECTOR, MARKDOWN_FALLBACK_SELECTOR];
+      return withHashedMarkdownSelectors([GEMINI_ASSISTANT_MESSAGE_SELECTOR, ASSISTANT_MESSAGE_SELECTOR]);
     }
 
     if (isGrokPage()) {
-      return [GROK_ASSISTANT_MESSAGE_SELECTOR, ASSISTANT_MESSAGE_SELECTOR, MARKDOWN_FALLBACK_SELECTOR];
+      return withHashedMarkdownSelectors([GROK_ASSISTANT_MESSAGE_SELECTOR, ASSISTANT_MESSAGE_SELECTOR]);
     }
 
     if (isYuanbaoPage()) {
-      return [YUANBAO_ASSISTANT_MESSAGE_SELECTOR, ASSISTANT_MESSAGE_SELECTOR, MARKDOWN_FALLBACK_SELECTOR];
+      return withHashedMarkdownSelectors([YUANBAO_ASSISTANT_MESSAGE_SELECTOR, ASSISTANT_MESSAGE_SELECTOR]);
     }
 
     if (isKimiPage()) {
-      return [KIMI_ASSISTANT_MESSAGE_SELECTOR, ASSISTANT_MESSAGE_SELECTOR, MARKDOWN_FALLBACK_SELECTOR];
+      return withHashedMarkdownSelectors([KIMI_ASSISTANT_MESSAGE_SELECTOR, ASSISTANT_MESSAGE_SELECTOR]);
     }
 
     if (isQianwenPage()) {
-      return [QIANWEN_ASSISTANT_MESSAGE_SELECTOR, ASSISTANT_MESSAGE_SELECTOR, MARKDOWN_FALLBACK_SELECTOR];
+      return withHashedMarkdownSelectors([QIANWEN_ASSISTANT_MESSAGE_SELECTOR, ASSISTANT_MESSAGE_SELECTOR]);
     }
 
     if (isDoubaoPage()) {
-      return [DOUBAO_ASSISTANT_MESSAGE_SELECTOR, ASSISTANT_MESSAGE_SELECTOR, MARKDOWN_FALLBACK_SELECTOR];
+      return withHashedMarkdownSelectors([DOUBAO_ASSISTANT_MESSAGE_SELECTOR, ASSISTANT_MESSAGE_SELECTOR]);
     }
 
-    return [ASSISTANT_MESSAGE_SELECTOR, MARKDOWN_FALLBACK_SELECTOR];
+    return withHashedMarkdownSelectors([ASSISTANT_MESSAGE_SELECTOR]);
   }
 
   let discardedConversationWarningRoute = "";
@@ -3288,7 +3297,10 @@ import { sendRuntimeMessage } from "./runtime-message.js";
           && !isInsideNavigationRoot(node)
           && !isUserInputContext(node));
       matched += nodes.length;
-      const containers = nodes.filter((node) => isVisible(node, scanContext));
+      const visibleNodes = nodes.filter((node) => isVisible(node, scanContext));
+      const containers = selector === HASHED_MARKDOWN_ROOT_SELECTOR
+        ? visibleNodes.filter((node) => !visibleNodes.some((other) => other !== node && other.contains(node)))
+        : visibleNodes;
       if (containers.length > 0) {
         return containers;
       }
@@ -3607,15 +3619,15 @@ import { sendRuntimeMessage } from "./runtime-message.js";
     state.latestUserMarkerKey = latestUserMarkerKey(groups);
   }
 
-  function clampLevel(level) {
+  function clampLevel(level, max = 4) {
     if (Number.isNaN(level)) {
       return 2;
     }
-    return Math.min(Math.max(level, 1), 4);
+    return Math.min(Math.max(level, 1), max);
   }
 
   function headingLevelFor(element) {
-    if (/^H[1-4]$/.test(element.tagName)) {
+    if (/^H[1-6]$/.test(element.tagName)) {
       return Number(element.tagName.slice(1));
     }
     return clampLevel(Number(element.getAttribute("aria-level")));
@@ -3624,7 +3636,7 @@ import { sendRuntimeMessage } from "./runtime-message.js";
   function makeHeadingItem(element, index, level, sourceType = "heading") {
     return {
       element,
-      level: clampLevel(level),
+      level: clampLevel(level, sourceType === "hashed-markdown" ? 6 : 4),
       title: normalizeTitle(element.textContent || ""),
       id: element.id || `gpt-paragraph-heading-${index + 1}`,
       sourceType
@@ -3935,9 +3947,22 @@ import { sendRuntimeMessage } from "./runtime-message.js";
     const headings = [];
 
     containers.forEach((container) => {
-      container.querySelectorAll(MARKER_CANDIDATE_SELECTOR).forEach((heading) => {
+      const hashedMarkdownRoot = container.matches(HASHED_MARKDOWN_ROOT_SELECTOR);
+      const candidateSelector = hashedMarkdownRoot
+        ? `${MARKER_CANDIDATE_SELECTOR}, h5, h6, ${HASHED_HEADING_SELECTOR}`
+        : MARKER_CANDIDATE_SELECTOR;
+      container.querySelectorAll(candidateSelector).forEach((heading) => {
         if (!(heading instanceof HTMLElement) || !isVisible(heading, scanContext) || seen.has(heading)) {
           return;
+        }
+
+        if (hashedMarkdownRoot && (heading.matches("h1, h2, h3, h4, h5, h6") || heading.matches(HASHED_HEADING_SELECTOR))) {
+          const level = hashedMarkdownHeadingLevel(heading);
+          if (level) {
+            seen.add(heading);
+            headings.push(makeHeadingItem(heading, headings.length, level, "hashed-markdown"));
+            return;
+          }
         }
 
         if (heading.matches(`${HEADING_SELECTOR}, ${ROLE_HEADING_SELECTOR}`)) {
@@ -4009,6 +4034,9 @@ import { sendRuntimeMessage } from "./runtime-message.js";
     const usableHeadings = headings.filter((item) => {
       if (item.title.length <= 0) {
         return false;
+      }
+      if (item.sourceType === "hashed-markdown") {
+        return item.level >= 1 && item.level <= 6;
       }
       if (!applyConfig) {
         return item.level <= maxHeadingLevel;
@@ -4128,6 +4156,9 @@ import { sendRuntimeMessage } from "./runtime-message.js";
 
   function isHeadingEnabledForCurrentConfig(heading) {
     const platformKey = currentPlatformKey();
+    if (heading.sourceType === "hashed-markdown") {
+      return heading.level >= 1 && heading.level <= 6;
+    }
     if (heading.sourceType === "unordered-list") {
       return enabledUnorderedListForPlatform(platformKey);
     }
@@ -4995,16 +5026,61 @@ import { sendRuntimeMessage } from "./runtime-message.js";
     };
   }
 
-  function publishWindowSnapshot() {
-    if (!isTopLevelFrame() || !isExtensionContextValid()) {
+  let reportNextSnapshotDelivery = false;
+
+  function routeFallbackDetails(snapshot, response, error) {
+    return {
+      hostname: window.location.hostname,
+      messageNodes: state.markerSourceContainers.length,
+      hashedMarkdownRoots: document.querySelectorAll(HASHED_MARKDOWN_ROOT_SELECTOR).length,
+      sections: Array.isArray(snapshot?.headings) ? snapshot.headings.length : 0,
+      markerCount: Array.isArray(snapshot?.markerItems) ? snapshot.markerItems.length : 0,
+      sentToBackground: !error,
+      acceptedBySidePanel: Boolean(response?.acceptedBySidePanel),
+      reason: error ? (error?.message || String(error)) : (response?.reason || "")
+    };
+  }
+
+  function logRouteFallbackDelivery(snapshot, response, error) {
+    const details = routeFallbackDetails(snapshot, response, error);
+    if (routeFallbackLogLevel(details) === "warn") {
+      console.warn("[Polaris] Route fallback did not deliver sections to the side panel.", details);
       return;
     }
+    console.info("[Polaris] Route bridge changed the URL, but no later message mutation arrived. Reading sections from the DOM already on the page.", details);
+  }
+
+  function publishWindowSnapshot() {
+    if (!isTopLevelFrame() || !isExtensionContextValid()) {
+      reportNextSnapshotDelivery = false;
+      return;
+    }
+    const reportDelivery = reportNextSnapshotDelivery;
+    reportNextSnapshotDelivery = false;
     window.clearTimeout(state.windowSnapshotTimer);
     state.windowSnapshotTimer = window.setTimeout(() => {
       state.windowSnapshotTimer = 0;
-      sendRuntimeMessage(chrome, {
+      const snapshot = windowSnapshot();
+      const message = {
         type: "POLARIS_CONTENT_STATE",
-        snapshot: windowSnapshot()
+        snapshot,
+        reportDelivery
+      };
+      if (!reportDelivery) {
+        sendRuntimeMessage(chrome, message);
+        return;
+      }
+      let pending = null;
+      try {
+        pending = chrome.runtime.sendMessage(message);
+      } catch (error) {
+        logRouteFallbackDelivery(snapshot, null, error);
+        return;
+      }
+      Promise.resolve(pending).then((response) => {
+        logRouteFallbackDelivery(snapshot, response, null);
+      }).catch((error) => {
+        logRouteFallbackDelivery(snapshot, null, error);
       });
     }, 0);
   }
@@ -5391,7 +5467,7 @@ import { sendRuntimeMessage } from "./runtime-message.js";
         return;
       }
       state.awaitingRouteDom = false;
-      console.warn("[Polaris] Route bridge changed the URL, but no later message mutation arrived. Reading sections from the DOM already on the page.");
+      reportNextSnapshotDelivery = true;
       render();
     }, 400);
   }

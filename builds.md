@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 229
+
+- Date: 2026-09-27
+- Version: 0.56.5
+- Summary: Reads sections from hashed CSS-module markdown roots.
+- Notes: `MarkdownRoot-*` and `Heading-*` class hashes did not match the platform selectors. The shared `[class*="markdown"]` fallback is case-sensitive, so the route fallback scanned the page, found no message nodes, and the side panel stayed empty. Prefix selectors now match those hash suffixes, including `h1`-`h6` inside the markdown root. The routine route fallback log is `console.info` and includes message-node, section, background, and side-panel delivery counts. Real delivery failures stay `console.warn`. Updated the current version to `0.56.5(229)`.
+
 ## 228
 
 - Date: 2026-09-27
