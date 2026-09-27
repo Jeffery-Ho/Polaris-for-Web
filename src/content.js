@@ -70,6 +70,12 @@ import {
   HASHED_MARKDOWN_ROOT_SELECTOR,
   hashedMarkdownHeadingLevel
 } from "./hashed-markdown.js";
+import {
+  CHATGPT_LEGACY_ASSISTANT_SELECTOR,
+  CHATGPT_LEGACY_USER_SELECTOR,
+  CHATGPT_PROSE_SELECTOR,
+  mergeChatGptAssistantNodes
+} from "./chatgpt-messages.js";
 import { routeFallbackLogLevel } from "./snapshot-delivery.js";
 
 (() => {
@@ -3248,6 +3254,15 @@ import { routeFallbackLogLevel } from "./snapshot-delivery.js";
       return [];
     }
 
+    if (isChatGPTPage()) {
+      return [
+        CHATGPT_LEGACY_ASSISTANT_SELECTOR,
+        HASHED_MARKDOWN_ROOT_SELECTOR,
+        CHATGPT_PROSE_SELECTOR,
+        MARKDOWN_FALLBACK_SELECTOR
+      ];
+    }
+
     if (isXiaohongshuPage()) {
       return withHashedMarkdownSelectors([
         XIAOHONGSHU_ASSISTANT_MARKDOWN_SELECTOR,
@@ -3289,7 +3304,51 @@ import { routeFallbackLogLevel } from "./snapshot-delivery.js";
 
   let discardedConversationWarningRoute = "";
 
+  function visibleConversationNodes(selector, scanContext) {
+    return Array.from(document.querySelectorAll(selector))
+      .filter((node) => node instanceof HTMLElement
+        && !isInsideNavigationRoot(node)
+        && !isUserInputContext(node)
+        && isVisible(node, scanContext));
+  }
+
+  function getChatGptAssistantContainers(scanContext = null) {
+    const selectors = getAssistantContainerSelectors();
+    let matched = 0;
+    const visible = {};
+    selectors.forEach((selector) => {
+      const nodes = Array.from(document.querySelectorAll(selector))
+        .filter((node) => node instanceof HTMLElement
+          && !isInsideNavigationRoot(node)
+          && !isUserInputContext(node));
+      matched += nodes.length;
+      visible[selector] = nodes.filter((node) => isVisible(node, scanContext));
+    });
+    const merged = mergeChatGptAssistantNodes({
+      legacy: visible[CHATGPT_LEGACY_ASSISTANT_SELECTOR] || [],
+      hashed: visible[HASHED_MARKDOWN_ROOT_SELECTOR] || [],
+      prose: visible[CHATGPT_PROSE_SELECTOR] || [],
+      users: visibleConversationNodes(CHATGPT_LEGACY_USER_SELECTOR, scanContext)
+    });
+    if (merged.length > 0) {
+      return merged.map((item) => item.node);
+    }
+    const fallback = visible[MARKDOWN_FALLBACK_SELECTOR] || [];
+    if (fallback.length > 0) {
+      return fallback;
+    }
+    const routeKey = currentRouteKey();
+    if (matched > 0 && discardedConversationWarningRoute !== routeKey) {
+      discardedConversationWarningRoute = routeKey;
+      console.warn("[Polaris] Assistant message nodes were found but none were visible, so no sections will be sent to the side panel.", { matched });
+    }
+    return [];
+  }
+
   function getAssistantContainers(scanContext = null) {
+    if (isChatGPTPage()) {
+      return getChatGptAssistantContainers(scanContext);
+    }
     let matched = 0;
     for (const selector of getAssistantContainerSelectors()) {
       const nodes = Array.from(document.querySelectorAll(selector))
@@ -3354,6 +3413,10 @@ import { routeFallbackLogLevel } from "./snapshot-delivery.js";
 
     if (isDoubaoPage()) {
       return [DOUBAO_USER_MESSAGE_SELECTOR, USER_MESSAGE_SELECTOR];
+    }
+
+    if (isChatGPTPage()) {
+      return [CHATGPT_LEGACY_USER_SELECTOR, USER_MESSAGE_SELECTOR];
     }
 
     return [USER_MESSAGE_SELECTOR];
@@ -3947,7 +4010,8 @@ import { routeFallbackLogLevel } from "./snapshot-delivery.js";
     const headings = [];
 
     containers.forEach((container) => {
-      const hashedMarkdownRoot = container.matches(HASHED_MARKDOWN_ROOT_SELECTOR);
+      const hashedMarkdownRoot = container.matches(HASHED_MARKDOWN_ROOT_SELECTOR)
+        || Boolean(container.querySelector(HASHED_MARKDOWN_ROOT_SELECTOR));
       const candidateSelector = hashedMarkdownRoot
         ? `${MARKER_CANDIDATE_SELECTOR}, h5, h6, ${HASHED_HEADING_SELECTOR}`
         : MARKER_CANDIDATE_SELECTOR;

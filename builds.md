@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 230
+
+- Date: 2026-09-27
+- Version: 0.56.6
+- Summary: ChatGPT adapter reads both legacy role messages and hashed CSS-module responses.
+- Notes: chatgpt.com now renders assistant bodies as `MarkdownRoot-*` with `Heading-*`, `Paragraph-*`, `Blockquote-*`, `HorizontalRule-*`, and `VisualizationBlock-*`. The ChatGPT adapter keeps `[data-message-author-role]` and `[data-message-role]` user and assistant nodes, plus `.markdown` / `.prose`, and also treats an unwrapped `MarkdownRoot-*` as the assistant message. Inner bodies are not counted as a second message. Fixture tests cover the legacy conversation and the hashed response, including both in one thread. Updated the current version to `0.56.6(230)`.
+
 ## 229
 
 - Date: 2026-09-27
