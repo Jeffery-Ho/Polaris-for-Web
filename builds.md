@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 227
+
+- Date: 2026-09-27
+- Version: 0.56.3
+- Summary: Sends sections from display:contents message wrappers to the side panel.
+- Notes: ChatGPT and Gemini often wrap a message in `display:contents`, which has no layout box. The scanner treated those wrappers as invisible, published an empty snapshot, and the side panel stayed on "No conversation here" while the headings were on the page. A contents wrapper is now visible when one of its children has a box. If assistant nodes are still discarded, the content script logs `[Polaris]`. A page snapshot that is not forwarded because the tab is not the current source tab is also logged. Updated the current version to `0.56.3(227)`.
+
 ## 226
 
 - Date: 2026-09-27

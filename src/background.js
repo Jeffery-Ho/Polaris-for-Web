@@ -494,15 +494,37 @@ chrome.runtime.onMessage.addListener((message, sender) => {
   }
 
   if (message.type === "POLARIS_CONTENT_STATE") {
-    void isCurrentSourceTab(sender.tab).then((isCurrent) => {
-      if (!isCurrent) return;
+    void isCurrentSourceTab(sender.tab).then(async (isCurrent) => {
+      if (!isCurrent) {
+        const markerCount = message.snapshot?.markerItems?.length || 0;
+        const headingCount = message.snapshot?.headings?.length || 0;
+        if (markerCount > 0 || headingCount > 0 || message.snapshot?.hasConversation) {
+          console.warn("[Polaris] Page sections were not forwarded to the side panel because this tab is not the current source tab.", {
+            tabId: sender.tab?.id ?? null,
+            currentTabId,
+            polarisWindowId,
+            markerCount,
+            headingCount
+          });
+        }
+        return;
+      }
       latestSnapshot = message.snapshot;
-      return chrome.runtime.sendMessage({
-        type: "POLARIS_WINDOW_STATE",
-        tabId: sender.tab?.id ?? null,
-        snapshot: message.snapshot
-      });
-    }).catch(() => {});
+      try {
+        const pending = chrome.runtime.sendMessage({
+          type: "POLARIS_WINDOW_STATE",
+          tabId: sender.tab?.id ?? null,
+          snapshot: message.snapshot
+        });
+        if (pending && typeof pending.then === "function") {
+          await pending;
+        }
+      } catch {
+        // A side panel that does not call sendResponse still received the snapshot.
+      }
+    }).catch((error) => {
+      console.warn("[Polaris] Failed while forwarding page sections to the side panel.", error);
+    });
     return;
   }
 

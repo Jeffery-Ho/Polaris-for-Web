@@ -2386,9 +2386,15 @@ import { sendRuntimeMessage } from "./runtime-message.js";
     if (scanContext) {
       return scanContext.isVisible(element);
     }
-    const rect = element.getBoundingClientRect();
     const style = window.getComputedStyle(element);
-    return rect.width > 0 && rect.height > 0 && style.visibility !== "hidden" && style.display !== "none";
+    if (style.visibility === "hidden" || style.display === "none") {
+      return false;
+    }
+    if (style.display === "contents") {
+      return Array.from(element.children || []).some((child) => child instanceof Element && isVisible(child));
+    }
+    const rect = element.getBoundingClientRect();
+    return rect.width > 0 && rect.height > 0;
   }
 
   function elementFromNode(node) {
@@ -3272,16 +3278,26 @@ import { sendRuntimeMessage } from "./runtime-message.js";
     return [ASSISTANT_MESSAGE_SELECTOR, MARKDOWN_FALLBACK_SELECTOR];
   }
 
+  let discardedConversationWarningRoute = "";
+
   function getAssistantContainers(scanContext = null) {
+    let matched = 0;
     for (const selector of getAssistantContainerSelectors()) {
-      const containers = Array.from(document.querySelectorAll(selector))
+      const nodes = Array.from(document.querySelectorAll(selector))
         .filter((node) => node instanceof HTMLElement
-          && isVisible(node, scanContext)
           && !isInsideNavigationRoot(node)
           && !isUserInputContext(node));
+      matched += nodes.length;
+      const containers = nodes.filter((node) => isVisible(node, scanContext));
       if (containers.length > 0) {
         return containers;
       }
+    }
+
+    const routeKey = currentRouteKey();
+    if (matched > 0 && discardedConversationWarningRoute !== routeKey) {
+      discardedConversationWarningRoute = routeKey;
+      console.warn("[Polaris] Assistant message nodes were found but none were visible, so no sections will be sent to the side panel.", { matched });
     }
 
     return [];

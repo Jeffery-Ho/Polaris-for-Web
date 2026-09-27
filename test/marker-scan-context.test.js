@@ -27,3 +27,39 @@ test("同一轮 Maker 扫描只读取一次节点布局和可见性样式", () =
   assert.equal(rectReadCount, 1);
   assert.equal(styleReadCount, 1);
 });
+
+test("display:contents message wrappers remain visible when a child has a box", () => {
+  const child = {
+    getBoundingClientRect() {
+      return { top: 10, bottom: 30, width: 120, height: 20 };
+    }
+  };
+  const hiddenChild = {
+    getBoundingClientRect() {
+      return { top: 0, bottom: 0, width: 0, height: 0 };
+    }
+  };
+  const parent = {
+    children: [child],
+    getBoundingClientRect() {
+      throw new Error("display:contents has no box");
+    }
+  };
+  const emptyParent = {
+    children: [hiddenChild],
+    getBoundingClientRect() {
+      throw new Error("display:contents has no box");
+    }
+  };
+  const context = createMarkerScanContext({
+    getComputedStyle(element) {
+      if (element === parent || element === emptyParent) {
+        return { display: "contents", visibility: "visible" };
+      }
+      return { display: "block", visibility: "visible" };
+    }
+  });
+
+  assert.equal(context.isVisible(parent), true);
+  assert.equal(context.isVisible(emptyParent), false);
+});

@@ -14,15 +14,19 @@ export function createMarkerScanContext({
 
   function isVisible(element) {
     if (!visibilityCache.has(element)) {
-      const rect = rectFor(element);
       const style = getComputedStyle(element);
-      visibilityCache.set(
-        element,
-        rect.width > 0
-          && rect.height > 0
-          && style.visibility !== "hidden"
-          && style.display !== "none"
-      );
+      let visible = false;
+      if (style.visibility !== "hidden" && style.display !== "none") {
+        if (style.display === "contents") {
+          // ChatGPT and Gemini often wrap a message in display:contents.
+          // That box is empty, but the headings inside it are on screen.
+          visible = Array.from(element.children || []).some((child) => child && isVisible(child));
+        } else {
+          const rect = rectFor(element);
+          visible = rect.width > 0 && rect.height > 0;
+        }
+      }
+      visibilityCache.set(element, visible);
     }
     return visibilityCache.get(element);
   }
