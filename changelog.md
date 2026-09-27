@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-09-26
+
+- 修复：目标平台标签页缺少 content script 时，service worker 会按已确认的支持平台动态注入脚本和样式，并重试读取页面 DOM；扩展重载或 side panel 打开已有标签页后也能恢复 Maker 状态。
+- 修复：动态注入增加 content script 实例保护，避免重复注册 MutationObserver、事件监听和 Polaris UI。
+- 版本：补丁更新到 `0.56.1(225)`。
+
+## 2026-09-26
+
+- 功能：点击扩展图标现在会在浏览器系统 Side Panel 中打开 Polaris，复用导航、章节和设置，并跟随当前支持的 AI 会话。
+- 兼容：不支持 Side Panel API 的浏览器继续使用原有独立窗口回退；side panel 不会被误判为来源标签页或 Polaris popup。
+- 构建：新增 `sidepanel.html` 入口，构建产物和 manifest 同步声明系统 side panel 页面。
+- 版本：功能更新到 `0.56.0(224)`。
+
 ## 2026-09-22
 
 - 发布：扩展 Release 现在同时上传版本化 ZIP 和固定名称的 `Polaris-AI.zip`，先在 Draft Release 中校验两份远端资产，发布后再验证 Latest 下载地址，保证 landing 始终可下载最新完整版本。

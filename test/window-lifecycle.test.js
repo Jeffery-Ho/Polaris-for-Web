@@ -24,7 +24,7 @@ function createEvent() {
   };
 }
 
-async function runAction({ storedWindow, getError = null, updateError = null, syncGetError = null }) {
+async function runAction({ storedWindow, getError = null, updateError = null, syncGetError = null, sidePanel = false, contentScriptFailures = 0, scripting = false }) {
   const windowUrl = "chrome-extension://test/polaris-home.html";
   const sourceTab = { id: 42, windowId: 9, active: true, url: "https://chatgpt.com/c/test" };
   const local = {
@@ -34,10 +34,18 @@ async function runAction({ storedWindow, getError = null, updateError = null, sy
     "polaris-source-tab-id": sourceTab.id
   };
   const action = createEvent();
-  const calls = { creates: [], updates: [], contentRequests: [], runtimeMessages: [] };
+  const calls = { creates: [], updates: [], contentRequests: [], runtimeMessages: [], sidePanelBehaviors: [], cssInjections: [], scriptInjections: [] };
+  let contentRequestAttempts = 0;
   const noOpEvent = () => createEvent();
   const chrome = {
     action: { onClicked: action },
+    sidePanel: sidePanel ? {
+      async setPanelBehavior(behavior) { calls.sidePanelBehaviors.push(behavior); }
+    } : undefined,
+    scripting: scripting ? {
+      async insertCSS(details) { calls.cssInjections.push(details); },
+      async executeScript(details) { calls.scriptInjections.push(details); }
+    } : undefined,
     runtime: {
       getURL(path) { return `chrome-extension://test/${path}`; },
       async sendMessage(message) { calls.runtimeMessages.push(message); },
@@ -83,7 +91,13 @@ async function runAction({ storedWindow, getError = null, updateError = null, sy
     },
     tabs: {
       async query() { return [sourceTab]; },
-      async sendMessage(tabId, message) { calls.contentRequests.push({ tabId, message }); },
+      async sendMessage(tabId, message) {
+        calls.contentRequests.push({ tabId, message });
+        if (contentRequestAttempts < contentScriptFailures) {
+          contentRequestAttempts += 1;
+          throw new Error("content script unavailable");
+        }
+      },
       async update() {},
       async get() { return sourceTab; },
       onActivated: noOpEvent(),
@@ -164,6 +178,62 @@ async function runWindowReady() {
   return sends;
 }
 
+async function runSidePanelReady() {
+  const sourceTab = { id: 42, windowId: 7, active: true, url: "https://chatgpt.com/c/test" };
+  const local = {
+    "polaris-window-id": 9,
+    "polaris-window-tab-id": 99,
+    "polaris-source-window-id": sourceTab.windowId,
+    "polaris-source-tab-id": sourceTab.id
+  };
+  const runtimeMessage = createEvent();
+  const sends = [];
+  const noOpEvent = () => createEvent();
+  const chrome = {
+    action: { onClicked: noOpEvent() },
+    runtime: {
+      getURL(path) { return `chrome-extension://test/${path}`; },
+      async sendMessage() {},
+      onMessage: runtimeMessage
+    },
+    storage: {
+      local: {
+        async get(key) {
+          if (typeof key === "string") return { [key]: local[key] };
+          return { ...local };
+        },
+        async set(values) { Object.assign(local, values); },
+        async remove(keys) {
+          for (const key of [].concat(keys)) delete local[key];
+        }
+      },
+      sync: {
+        async get() { return {}; },
+        async set() {},
+        async remove() {}
+      }
+    },
+    windows: {
+      WINDOW_ID_NONE: -1,
+      onFocusChanged: noOpEvent(),
+      onRemoved: noOpEvent()
+    },
+    tabs: {
+      async query() { return [sourceTab]; },
+      async get() { return sourceTab; },
+      async sendMessage(tabId) { sends.push(tabId); },
+      onActivated: noOpEvent(),
+      onUpdated: noOpEvent(),
+      onRemoved: noOpEvent()
+    }
+  };
+
+  vm.runInNewContext(executableBackgroundSource, { chrome, URL, Number, Date, Promise, console });
+  runtimeMessage.emit({ type: "POLARIS_WINDOW_READY", windowType: "sidepanel" });
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  return { local, sends };
+}
+
 test("缓存 ID 指向普通窗口时，点击扩展图标会创建新的 Polaris popup", async () => {
   const calls = await runAction({
     storedWindow: {
@@ -195,6 +265,27 @@ test("有效的 Polaris popup 会恢复为正常状态并聚焦，不会重复�
   assert.equal(calls.updates[0].id, 9);
   assert.equal(calls.updates[0].data.state, "normal");
   assert.equal(calls.updates[0].data.focused, true);
+});
+
+test("支持系统 side panel 时，扩展图标交给浏览器打开面板", async () => {
+  const calls = await runAction({ storedWindow: null, sidePanel: true });
+
+  assert.equal(calls.sidePanelBehaviors.length, 1);
+  assert.equal(calls.sidePanelBehaviors[0].openPanelOnActionClick, true);
+  assert.equal(calls.creates.length, 0);
+});
+
+test("目标平台缺少 content script 时会动态注入并重试 DOM 状态读取", async () => {
+  const calls = await runAction({ storedWindow: null, contentScriptFailures: 1, scripting: true });
+
+  assert.equal(calls.contentRequests.length, 2);
+  assert.equal(calls.cssInjections.length, 1);
+  assert.equal(calls.cssInjections[0].target.tabId, 42);
+  assert.equal(calls.cssInjections[0].files[0], "src/styles.css");
+  assert.equal(calls.scriptInjections.length, 1);
+  assert.equal(calls.scriptInjections[0].target.tabId, 42);
+  assert.equal(calls.scriptInjections[0].target.allFrames, false);
+  assert.equal(calls.scriptInjections[0].files[0], "src/content.js");
 });
 
 test("有效窗口在聚焦竞态失败后会清理并重建", async () => {
@@ -251,5 +342,12 @@ test("启动时支持会话先请求内容状态，不先显示无会话空快�
 
 test("直接打开普通浏览器标签中的插件页面时仍请求已生成会话", async () => {
   const sends = await runWindowReady();
+  assert.deepEqual(sends, [42]);
+});
+
+test("系统 side panel 就绪时不会把宿主浏览器窗口登记为 Polaris popup", async () => {
+  const { local, sends } = await runSidePanelReady();
+  assert.equal(local["polaris-window-id"], undefined);
+  assert.equal(local["polaris-window-tab-id"], undefined);
   assert.deepEqual(sends, [42]);
 });

@@ -10,6 +10,20 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 225
+
+- Date: 2026-09-26
+- Version: 0.56.1
+- Summary: Restores content-script DOM access when an existing target tab has no receiver.
+- Notes: After a supported target tab rejects the first state or command message, the service worker injects the packaged `src/content.js` and `src/styles.css` through the scripting API, retries the message while the content script starts, and keeps the existing DOM scan in the page context. A per-frame instance guard prevents duplicate observers and UI when declarative and dynamic injection overlap. Updated the current version to `0.56.1(225)`.
+
+## 224
+
+- Date: 2026-09-26
+- Version: 0.56.0
+- Summary: Adds a native browser side panel for the Polaris interface.
+- Notes: The extension action now opens `sidepanel.html` through the browser Side Panel API, reusing navigation, Chapter View, settings, active supported-tab tracking, and the existing runtime message bridge. Browsers without the Side Panel API keep the standalone popup fallback. The source and built manifests, Vite entry points, side-panel readiness handling, release notes, README, and generated `dist/` output are synchronized. Updated the current version to `0.56.0(224)`.
+
 ## 223
 
 - Date: 2026-09-22

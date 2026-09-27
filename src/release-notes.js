@@ -1,5 +1,16 @@
 const RELEASE_NOTES = Object.freeze([
   {
+    version: "0.56.0",
+    en: {
+      title: "Native browser side panel",
+      changes: ["Clicking the extension icon now opens Polaris in the browser's system side panel, reusing navigation, Chapter View, and settings while following the active supported conversation. Browsers without the Side Panel API keep the existing standalone-window fallback."]
+    },
+    zh: {
+      title: "浏览器系统 Side Panel",
+      changes: ["点击扩展图标现在会在浏览器系统 Side Panel 中打开 Polaris，复用导航、章节和设置并跟随当前支持的 AI 会话；不支持 Side Panel API 的浏览器继续使用原有独立窗口回退。"]
+    }
+  },
+  {
     version: "0.55.1",
     en: {
       title: "Reliable Maker image ownership",

@@ -14,10 +14,11 @@ const [manifest, buildManifest, background, content, windowSource, windowHtml, w
   readFile(new URL("../src/search-input.js", import.meta.url), "utf8")
 ]);
 
-test("两个源 manifest 都声明独立 Polaris 窗口入口", () => {
+test("两个源 manifest 都声明 Polaris 窗口和系统 side panel 入口", () => {
   for (const source of [manifest, buildManifest]) {
-    assert.deepEqual(source.permissions, ["storage", "tabs"]);
+    assert.deepEqual(source.permissions, ["storage", "tabs", "sidePanel", "scripting"]);
     assert.equal(source.action.default_title, "Open Polaris");
+    assert.deepEqual(source.side_panel, { default_path: "sidepanel.html" });
     assert.equal(source.background.service_worker, "src/background.js");
     assert.equal(source.background.type, "module");
   }
@@ -40,6 +41,7 @@ test("后台窗口复用并跟随最近的普通标签页", () => {
   assert.match(background, /message\.command === "refresh-state"/);
   assert.match(background, /message\.windowType === "popup"/);
   assert.match(background, /isNormalSourceTab/);
+  assert.match(content, /__POLARIS_CONTENT_SCRIPT_ACTIVE__/);
 });
 
 test("内容脚本通过快照桥提供 Maker、章节和设置操作", () => {

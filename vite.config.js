@@ -6,7 +6,8 @@ export default defineConfig({
   build: {
     rollupOptions: {
       input: {
-        "polaris-home": "polaris-home.html"
+        "polaris-home": "polaris-home.html",
+        sidepanel: "sidepanel.html"
       },
       output: {
         chunkFileNames: (chunkInfo) => {

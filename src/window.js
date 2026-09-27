@@ -73,6 +73,14 @@ import { sendRuntimeMessage } from "./runtime-message.js";
   }
 
   async function sendReady() {
+    const windowType = document.documentElement.dataset.windowType;
+    if (windowType === "sidepanel") {
+      sendRuntimeMessage(chrome, {
+        type: "POLARIS_WINDOW_READY",
+        windowType
+      });
+      return;
+    }
     try {
       const currentWindow = await chrome.windows.getCurrent({ populate: true });
       const currentTab = currentWindow.tabs?.find((tab) => tab.active) || currentWindow.tabs?.[0];

@@ -17,6 +17,7 @@ let polarisWindowTabId = null;
 let lastNormalWindowId = null;
 let currentTabId = null;
 let latestSnapshot = null;
+const contentInjectionPromises = new Map();
 
 function isSupportedCandidateUrl(url) {
   try {
@@ -216,10 +217,69 @@ async function requestContentState(tab, { publishEmpty = true } = {}) {
     return;
   }
   try {
-    await chrome.tabs.sendMessage(targetTab.id, { type: "POLARIS_WINDOW_REQUEST_STATE" });
+    await sendContentMessage(targetTab.id, { type: "POLARIS_WINDOW_REQUEST_STATE" }, { injectIfMissing: true });
   } catch {
     // The content script may not be ready on a newly activated page.
   }
+}
+
+async function injectContentScript(tabId) {
+  if (typeof chrome.scripting?.executeScript !== "function") {
+    return false;
+  }
+  const existing = contentInjectionPromises.get(tabId);
+  if (existing) {
+    return existing;
+  }
+  const injection = (async () => {
+    try {
+      if (typeof chrome.scripting.insertCSS === "function") {
+        try {
+          await chrome.scripting.insertCSS({
+            files: ["src/styles.css"],
+            target: { tabId }
+          });
+        } catch {
+          // A previously injected stylesheet must not block the script.
+        }
+      }
+      await chrome.scripting.executeScript({
+        files: ["src/content.js"],
+        target: { allFrames: false, tabId }
+      });
+      return true;
+    } catch {
+      return false;
+    }
+  })().finally(() => {
+    contentInjectionPromises.delete(tabId);
+  });
+  contentInjectionPromises.set(tabId, injection);
+  return injection;
+}
+
+async function sendContentMessage(tabId, message, { injectIfMissing = false } = {}) {
+  try {
+    await chrome.tabs.sendMessage(tabId, message);
+    return true;
+  } catch {
+    if (!injectIfMissing || !(await injectContentScript(tabId))) {
+      return false;
+    }
+  }
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    if (attempt > 0) {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    try {
+      await chrome.tabs.sendMessage(tabId, message);
+      return true;
+    } catch {
+      // The injected content script may still be finishing its startup.
+    }
+  }
+  return false;
 }
 
 async function forwardCommand(message) {
@@ -229,7 +289,9 @@ async function forwardCommand(message) {
   }
   currentTabId = tab.id;
   try {
-    await chrome.tabs.sendMessage(tab.id, message);
+    await sendContentMessage(tab.id, message, {
+      injectIfMissing: isSupportedCandidateUrl(tab.url)
+    });
   } catch {
     // Unsupported pages and pages that are still loading have no receiver.
   }
@@ -324,6 +386,12 @@ async function openOrFocusWindow(tab) {
 }
 
 async function rememberWindowReadyState(message, sender) {
+  if (message.windowType === "sidepanel") {
+    polarisWindowId = null;
+    polarisWindowTabId = null;
+    await chrome.storage.local.remove([WINDOW_STORAGE_KEY, WINDOW_TAB_STORAGE_KEY]);
+    return;
+  }
   const readyWindowId = Number.isInteger(message.windowId) ? message.windowId : sender.tab?.windowId;
   const readyTabId = Number.isInteger(message.windowTabId) ? message.windowTabId : sender.tab?.id;
   if (readyWindowId === undefined || readyTabId === undefined) {
@@ -345,9 +413,21 @@ async function rememberWindowReadyState(message, sender) {
   await chrome.storage.local.set({ [WINDOW_TAB_STORAGE_KEY]: polarisWindowTabId });
 }
 
-chrome.action.onClicked.addListener((tab) => {
-  void openOrFocusWindow(tab);
-});
+function configureAction() {
+  if (typeof chrome.sidePanel?.setPanelBehavior === "function") {
+    void chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => {
+      chrome.action.onClicked.addListener((tab) => {
+        void openOrFocusWindow(tab);
+      });
+    });
+    return;
+  }
+  chrome.action.onClicked.addListener((tab) => {
+    void openOrFocusWindow(tab);
+  });
+}
+
+configureAction();
 
 chrome.runtime.onMessage.addListener((message, sender) => {
   if (!message || typeof message.type !== "string") {

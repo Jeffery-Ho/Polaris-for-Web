@@ -67,6 +67,12 @@ import { bindSearchInput } from "./search-input.js";
 import { sendRuntimeMessage } from "./runtime-message.js";
 
 (() => {
+  const CONTENT_SCRIPT_INSTANCE_KEY = "__POLARIS_CONTENT_SCRIPT_ACTIVE__";
+  if (globalThis[CONTENT_SCRIPT_INSTANCE_KEY]) {
+    return;
+  }
+  globalThis[CONTENT_SCRIPT_INSTANCE_KEY] = true;
+
   const { locale, t } = globalThis.PolarisI18n;
   const ROOT_ID = "gpt-paragraph-nav";
   const MAX_USER_PREVIEW_LENGTH = 160;
