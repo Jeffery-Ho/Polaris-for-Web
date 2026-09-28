@@ -252,7 +252,7 @@ import { sendRuntimeMessage } from "./runtime-message.js";
       return panel;
     }
     const list = element("div", "maker-list");
-    items.forEach((item) => list.appendChild(renderMarker(item)));
+    items.forEach((item) => list.appendChild(renderMarker(item, snapshot.model || "")));
     panel.appendChild(list);
     return panel;
   }
@@ -262,18 +262,24 @@ import { sendRuntimeMessage } from "./runtime-message.js";
     return items.filter((item) => matchesSearch(query, item.title || ""));
   }
 
-  function renderMarker(item) {
+  function renderMarker(item, model = "") {
     if (item.type === "empty") return element("p", "empty-search", item.message);
     const button = element("button", `maker-card maker-card-${item.type}${item.isExpanded ? " is-expanded" : ""}`);
     button.type = "button";
     button.dataset.itemType = item.type;
     button.setAttribute("aria-label", item.ariaLabel || item.title || item.preview || "Maker");
     const copy = element("span", "maker-copy");
-    copy.append(element("span", "maker-preview", item.preview || item.title || ""));
-    if (item.type === "ai") copy.append(element("span", "maker-title", item.title || ""));
-    if (item.type === "user") copy.append(element("span", "maker-title", item.title || ""));
-    if (item.type === "fold") copy.append(element("span", "maker-remainder", item.remainder || ""));
-    if (item.type === "earlier") copy.append(element("span", "maker-title", item.preview || ""));
+    if (item.type === "ai") {
+      const badges = element("span", "maker-badge-row");
+      if (model) badges.append(element("span", "maker-badge maker-badge-model", model));
+      if (model) copy.append(badges);
+      copy.append(element("span", "maker-title", item.title || ""));
+    } else {
+      copy.append(element("span", "maker-preview", item.preview || item.title || ""));
+      if (item.type === "user") copy.append(element("span", "maker-title", item.title || ""));
+      if (item.type === "fold") copy.append(element("span", "maker-remainder", item.remainder || ""));
+      if (item.type === "earlier") copy.append(element("span", "maker-title", item.preview || ""));
+    }
     if (item.thumbnailSrc && item.type === "user") {
       const image = element("img", "maker-thumb");
       image.src = item.thumbnailSrc;

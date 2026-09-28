@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 232
+
+- Date: 2026-09-28
+- Version: 0.56.8
+- Summary: Prevents duplicate route-fallback warnings from polluting the extension error page.
+- Notes: Route fallback delivery diagnostics are now emitted as a readable single-line info message instead of a warning with an object argument. Identical results for the same route are suppressed, while delivery behavior remains unchanged. Regression tests cover readable formatting, duplicate suppression, and the absence of the old warning. Updated the current version to `0.56.8(232)`.
+
 ## 231
 
 - Date: 2026-09-28

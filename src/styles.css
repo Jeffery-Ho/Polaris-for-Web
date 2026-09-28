@@ -1455,7 +1455,7 @@ html.gpt-paragraph-nav--dragging * {
   border: 0;
   border-radius: 999px;
   background: var(--gpt-glass-marker-bg);
-  box-shadow: 0 0 0 1px var(--gpt-glass-border);
+  box-shadow: none;
   color: var(--gpt-arco-text-1);
   cursor: pointer;
   pointer-events: auto;
@@ -1481,7 +1481,7 @@ html.gpt-paragraph-nav--dragging * {
   align-self: flex-end;
   gap: 6px;
   background: var(--gpt-glass-user-marker-bg);
-  box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.46), inset 0 1px 0 rgba(255, 255, 255, 0.54);
+  box-shadow: none;
   color: var(--gpt-arco-text-1);
 }
 
@@ -1687,7 +1687,7 @@ html.gpt-paragraph-nav--dragging * {
 #gpt-paragraph-nav[data-page-theme="dark"] .gpt-paragraph-nav__marker.gpt-paragraph-nav__marker--user,
 #gpt-paragraph-nav[data-page-theme="dark"] .gpt-paragraph-nav__marker.gpt-paragraph-nav__marker--user:hover {
     background: var(--gpt-glass-user-marker-bg);
-    box-shadow: 0 0 0 1px rgba(147, 197, 253, 0.42);
+    box-shadow: none;
     color: var(--gpt-arco-text-1);
 }
 
@@ -1918,7 +1918,7 @@ html.gpt-paragraph-nav--dragging * {
 
 #gpt-paragraph-nav[data-page-theme="light"] .gpt-paragraph-nav__marker.gpt-paragraph-nav__marker--user {
   background: var(--gpt-glass-user-marker-bg);
-  box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.46), inset 0 1px 0 rgba(255, 255, 255, 0.54);
+  box-shadow: none;
 }
 
 #gpt-paragraph-nav[data-page-theme="light"] .gpt-paragraph-nav__marker.gpt-paragraph-nav__marker--user:hover {

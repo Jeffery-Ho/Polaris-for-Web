@@ -29,3 +29,30 @@ export function routeFallbackLogLevel(details) {
   }
   return "info";
 }
+
+export function routeFallbackDiagnosticDecision(previousKey = "", details = {}) {
+  const key = [
+    details.routeKey || "",
+    details.hostname || "",
+    details.reason || "",
+    Number(details.messageNodes) || 0,
+    Number(details.hashedMarkdownRoots) || 0,
+    Number(details.sections) || 0,
+    Number(details.markerCount) || 0,
+    Boolean(details.sentToBackground),
+    Boolean(details.acceptedBySidePanel)
+  ].join("|");
+  return { key, shouldLog: key !== previousKey };
+}
+
+export function routeFallbackLogMessage(details = {}) {
+  const reason = details.reason || "none";
+  return [
+    "[Polaris] Route fallback delivery diagnostic:",
+    `reason=${reason}`,
+    `messages=${Number(details.messageNodes) || 0}`,
+    `sections=${Number(details.sections) || 0}`,
+    `markers=${Number(details.markerCount) || 0}`,
+    `accepted=${Boolean(details.acceptedBySidePanel)}`
+  ].join(" ");
+}

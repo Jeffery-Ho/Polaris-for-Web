@@ -48,6 +48,9 @@ test("内容脚本通过快照桥提供 Maker、章节和设置操作", () => {
   assert.match(content, /POLARIS_WINDOW_CHAPTERS/);
   assert.match(content, /request-image-preview/);
   assert.match(content, /markerItems/);
+  assert.match(content, /currentModelLabel/);
+  assert.match(content, /Select ChatGPT model/);
+  assert.match(content, /model: currentModelLabel\(\)/);
   assert.match(content, /mergeWindowConfigPatch/);
   assert.match(content, /revision: Date\.now\(\)/);
   assert.match(content, /routeKey: currentRouteKey/);
@@ -98,6 +101,33 @@ test("独立窗口缩略图加载失败后移除破图并保留 Maker 文本", (
   assert.match(windowSource, /button\.append\(image\);[\s\S]*?button\.append\(copy\)/);
 });
 
+test("Maker 列表区分 agent 灰色卡片和用户白色卡片", () => {
+  assert.match(windowCss, /\.maker-card-ai \{[\s\S]*?background: #f4f4f4;[\s\S]*?border-color: #e9e9e9;/);
+  assert.match(windowCss, /\.maker-card-user \{[\s\S]*?background: #fff;[\s\S]*?border-color: #e2e2e2;/);
+  assert.match(windowCss, /\.maker-card-ai:hover, \.maker-card-ai:focus-visible \{[\s\S]*?background: #ededed;/);
+  assert.match(windowCss, /\.maker-card-user:hover, \.maker-card-user:focus-visible \{[\s\S]*?background: #fff;/);
+});
+
+test("Home 和 Side Panel 的 Maker 卡片不显示阴影", () => {
+  assert.match(windowCss, /\.maker-card \{[^}]*box-shadow: none;/);
+});
+
+test("agent Maker 只显示当前模型 badge 和正文标题", () => {
+  assert.match(
+    windowSource,
+    /function renderMarker\(item, model = ""\)[\s\S]*?if \(item\.type === "ai"\) \{\s*const badges = element\("span", "maker-badge-row"\);\s*if \(model\) badges\.append\(element\("span", "maker-badge maker-badge-model", model\)\);\s*if \(model\) copy\.append\(badges\);\s*copy\.append\(element\("span", "maker-title", item\.title \|\| ""\)\);/
+  );
+  assert.doesNotMatch(windowSource, /maker-badge-role|"Agent"/);
+  assert.match(windowCss, /\.maker-badge \{[^}]*background: #f2f2f2;[^}]*color: #3f3f46;/);
+  assert.match(windowCss, /\.maker-badge \{[^}]*width: fit-content;[^}]*flex: 0 0 auto;/);
+});
+
+test("Home 和 Side Panel 不使用渐变背景", () => {
+  assert.match(windowCss, /--window-background:\s*#fff;/);
+  assert.match(windowCss, /--window-background: #000;/);
+  assert.doesNotMatch(windowCss, /--window-background:[^;]*(?:radial-gradient|linear-gradient)/);
+});
+
 test("搜索输入支持中文输入法组合态并在提交后刷新", () => {
   for (const source of [searchInputSource]) {
     assert.match(source, /compositionstart/);
@@ -122,13 +152,12 @@ test("独立窗口使用浏览器原生关闭控制和工具窗层级", () => {
   assert.match(windowSource, /window-identity/);
   assert.match(windowSource, /window-search/);
   assert.match(windowSource, /window-tabs/);
-  assert.match(windowCss, /background: #f6f8fa/);
-  assert.match(windowCss, /radial-gradient\(90% 70% at 5% 0%/);
-  assert.match(windowCss, /rgba\(211, 143, 88, \.16\)/);
+  assert.match(windowCss, /background: #fff/);
+  assert.doesNotMatch(windowCss, /radial-gradient|linear-gradient/);
   assert.match(windowCss, /--window-header-background: rgba\(255, 255, 255, \.6\)/);
   assert.match(windowCss, /--window-search-background: rgba\(255, 255, 255, \.85\)/);
-  assert.match(windowCss, /--window-header-background: rgba\(0, 0, 0, \.6\)/);
-  assert.match(windowCss, /--window-search-background: rgba\(0, 0, 0, \.85\)/);
+  assert.match(windowCss, /--window-header-background: rgba\(0, 0, 0, \.92\)/);
+  assert.match(windowCss, /--window-search-background: rgba\(0, 0, 0, \.96\)/);
   assert.match(windowCss, /border-radius: 18px/);
   assert.match(windowCss, /\.window-search[^}]*border-radius: 18px/);
   assert.match(windowCss, /\.window-tabs[^}]*background: #dedee3/);

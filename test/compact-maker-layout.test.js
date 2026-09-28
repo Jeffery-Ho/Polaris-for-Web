@@ -252,3 +252,19 @@ test("搜索栏默认沿用主导航背景，悬停时显示输入背景", () =>
     /\.gpt-paragraph-nav__search-input::placeholder \{\n  color: var\(--gpt-arco-text-2\);\n\}/
   );
 });
+
+test("Maker 不显示阴影", () => {
+  const userMarkerBlock = styles.match(/\.gpt-paragraph-nav__marker\.gpt-paragraph-nav__marker--user \{[^}]*\}/)?.[0] || "";
+  assert.match(
+    styles,
+    /\.gpt-paragraph-nav__marker \{[\s\S]*?box-shadow: none;/
+  );
+  assert.match(
+    styles,
+    /\.gpt-paragraph-nav__marker\.gpt-paragraph-nav__marker--user \{[\s\S]*?box-shadow: none;/
+  );
+  assert.doesNotMatch(
+    userMarkerBlock,
+    /box-shadow: 0 /
+  );
+});

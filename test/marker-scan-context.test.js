@@ -63,3 +63,29 @@ test("display:contents message wrappers remain visible when a child has a box", 
   assert.equal(context.isVisible(parent), true);
   assert.equal(context.isVisible(emptyParent), false);
 });
+
+test("display:contents message wrappers remain visible when text is a direct child", () => {
+  const parent = {
+    childNodes: [{ nodeType: 3, nodeValue: "Show this user message" }],
+    getBoundingClientRect() {
+      throw new Error("display:contents has no box");
+    }
+  };
+  const emptyParent = {
+    childNodes: [{ nodeType: 3, nodeValue: "   " }],
+    getBoundingClientRect() {
+      throw new Error("display:contents has no box");
+    }
+  };
+  const context = createMarkerScanContext({
+    getComputedStyle(element) {
+      if (element === parent || element === emptyParent) {
+        return { display: "contents", visibility: "visible" };
+      }
+      return { display: "block", visibility: "visible" };
+    }
+  });
+
+  assert.equal(context.isVisible(parent), true);
+  assert.equal(context.isVisible(emptyParent), false);
+});

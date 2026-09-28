@@ -2,10 +2,19 @@
 
 ## 2026-09-28
 
+- 优化：Maker 列表中的 agent 消息改为参考图风格的中性浅灰卡片背景，用户消息改为白色背景和浅灰色边框；保留现有宽度、圆角、缩略图与交互。
+- 优化：Home 和 Side Panel 移除蓝橙渐变背景，改为纯白背景；深色模式改为纯黑背景。
+- 优化：agent Maker 小标题改为浅橙色背景、橙色文字的 badge，并保留正文标题。
+- 优化：agent Maker 增加固定 `Agent` badge，并显示当前 ChatGPT 模型 badge。
+- 优化：agent 和模型 badge 宽度改为按内容自适应，不再占用固定宽度。
+- 优化：agent Maker 移除 `Agent` badge，仅保留模型 badge；badge 改为浅灰背景和深灰文字。
+- 修复：路由兜底诊断改为可读的单行信息并抑制完全重复记录，避免浏览器扩展错误页出现重复警告和 `[object Object]`。
+- 修复：ChatGPT 页面内及 Home/Side Panel 的 Maker 移除卡片阴影，并恢复 `display: contents` 用户消息容器的可见性，避免用户消息 Maker 消失。
 - 修复：ChatGPT 使用 `flex-direction: column-reverse` 的对话滚动容器时，Maker 跳转不再把负滚动位置错误钳制为 `0`，改由目标 DOM 的原生 `scrollIntoView` 完成定位。
 - 兼容：普通滚动容器继续使用现有的顶部栏与安全间距偏移算法，不改变其他平台的定位行为。
 - 测试：新增反向滚动容器回归用例，并保留普通容器定位覆盖。
 - 版本：补丁更新到 `0.56.7(231)`。
+- 版本：路由兜底诊断修复更新到 `0.56.8(232)`。
 
 ## 2026-09-27
 

@@ -74,6 +74,7 @@ async function publishEmptySnapshot(tabId, supportedRoute = false) {
         headings: [],
         loading: Boolean(supportedRoute),
         markerItems: [],
+        model: "",
         platform: "default",
         revision: Date.now(),
         releaseNotes: [],

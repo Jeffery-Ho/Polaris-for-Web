@@ -7,7 +7,12 @@ import {
   HASHED_MARKDOWN_ROOT_SELECTOR,
   collectHashedMarkdownSections
 } from "../src/hashed-markdown.js";
-import { routeFallbackLogLevel, snapshotDeliveryResult } from "../src/snapshot-delivery.js";
+import {
+  routeFallbackDiagnosticDecision,
+  routeFallbackLogLevel,
+  routeFallbackLogMessage,
+  snapshotDeliveryResult
+} from "../src/snapshot-delivery.js";
 
 const contentSource = readFileSync(new URL("../src/content.js", import.meta.url), "utf8");
 
@@ -97,4 +102,26 @@ test("route fallback delivery distinguishes a closed side panel from a rejected 
     messageNodes: 0,
     sections: 0
   }), "warn");
+});
+
+test("route fallback diagnostics are readable and suppress exact duplicates", () => {
+  const details = {
+    routeKey: "/c/example",
+    hostname: "chatgpt.com",
+    messageNodes: 2,
+    hashedMarkdownRoots: 2,
+    sections: 8,
+    markerCount: 8,
+    sentToBackground: true,
+    acceptedBySidePanel: false,
+    reason: "side-panel-did-not-acknowledge"
+  };
+  const first = routeFallbackDiagnosticDecision("", details);
+  const duplicate = routeFallbackDiagnosticDecision(first.key, details);
+
+  assert.equal(first.shouldLog, true);
+  assert.equal(duplicate.shouldLog, false);
+  assert.match(routeFallbackLogMessage(details), /reason=side-panel-did-not-acknowledge/);
+  assert.doesNotMatch(routeFallbackLogMessage(details), /\[object Object\]/);
+  assert.doesNotMatch(contentSource, /console\.warn\("\[Polaris\] Route fallback did not deliver sections/);
 });

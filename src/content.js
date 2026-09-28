@@ -76,7 +76,11 @@ import {
   CHATGPT_PROSE_SELECTOR,
   mergeChatGptAssistantNodes
 } from "./chatgpt-messages.js";
-import { routeFallbackLogLevel } from "./snapshot-delivery.js";
+import {
+  routeFallbackDiagnosticDecision,
+  routeFallbackLogLevel,
+  routeFallbackLogMessage
+} from "./snapshot-delivery.js";
 
 (() => {
   const CONTENT_SCRIPT_INSTANCE_KEY = "__POLARIS_CONTENT_SCRIPT_ACTIVE__";
@@ -119,6 +123,12 @@ import { routeFallbackLogLevel } from "./snapshot-delivery.js";
   ].join(", ");
   const ASSISTANT_MESSAGE_SELECTOR = '[data-message-author-role="assistant"]';
   const USER_MESSAGE_SELECTOR = '[data-message-author-role="user"]';
+  const CHATGPT_MODEL_SELECTOR = [
+    'button[data-testid="model-switcher"]',
+    'button[aria-label*="Select ChatGPT model" i]',
+    'button[aria-label*="select model" i]',
+    'button[aria-label*="选择模型" i]'
+  ].join(", ");
   const CLAUDE_ASSISTANT_MESSAGE_SELECTOR = 'div[data-cds="Prose"].prose';
   const CLAUDE_USER_MESSAGE_SELECTOR = '[data-cds="UserMessage"] [data-testid="user-message"]';
   const GEMINI_ASSISTANT_MESSAGE_SELECTOR = "model-response message-content";
@@ -3245,6 +3255,22 @@ import { routeFallbackLogLevel } from "./snapshot-delivery.js";
     return "default";
   }
 
+  function currentModelLabel() {
+    if (!isChatGPTPage()) {
+      return "";
+    }
+    const control = document.querySelector(CHATGPT_MODEL_SELECTOR);
+    if (!(control instanceof HTMLElement)) {
+      return "";
+    }
+    const text = normalizeTitle(control.innerText || control.textContent || "");
+    const ariaLabel = normalizeTitle(control.getAttribute("aria-label") || "");
+    if (!text || text.toLowerCase() === ariaLabel.toLowerCase() || /^(select|选择).*?(model|模型)$/i.test(text)) {
+      return "";
+    }
+    return text.slice(0, 80);
+  }
+
   function withHashedMarkdownSelectors(selectors) {
     return [...selectors, HASHED_MARKDOWN_ROOT_SELECTOR, MARKDOWN_FALLBACK_SELECTOR];
   }
@@ -5079,6 +5105,7 @@ import { routeFallbackLogLevel } from "./snapshot-delivery.js";
         level: heading.level
       })),
       markerItems: items,
+      model: currentModelLabel(),
       platform: currentPlatformKey(),
       revision: Date.now(),
       releaseNotes: releaseNotesForUpdate(null, extensionMetadata.releaseVersion, 1).map((note) => ({
@@ -5094,9 +5121,11 @@ import { routeFallbackLogLevel } from "./snapshot-delivery.js";
   }
 
   let reportNextSnapshotDelivery = false;
+  let lastRouteFallbackDiagnosticKey = "";
 
   function routeFallbackDetails(snapshot, response, error) {
     return {
+      routeKey: currentRouteKey(),
       hostname: window.location.hostname,
       messageNodes: state.markerSourceContainers.length,
       hashedMarkdownRoots: document.querySelectorAll(HASHED_MARKDOWN_ROOT_SELECTOR).length,
@@ -5110,11 +5139,13 @@ import { routeFallbackLogLevel } from "./snapshot-delivery.js";
 
   function logRouteFallbackDelivery(snapshot, response, error) {
     const details = routeFallbackDetails(snapshot, response, error);
-    if (routeFallbackLogLevel(details) === "warn") {
-      console.warn("[Polaris] Route fallback did not deliver sections to the side panel.", details);
+    const diagnostic = routeFallbackDiagnosticDecision(lastRouteFallbackDiagnosticKey, details);
+    if (!diagnostic.shouldLog) {
       return;
     }
-    console.info("[Polaris] Route bridge changed the URL, but no later message mutation arrived. Reading sections from the DOM already on the page.", details);
+    lastRouteFallbackDiagnosticKey = diagnostic.key;
+    const level = routeFallbackLogLevel(details);
+    console.info(`${routeFallbackLogMessage(details)} level=${level}`);
   }
 
   function publishWindowSnapshot() {

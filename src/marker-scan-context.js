@@ -19,8 +19,14 @@ export function createMarkerScanContext({
       if (style.visibility !== "hidden" && style.display !== "none") {
         if (style.display === "contents") {
           // ChatGPT and Gemini often wrap a message in display:contents.
-          // That box is empty, but the headings inside it are on screen.
-          visible = Array.from(element.children || []).some((child) => child && isVisible(child));
+          // That box is empty, but its element or text children are on screen.
+          const children = element.childNodes || element.children || [];
+          visible = Array.from(children).some((child) => {
+            if (child?.nodeType === 3) {
+              return Boolean(String(child.nodeValue || "").trim());
+            }
+            return child && isVisible(child);
+          });
         } else {
           const rect = rectFor(element);
           visible = rect.width > 0 && rect.height > 0;
