@@ -21,7 +21,7 @@ test("Maker 队列为 tips 阴影保留完整缓冲区", () => {
 test("Maker tips 使用贴近本体的轻量弥散阴影", () => {
   assert.match(
     styles,
-    /\.gpt-paragraph-nav__label \{[\s\S]*?box-shadow: 0 0 12px rgba\(15, 23, 42, 0\.18\);/
+    /\.gpt-paragraph-nav__label \{[\s\S]*?border: 1px solid var\(--polaris-border\);[\s\S]*?box-shadow: none;/
   );
 });
 
@@ -153,7 +153,7 @@ test("图片预览关闭按钮复用章节弹窗的关闭按钮定义", () => {
   );
   assert.match(
     styles,
-    /\.gpt-paragraph-nav__image-preview-overlay \{[\s\S]*?--gpt-explosion-close-bg: rgba\(15, 23, 42, 0\.05\);/
+    /\.gpt-paragraph-nav__image-preview-overlay \{[\s\S]*?--gpt-explosion-close-bg: var\(--polaris-bg-subtle\);/
   );
   assert.match(
     styles,
@@ -166,7 +166,7 @@ test("图片预览关闭按钮复用章节弹窗的关闭按钮定义", () => {
 test("图片预览翻页按钮复用浅灰默认背景并移除照片阴影", () => {
   assert.match(
     styles,
-    /\.gpt-paragraph-nav__image-preview-overlay \{[\s\S]*?--gpt-explosion-action-bg: rgba\(15, 23, 42, 0\.05\);[\s\S]*?--gpt-explosion-action-text: var\(--gpt-arco-text-2\);/
+    /\.gpt-paragraph-nav__image-preview-overlay \{[\s\S]*?--gpt-explosion-action-bg: var\(--polaris-bg-subtle\);[\s\S]*?--gpt-explosion-action-text: var\(--gpt-arco-text-2\);/
   );
   assert.match(
     styles,

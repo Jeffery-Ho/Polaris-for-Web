@@ -4521,6 +4521,13 @@ import {
   }
 
   function updateLiquidGlassFilter(element) {
+    // Displacement glass is disabled. Registration stays so scans do not rebuild
+    // SVG filters; surfaces use the flat token palette instead.
+    if (element instanceof HTMLElement) {
+      element.style.setProperty("--gpt-liquid-glass-filter", "none");
+    }
+    liquidGlassSignatures.delete(element);
+    return;
     const rect = element.getBoundingClientRect();
     const width = Math.round(rect.width);
     const height = Math.round(rect.height);

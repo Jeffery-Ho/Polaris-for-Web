@@ -18,7 +18,7 @@ test("设置面板 Header 提供赞赏入口", () => {
   assert.match(settingsPanelSource, /support\.rel = "noreferrer"/);
   assert.match(settingsPanelSource, /header\.append\(app, support\)/);
   assert.match(settingsPanelSource, /createSupportHeartIcon\(\)/);
-  assert.match(settingsStyles, /\.polaris-settings-support-link \{[\s\S]*?width: 30px;[\s\S]*?color: #ff375f;/);
+  assert.match(settingsStyles, /\.polaris-settings-support-link \{[\s\S]*?width: 30px;[\s\S]*?color: var\(--polaris-accent\);/);
 });
 
 test("设置面板 Footer 在邮件左侧提供 X 主页入口", () => {

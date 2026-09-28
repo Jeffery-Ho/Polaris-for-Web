@@ -151,6 +151,11 @@ import { sendRuntimeMessage } from "./runtime-message.js";
     identity.append(icon, element("div", "window-title", "Polaris"));
     const platform = element("span", "window-platform", activePlatformLabel(snapshot));
     identity.append(platform);
+    if (snapshot.model) {
+      const modelBadge = element("span", "maker-badge maker-badge-model", snapshot.model);
+      modelBadge.title = snapshot.model;
+      identity.append(modelBadge);
+    }
     header.append(identity);
 
     const search = element("label", "window-search");
@@ -252,7 +257,7 @@ import { sendRuntimeMessage } from "./runtime-message.js";
       return panel;
     }
     const list = element("div", "maker-list");
-    items.forEach((item) => list.appendChild(renderMarker(item, snapshot.model || "")));
+    items.forEach((item) => list.appendChild(renderMarker(item)));
     panel.appendChild(list);
     return panel;
   }
@@ -262,23 +267,19 @@ import { sendRuntimeMessage } from "./runtime-message.js";
     return items.filter((item) => matchesSearch(query, item.title || ""));
   }
 
-  function renderMarker(item, model = "") {
+  function renderMarker(item) {
     if (item.type === "empty") return element("p", "empty-search", item.message);
     const button = element("button", `maker-card maker-card-${item.type}${item.isExpanded ? " is-expanded" : ""}`);
     button.type = "button";
     button.dataset.itemType = item.type;
     button.setAttribute("aria-label", item.ariaLabel || item.title || item.preview || "Maker");
     const copy = element("span", "maker-copy");
-    if (item.type === "ai") {
-      const badges = element("span", "maker-badge-row");
-      if (model) badges.append(element("span", "maker-badge maker-badge-model", model));
-      if (model) copy.append(badges);
-      copy.append(element("span", "maker-title", item.title || ""));
-    } else {
-      copy.append(element("span", "maker-preview", item.preview || item.title || ""));
-      if (item.type === "user") copy.append(element("span", "maker-title", item.title || ""));
-      if (item.type === "fold") copy.append(element("span", "maker-remainder", item.remainder || ""));
-      if (item.type === "earlier") copy.append(element("span", "maker-title", item.preview || ""));
+    const primaryText = item.type === "fold"
+      ? (item.preview || item.title || "")
+      : (item.title || item.preview || "");
+    copy.append(element("span", "maker-title", primaryText));
+    if (item.type === "fold" && item.remainder) {
+      copy.append(element("span", "maker-remainder", item.remainder));
     }
     if (item.thumbnailSrc && item.type === "user") {
       const image = element("img", "maker-thumb");
@@ -299,7 +300,9 @@ import { sendRuntimeMessage } from "./runtime-message.js";
     }
     button.append(copy);
     if (item.type === "user") {
-      button.append(element("span", "maker-chevron", item.isExpanded ? "⌃" : "⌄"));
+      const chevron = element("span", "maker-chevron");
+      chevron.setAttribute("aria-hidden", "true");
+      button.append(chevron);
     }
     button.addEventListener("click", () => {
       if (item.type === "ai") send({ command: "jump-to-marker", markerKey: item.markerKey });
@@ -441,16 +444,19 @@ import { sendRuntimeMessage } from "./runtime-message.js";
     overlay.addEventListener("click", (event) => { if (event.target === overlay) { state.imageUrls = []; render(); } });
     const close = element("button", "preview-close", "×");
     close.type = "button";
+    close.setAttribute("aria-label", t("userMarker.closeImagePreview"));
     close.addEventListener("click", () => { state.imageUrls = []; render(); });
     const image = element("img", "preview-image");
     image.src = state.imageUrls[state.imageIndex] || "";
-    image.alt = "";
+    image.alt = t("userMarker.imagePreview");
     const previous = element("button", "preview-nav preview-previous", "‹");
     previous.type = "button";
+    previous.setAttribute("aria-label", t("userMarker.previousImage"));
     previous.disabled = state.imageUrls.length < 2;
     previous.addEventListener("click", () => { state.imageIndex = (state.imageIndex - 1 + state.imageUrls.length) % state.imageUrls.length; render(); });
     const next = element("button", "preview-nav preview-next", "›");
     next.type = "button";
+    next.setAttribute("aria-label", t("userMarker.nextImage"));
     next.disabled = state.imageUrls.length < 2;
     next.addEventListener("click", () => { state.imageIndex = (state.imageIndex + 1) % state.imageUrls.length; render(); });
     overlay.append(close, previous, image, next);
