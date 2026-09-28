@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 233
+
+- Date: 2026-09-28
+- Version: 0.56.9
+- Summary: Unifies the side panel, in-page navigation, and in-page settings on one flat token palette.
+- Notes: Shared CSS variables replace hardcoded colors. Surfaces use 1px borders, 6/8/12 radii, and 400/500/600 weights, with visible focus rings and reduced-motion handling. The ChatGPT model name is shown once in the window header. User cards no longer repeat the same text as title and preview. Liquid-glass displacement is disabled while the generator stays in place. Updated the current version to `0.56.9(233)`.
+
 ## 232
 
 - Date: 2026-09-28

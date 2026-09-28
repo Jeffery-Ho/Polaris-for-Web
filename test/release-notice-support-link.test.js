@@ -13,6 +13,6 @@ test("更新说明将赞赏按钮置于操作区最左侧并沿用设置页心�
   assert.match(contentSource, /support\.target = "_blank";/);
   assert.match(contentSource, /support\.rel = "noreferrer";/);
   assert.match(contentSource, /actions\.append\(support, email, issue, acknowledge\);/);
-  assert.match(stylesSource, /\.gpt-paragraph-nav__release-notice-action\.is-support \{[\s\S]*?color: #ff375f;/);
-  assert.match(stylesSource, /\.gpt-paragraph-nav__release-notice-action\.is-support:hover,[\s\S]*?color: #ff2d55;/);
+  assert.match(stylesSource, /\.gpt-paragraph-nav__release-notice-action\.is-support \{[\s\S]*?color: var\(--polaris-accent\);/);
+  assert.match(stylesSource, /\.gpt-paragraph-nav__release-notice-action\.is-support:hover,[\s\S]*?color: var\(--polaris-accent-hover\);/);
 });

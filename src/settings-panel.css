@@ -1,27 +1,22 @@
-:host {
-  color-scheme: dark;
-}
+@import "./tokens.css";
 
 .polaris-settings-shell {
   --polaris-bar-padding: 8px 12px;
   --polaris-bar-content-height: 16px;
-  --polaris-surface: var(--gpt-glass-bg, rgba(20, 22, 30, 0.76));
-  --polaris-control-surface: rgba(255, 255, 255, 0.09);
-  --polaris-control-selected-surface: rgba(255, 255, 255, 0.16);
-  --polaris-control-border: rgba(148, 163, 184, 0.44);
-  --polaris-border: var(--gpt-glass-border, rgba(255, 255, 255, 0.1));
-  --polaris-shadow: var(--gpt-glass-shadow, 0 18px 42px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.12));
-  --polaris-text: var(--gpt-arco-text-1, rgb(248, 250, 252));
-  --polaris-muted: var(--gpt-arco-text-3, rgb(148, 163, 184));
-  --polaris-highlight: var(--gpt-highlight-bg, #ffffff);
-  --polaris-highlight-text: var(--gpt-highlight-text, #000000);
-  --polaris-rating-background: rgba(120, 83, 17, 0.5);
-  --polaris-rating-border: rgba(253, 230, 138, 0.5);
-  --polaris-rating-text: rgb(255, 251, 235);
-  --polaris-rating-action: rgb(254, 243, 199);
-  --accent: var(--polaris-highlight);
-  --accent-foreground: var(--polaris-highlight-text);
-  --focus: var(--polaris-highlight);
+  --polaris-surface: var(--polaris-bg-elevated);
+  --polaris-control-surface: var(--polaris-bg-subtle);
+  --polaris-control-selected-surface: var(--polaris-bg-muted);
+  --polaris-control-border: var(--polaris-border);
+  --polaris-muted: var(--polaris-text-secondary);
+  --polaris-highlight: var(--polaris-accent);
+  --polaris-highlight-text: var(--polaris-accent-foreground);
+  --polaris-rating-background: var(--polaris-accent-subtle);
+  --polaris-rating-border: var(--polaris-border);
+  --polaris-rating-text: var(--polaris-text);
+  --polaris-rating-action: var(--polaris-accent);
+  --accent: var(--polaris-accent);
+  --accent-foreground: var(--polaris-accent-foreground);
+  --focus: var(--polaris-focus);
   color: var(--polaris-text);
   font: 500 13px/1.35 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
@@ -37,9 +32,9 @@
   padding: 0 !important;
   overflow: hidden;
   border: 1px solid var(--polaris-border) !important;
-  border-radius: 24px !important;
+  border-radius: var(--polaris-radius-lg) !important;
   background: var(--polaris-surface) !important;
-  box-shadow: var(--polaris-shadow) !important;
+  box-shadow: none !important;
   color: var(--polaris-text) !important;
   -webkit-backdrop-filter: blur(var(--gpt-glass-blur, 18px)) saturate(var(--gpt-glass-saturate, 190%));
   backdrop-filter: blur(var(--gpt-glass-blur, 18px)) saturate(var(--gpt-glass-saturate, 190%));
@@ -93,7 +88,7 @@
 
 .polaris-settings-app-title {
   color: var(--polaris-text);
-  font: 700 13px/var(--polaris-bar-content-height) ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font: 600 13px/var(--polaris-bar-content-height) ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
 .polaris-settings-support-link {
@@ -103,10 +98,10 @@
   flex: 0 0 30px;
   place-items: center;
   border: 1px solid var(--polaris-control-border);
-  border-radius: 999px;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.06), transparent), var(--polaris-control-surface);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
-  color: #ff375f;
+  border-radius: var(--polaris-radius-md);
+  background: var(--polaris-control-surface);
+  box-shadow: none;
+  color: var(--polaris-accent);
   text-decoration: none;
   transition: background 120ms ease, color 120ms ease, transform 120ms ease;
 }
@@ -118,13 +113,12 @@
 
 .polaris-settings-support-link:hover,
 .polaris-settings-support-link:focus-visible {
-  background: rgba(255, 55, 95, 0.18);
-  color: #ff2d55;
-  transform: translateY(-1px);
+  background: var(--polaris-accent-subtle);
+  color: var(--polaris-accent-hover);
 }
 
 .polaris-settings-support-link:focus-visible {
-  outline: 2px solid #ff375f;
+  outline: 2px solid var(--polaris-focus);
   outline-offset: 2px;
 }
 
@@ -175,8 +169,8 @@
   margin: 0 0 16px;
   padding: 12px;
   border: 1px solid var(--polaris-control-border);
-  border-radius: 18px;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.06), transparent), var(--polaris-control-surface);
+  border-radius: var(--polaris-radius-md);
+  background: var(--polaris-control-surface);
 }
 
 .polaris-settings-diagnostics-description,
@@ -198,7 +192,7 @@
   flex: 1 1 130px;
   padding: 6px 10px;
   border: 1px solid var(--polaris-control-border);
-  border-radius: 999px;
+  border-radius: var(--polaris-radius-sm);
   color: var(--polaris-text);
   font: 600 12px/1.2 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   cursor: pointer;
@@ -237,7 +231,7 @@
 .polaris-settings-section-title {
   margin: 0;
   color: var(--polaris-text);
-  font: 700 14px/1.25 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font: 600 14px/1.25 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
 .polaris-settings-body > .polaris-settings-separator {
@@ -283,7 +277,7 @@
   border: 1px solid var(--polaris-control-border);
   border-radius: 999px;
   background: linear-gradient(to right, var(--polaris-highlight) 0 var(--polaris-slider-progress, 0%), var(--polaris-control-surface) var(--polaris-slider-progress, 0%) 100%);
-  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.12);
+  box-shadow: none;
 }
 
 .polaris-settings-slider input[type="range"]::-webkit-slider-thumb {
@@ -294,7 +288,7 @@
   border: 0;
   border-radius: 50%;
   background: var(--polaris-highlight);
-  box-shadow: 0 0 0 2px var(--polaris-surface), 0 1px 3px rgba(0, 0, 0, 0.18);
+  box-shadow: 0 0 0 2px var(--polaris-surface);
 }
 
 .polaris-settings-slider input[type="range"]::-moz-range-track {
@@ -316,7 +310,7 @@
   border: 0;
   border-radius: 50%;
   background: var(--polaris-highlight);
-  box-shadow: 0 0 0 2px var(--polaris-surface), 0 1px 3px rgba(0, 0, 0, 0.18);
+  box-shadow: 0 0 0 2px var(--polaris-surface);
 }
 
 .polaris-settings-slider input[type="range"]:focus-visible {
@@ -362,9 +356,9 @@
   min-height: 28px;
   padding: 4px 8px;
   border: 1px solid var(--polaris-control-border);
-  border-radius: 24px;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.06), transparent), var(--polaris-control-surface);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  border-radius: var(--polaris-radius-pill);
+  background: var(--polaris-control-surface);
+  box-shadow: none;
   color: var(--polaris-text);
   cursor: pointer;
   transition: background 120ms ease, color 120ms ease;
@@ -389,13 +383,13 @@
 
 .polaris-settings-checkbox [data-slot="checkbox-indicator"] {
   visibility: hidden;
-  font: 700 11px/1 ui-sans-serif, system-ui, sans-serif;
+  font: 600 11px/1 ui-sans-serif, system-ui, sans-serif;
 }
 
 .polaris-settings-checkbox[data-selected] [data-slot="checkbox-content"] {
   border-color: var(--polaris-highlight);
   background: var(--polaris-control-selected-surface);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  box-shadow: none;
 }
 
 .polaris-settings-checkbox[data-selected] [data-slot="checkbox-control"] {
@@ -429,9 +423,9 @@
   margin: 0;
   padding: 0 10px !important;
   border: 1px solid var(--polaris-control-border) !important;
-  border-radius: 999px;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.06), transparent), var(--polaris-control-surface) !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  border-radius: var(--polaris-radius-sm);
+  background: var(--polaris-control-surface) !important;
+  box-shadow: none;
   color: var(--polaris-text) !important;
   font: 600 13px/1 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   cursor: pointer;
@@ -449,9 +443,9 @@
   margin: 0 0 16px;
   padding: 14px;
   border: 1px solid var(--polaris-rating-border);
-  border-radius: 20px;
+  border-radius: var(--polaris-radius-lg);
   background: var(--polaris-rating-background);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  box-shadow: none;
   transition: background 120ms ease, border-color 120ms ease, transform 120ms ease;
 }
 
@@ -488,7 +482,7 @@
   width: 24px;
   height: 24px;
   place-items: center;
-  color: #fbbf24;
+  color: var(--polaris-accent);
 }
 
 .polaris-settings-rating-icon svg {
@@ -508,17 +502,17 @@
   width: 100%;
   box-sizing: border-box;
   padding: 9px 12px;
-  border-radius: 999px;
-  background: #111111;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 2px 5px rgba(0, 0, 0, 0.24);
-  color: #ffffff;
-  font: 700 13px/1.2 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  border-radius: var(--polaris-radius-sm);
+  background: var(--polaris-accent);
+  box-shadow: none;
+  color: var(--polaris-accent-foreground);
+  font: 600 13px/1.2 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   text-align: center;
   white-space: nowrap;
 }
 
 .polaris-settings-rating:hover .polaris-settings-rating-action {
-  background: #000000;
+  background: var(--polaris-accent-hover);
 }
 
 .polaris-settings-rating-dismiss {
@@ -531,7 +525,7 @@
   place-items: center;
   padding: 0;
   border: 0;
-  border-radius: 999px;
+  border-radius: var(--polaris-radius-md);
   background: transparent;
   color: var(--polaris-rating-text);
   font: 500 22px/1 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -540,7 +534,7 @@
 
 .polaris-settings-rating-dismiss:hover,
 .polaris-settings-rating-dismiss:focus-visible {
-  background: rgba(255, 255, 255, 0.22);
+  background: var(--polaris-bg-muted);
 }
 
 .polaris-settings-rating-dismiss:focus-visible {
@@ -566,9 +560,9 @@
   height: 28px;
   place-items: center;
   border: 1px solid var(--polaris-control-border);
-  border-radius: 999px;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.06), transparent), var(--polaris-control-surface);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  border-radius: var(--polaris-radius-md);
+  background: var(--polaris-control-surface);
+  box-shadow: none;
   color: var(--polaris-muted);
   text-decoration: none;
   transition: background 120ms ease, color 120ms ease;
@@ -598,18 +592,10 @@
   color-scheme: light;
 }
 
-:host([data-page-theme="light"]) .polaris-settings-shell {
-  --polaris-control-surface: rgba(15, 23, 42, 0.06);
-  --polaris-control-selected-surface: rgba(15, 23, 42, 0.12);
-  --polaris-control-border: rgba(100, 116, 139, 0.42);
-  --polaris-rating-background: rgb(254, 243, 199);
-  --polaris-rating-border: rgb(252, 211, 77);
-  --polaris-rating-text: rgb(66, 45, 11);
-  --polaris-rating-action: rgb(101, 79, 21);
-}
-
-:host([data-page-theme="light"]) .polaris-settings-slider input[type="range"]::-webkit-slider-runnable-track,
-:host([data-page-theme="light"]) .polaris-settings-slider input[type="range"]::-moz-range-track {
-  background: linear-gradient(to right, var(--polaris-highlight) 0 var(--polaris-slider-progress, 0%), var(--polaris-control-surface) var(--polaris-slider-progress, 0%) 100%) !important;
-  box-shadow: inset 0 1px 1px rgba(15, 23, 42, 0.08);
+@media (prefers-reduced-motion: reduce) {
+  .polaris-settings-shell,
+  .polaris-settings-shell * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
 }

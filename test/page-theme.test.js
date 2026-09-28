@@ -247,3 +247,10 @@ test("content and settings surfaces use the live page theme", () => {
   assert.match(settingsStyles, /:host\(\[data-page-theme="light"\]\)/);
   assert.doesNotMatch(settingsStyles, /@media \(prefers-color-scheme: light\)/);
 });
+
+test("页内样式内联共享 token，内容脚本不依赖未打包的 CSS import", () => {
+  const tokens = readFileSync(new URL("../src/tokens.css", import.meta.url), "utf8").trim();
+  const styles = readFileSync(new URL("../src/styles.css", import.meta.url), "utf8");
+  assert.ok(styles.startsWith(`${tokens}\n`));
+  assert.doesNotMatch(styles, /@import\s+["']\.\/tokens\.css["']/);
+});
