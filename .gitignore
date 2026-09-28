@@ -4,16 +4,5 @@ node_modules/
 # Built extension package. pnpm install and the git hooks recreate it.
 dist/
 
-# Local working notes.
-Doc/
-Recap/
-
-# Locally packaged releases and design working material.
-Release/
-design-evidence/
-assets/reference/
-design-qa.md
-
-# One-off archives and screenshots.
-dist.zip
-image [0-9]*.png
+# Local screenshots, releases, and design material.
+_local/

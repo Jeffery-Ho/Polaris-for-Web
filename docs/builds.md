@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 232
+
+- Date: 2026-09-28
+- Version: 0.56.8
+- Summary: Moves repository docs and public web pages out of the root without changing the built extension.
+- Notes: `builds.md`, `guideline.md`, and `SKILL.md` now live under `docs/`. Tracked notes from `Doc/` are in `docs/notes/` and are no longer gitignored; local scratch belongs in `_local/`. `privacy-policy.html` and `support.html` now live in `pages/`. Root compatibility files keep `https://jeffery-ho.github.io/Polaris-for-Web/privacy-policy.html` and `/support.html` working. `support-config.js` moved to `pages/support-config.js`. Extension entries `polaris-home.html` and `sidepanel.html` stay at the repository root so the built page URLs stay the same. No script writes this log. Updated the current version to `0.56.8(232)`.
+
 ## 231
 
 - Date: 2026-09-28

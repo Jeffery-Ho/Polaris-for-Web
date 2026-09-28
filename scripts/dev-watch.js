@@ -4,14 +4,13 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const watchDirectories = ["src", "icons", "assets"];
+const watchDirectories = ["src", "icons", "assets", "pages"];
 const rootFiles = new Set([
   "manifest.build.json",
   "vite.config.js",
   "polaris-home.html",
   "sidepanel.html",
   "support.html",
-  "support-config.js",
   "privacy-policy.html"
 ]);
 const ignoredDirectories = new Set(["dist", "node_modules", ".git"]);
