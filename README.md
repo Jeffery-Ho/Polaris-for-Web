@@ -19,6 +19,13 @@ After that, `dist/` stays current without a manual build. Switching branches, me
 
 While editing, `pnpm dev` rebuilds `dist/` after each save. Click refresh in `chrome://extensions` after that rebuild finishes.
 
+## Documentation
+
+- [Build log](docs/builds.md)
+- [Product guidelines](docs/guideline.md)
+- [Implementation notes](docs/notes/)
+- [Agent coding guidelines](docs/SKILL.md)
+
 Do not load the repository root. The root is source, not an extension package. `manifest.build.json` is the only manifest source. A root `manifest.json` must not be added back.
 
 ## Supported Platforms
@@ -113,7 +120,7 @@ Do not commit `dist/` or load `dist.zip` as the extension. The release workflow 
 
 ## Version
 
-Current version: `0.56.7(231)`
+Current version: `0.56.8(232)`
 
 ## License
 

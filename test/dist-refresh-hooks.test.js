@@ -92,6 +92,8 @@ test("dev watch writes to dist and hooks stay out of the release workflow", asyn
     readFile(new URL("../scripts/dev-watch.js", import.meta.url), "utf8")
   ]);
   assert.match(pkg, /"dev": "node scripts\/dev-watch\.js"/);
+  assert.match(pkg, /node --check pages\/support-config\.js/);
+  assert.match(devWatch, /const watchDirectories = \["src", "icons", "assets", "pages"\]/);
   assert.match(devWatch, /"vite", "bin", "vite\.js"/);
   assert.match(devWatch, /\[viteBin, "build"\]/);
   assert.doesNotMatch(devWatch, /--watch/);
