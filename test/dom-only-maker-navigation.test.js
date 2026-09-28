@@ -60,6 +60,15 @@ test("未挂载目标只显示既有提示，不再尝试恢复滚动", () => {
   assert.doesNotMatch(contentSource, /recoverMakerElement|makerSnapshotModel|fetch\(.*conversation/);
 });
 
+test("反向会话滚动容器会把原生定位标记传给共享跳转函数", () => {
+  const jump = functionSource("jumpToMarker", "currentElementForHeading");
+
+  assert.match(jump, /window\.getComputedStyle\(scrollContainer\)/);
+  assert.match(jump, /display === "flex"/);
+  assert.match(jump, /flexDirection === "column-reverse"/);
+  assert.match(jump, /reverseFlow:/);
+});
+
 test("路由桥只发布 SPA 路由变化，不读取 ChatGPT 会话 API", () => {
   assert.match(routeBridgeSource, /pushState/);
   assert.match(routeBridgeSource, /ROUTE_CHANGE_EVENT/);

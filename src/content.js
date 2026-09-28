@@ -4340,9 +4340,12 @@ import { routeFallbackLogLevel } from "./snapshot-delivery.js";
   }
 
   function jumpToMarker(heading, behavior) {
+    const scrollContainer = nearestVerticalScrollContainer(heading.element);
+    const scrollContainerStyle = scrollContainer ? window.getComputedStyle(scrollContainer) : null;
     return scrollMarkerIntoView({
       element: heading.element,
-      scrollContainer: nearestVerticalScrollContainer(heading.element),
+      scrollContainer,
+      reverseFlow: scrollContainerStyle?.display === "flex" && scrollContainerStyle.flexDirection === "column-reverse",
       headerHeight: getConversationHeaderHeight(),
       gap: TABLE_MARKER_SCROLL_GAP,
       behavior

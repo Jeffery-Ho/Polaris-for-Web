@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 231
+
+- Date: 2026-09-28
+- Version: 0.56.7
+- Summary: Restores ChatGPT Maker jumps inside reverse-flow conversation scrollers.
+- Notes: ChatGPT's conversation scroller can use `display: flex` with `flex-direction: column-reverse`, where upward positions require a negative `scrollTop`. Polaris now detects that layout and delegates the jump to the target element's native `scrollIntoView`, while normal scroll containers keep the existing header-offset calculation. Regression tests cover both paths. Updated the current version to `0.56.7(231)`.
+
 ## 230
 
 - Date: 2026-09-27

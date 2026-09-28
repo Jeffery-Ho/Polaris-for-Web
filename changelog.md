@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-09-28
+
+- 修复：ChatGPT 使用 `flex-direction: column-reverse` 的对话滚动容器时，Maker 跳转不再把负滚动位置错误钳制为 `0`，改由目标 DOM 的原生 `scrollIntoView` 完成定位。
+- 兼容：普通滚动容器继续使用现有的顶部栏与安全间距偏移算法，不改变其他平台的定位行为。
+- 测试：新增反向滚动容器回归用例，并保留普通容器定位覆盖。
+- 版本：补丁更新到 `0.56.7(231)`。
+
 ## 2026-09-27
 
 - 修复：ChatGPT 适配器同时识别旧的 `data-message-author-role` / `data-message-role` 消息节点，以及新的 `MarkdownRoot-*` 回复正文。`.markdown` / `.prose` 仍可作为正文，但包在已识别消息里时不会再算成第二条消息。

@@ -182,3 +182,33 @@ test("内部滚动容器会接收扣除顶部栏后的 Maker 目标位置", () =
   assert.deepEqual(containerCalls, [{ top: 844, behavior: "smooth" }]);
   assert.deepEqual(tableCalls, []);
 });
+
+test("反向内部滚动容器使用元素原生定位以支持负 scrollTop", () => {
+  const tableCalls = [];
+  const containerCalls = [];
+  const table = {
+    scrollIntoView: (options) => tableCalls.push(options),
+    getBoundingClientRect: () => ({ top: -23811 })
+  };
+  const scrollContainer = {
+    scrollTop: 0,
+    scrollHeight: 29533,
+    clientHeight: 906,
+    getBoundingClientRect: () => ({ top: 52 }),
+    scrollTo: (options) => containerCalls.push(options)
+  };
+
+  assert.equal(
+    scrollMarkerIntoView({
+      element: table,
+      scrollContainer,
+      reverseFlow: true,
+      headerHeight: 64,
+      gap: 12,
+      behavior: "smooth"
+    }),
+    true
+  );
+  assert.deepEqual(tableCalls, [{ behavior: "smooth", block: "start" }]);
+  assert.deepEqual(containerCalls, []);
+});

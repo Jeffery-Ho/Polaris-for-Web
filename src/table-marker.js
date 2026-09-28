@@ -10,9 +10,13 @@ export function tableMarkerScrollTop({ scrollTop, targetTop, scrollerTop, header
   return Math.min(maximum, Math.max(0, targetScrollTop));
 }
 
-export function scrollMarkerIntoView({ element, scrollContainer, headerHeight, gap, behavior }) {
+export function scrollMarkerIntoView({ element, scrollContainer, reverseFlow = false, headerHeight, gap, behavior }) {
   if (!element || typeof element.scrollIntoView !== "function") {
     return false;
+  }
+  if (reverseFlow) {
+    element.scrollIntoView({ behavior, block: "start" });
+    return true;
   }
   if (
     !scrollContainer ||
