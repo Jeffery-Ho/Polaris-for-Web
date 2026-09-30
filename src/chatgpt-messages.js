@@ -5,6 +5,8 @@ import {
 
 export const CHATGPT_LEGACY_ASSISTANT_SELECTOR = '[data-message-author-role="assistant"], [data-message-role="assistant"]';
 export const CHATGPT_LEGACY_USER_SELECTOR = '[data-message-author-role="user"], [data-message-role="user"]';
+export const CHATGPT_USER_TURN_SELECTOR = '[data-testid^="conversation-turn-"]';
+export const CHATGPT_USER_SELECTOR = `${CHATGPT_LEGACY_USER_SELECTOR}, ${CHATGPT_USER_TURN_SELECTOR}`;
 export const CHATGPT_PROSE_SELECTOR = ".markdown, .prose";
 
 function attributeFor(node, name) {
@@ -84,6 +86,60 @@ function isHeadingNode(node) {
   return String(node?.className || "").split(/\s+/).filter(Boolean).some((token) => token.startsWith("Heading-"));
 }
 
+function isUserTurnHeading(node) {
+  const className = String(node?.className || "");
+  const isAuxiliaryHeading = tagNameFor(node) === "H5"
+    && (hasClassToken(className, "sr-only")
+      || hasClassToken(className, "visually-hidden")
+      || hasClassToken(className, "srOnly"));
+  if (!isAuxiliaryHeading) {
+    return false;
+  }
+  return /^(?:you said|你说|你話|你话)\s*[:：]?$/i.test(textFor(node).replace(/\s+/g, " ").trim());
+}
+
+function hasChatGptUserHeading(node) {
+  if (typeof node?.querySelector === "function") {
+    const heading = node.querySelector("h5.sr-only, h5.visually-hidden, h5.srOnly");
+    return Boolean(heading && isUserTurnHeading(heading));
+  }
+  let found = false;
+  const visit = (current) => {
+    if (found) {
+      return;
+    }
+    if (current !== node && isUserTurnHeading(current)) {
+      found = true;
+      return;
+    }
+    childNodesFor(current).forEach(visit);
+  };
+  childNodesFor(node).forEach(visit);
+  return found;
+}
+
+export function stripChatGptUserRolePrefix(text) {
+  return String(text || "").replace(/^\s*(?:You said|你说|你話|你话)\s*[:：]?\s*/i, "");
+}
+
+export function isChatGptUserTurnNode(node) {
+  const role = chatGptAuthorRole(node);
+  if (role === "user") {
+    return true;
+  }
+  const testId = attributeFor(node, "data-testid");
+  if (String(attributeFor(node, "data-turn") || "").toLowerCase() === "user") {
+    return true;
+  }
+  if (testId && /^conversation-turn-user/.test(testId)) {
+    return true;
+  }
+  if (!testId || !/^conversation-turn-/.test(testId)) {
+    return false;
+  }
+  return hasChatGptUserHeading(node);
+}
+
 export function mergeChatGptAssistantNodes({ legacy = [], hashed = [], prose = [], users = [] } = {}) {
   const chosen = [];
   const accept = (node, kind) => {
@@ -123,7 +179,7 @@ function sectionsInMessage(messageNode, kind) {
 export function collectChatGptConversation(root) {
   const nodes = [];
   walk(root, (node) => nodes.push(node));
-  const users = nodes.filter((node) => chatGptAuthorRole(node) === "user");
+  const users = nodes.filter(isChatGptUserTurnNode);
   const userMessages = users
     .filter((node) => !users.some((other) => containsNode(other, node)))
     .map((node) => ({

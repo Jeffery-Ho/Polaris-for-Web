@@ -167,11 +167,17 @@ test("更新说明赞赏入口提供内置更新说明", () => {
   assert.match(note.en.changes[0], /support button/);
 });
 
-test("缺失当前功能版本说明时按 0.xx 粒度安全降级", () => {
-  const note = releaseNotesForUpdate("0.56.0", "0.57.2")
-    .find((candidate) => candidate.isFallback);
-  assert.ok(note);
-  assert.equal(note.version, "0.57");
-  assert.equal(note.isFallback, true);
-  assert.match(note.zh.title, /更新说明/);
+test("章节目录与来源正文对应功能提供内置更新说明", () => {
+  const note = releaseNotesForUpdate("0.60.0", "0.61.2")[0];
+  assert.equal(note.version, "0.61");
+  assert.equal(note.isFallback, undefined);
+  assert.match(note.zh.changes[0], /来源节点/);
+  assert.match(note.en.changes[0], /source nodes/);
+});
+
+test("章节目录与阅读卡片功能提供内置更新说明", () => {
+  const note = releaseNotesForUpdate("0.59.7", "0.60.0")[0];
+  assert.equal(note.version, "0.60");
+  assert.match(note.zh.changes[0], /完整目录/);
+  assert.match(note.zh.changes[0], /Markdown/);
 });

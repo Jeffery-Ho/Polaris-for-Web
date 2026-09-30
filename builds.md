@@ -10,6 +10,139 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 252
+
+- Date: 2026-09-30
+- Version: 0.61.1
+- Summary: Keeps the selected chapter after jumping back to its source.
+- Notes: A temporary loading snapshot from the same source tab no longer resets the chapter reader before the real page snapshot arrives. If a host rerender changes `markerKey`, Polaris restores the selected chapter by title and parent path; actual tab changes, route changes, and unsupported pages still clear the previous conversation state. Updated the current version to `0.61.1(252)`.
+
+## 251
+
+- Date: 2026-09-30
+- Version: 0.61.0
+- Summary: Aligns the chapter directory hierarchy with the source content shown in the reader.
+- Notes: Window chapters are rebuilt from the current assistant replies, stop at reply boundaries, and use the same source nodes for directory hierarchy and body ranges. Parent chapters include their descendants, list-item chapters show the complete source row, nested items are indented, searches show parent paths, and selection remains attached to `markerKey` during updates. Updated the current version to `0.61.0(251)`.
+
+## 250
+
+- Date: 2026-09-30
+- Version: 0.60.2
+- Summary: Keeps the selected chapter aligned with its reading content and unifies the directory controls.
+- Notes: After changing chapters, the active directory item is scrolled fully into view and matches the article below. The chapter list and directory button now share one surface, and the directory button uses the same circular treatment as Settings. Updated the current version to `0.60.2(250)`.
+
+## 249
+
+- Date: 2026-09-30
+- Version: 0.60.1
+- Summary: Restores the chapter list and inline reading layout with an expandable directory card.
+- Notes: The directory button expands the existing chapter list over the reading area without moving the chapter content. Rows keep their full height, long titles wrap in the expanded list, and the list can cover the area above the article while keeping the brand row visible. Removes the dropdown and modal while retaining Markdown rendering. Updated the current version to `0.60.1(249)`.
+
+## 248
+
+- Date: 2026-09-30
+- Version: 0.60.0
+- Summary: Adds a compact chapter picker, an expandable table of contents, and Markdown reading cards.
+- Notes: Chapters can be selected from a dropdown or the existing styled directory in a full-height dialog that overlays the reading card without moving it. Chapter content now renders supported Markdown blocks and inline formatting in a bordered card. Updated the current version to `0.60.0(248)`.
+
+## 247
+
+- Date: 2026-09-30
+- Version: 0.59.7
+- Summary: Hides the default floating platform icon before a supported platform is active.
+- Notes: The window header now renders a platform favicon only for a recognized supported route, so the initial no-platform state keeps the brand and settings controls without a misleading Polaris icon. Updated the current version to `0.59.7(247)`.
+
+## 246
+
+- Date: 2026-09-29
+- Version: 0.59.6
+- Summary: Recognizes shared ChatGPT user turns marked with `data-turn="user"`.
+- Notes: ChatGPT user-message discovery now treats the current shared-conversation turn marker as authoritative while retaining role and hidden-heading fallbacks. Updated the current version to `0.59.6(246)`.
+
+## 245
+
+- Date: 2026-09-29
+- Version: 0.59.5
+- Summary: Restores user Maker cards on current ChatGPT conversation turns.
+- Notes: ChatGPT user-message discovery now supports current `conversation-turn` wrappers while retaining legacy role attributes, strips the visible “You said” label from previews, and keeps nested wrappers from producing duplicate user groups. Updated the current version to `0.59.5(245)`.
+
+## 244
+
+- Date: 2026-09-29
+- Version: 0.59.4
+- Summary: Prevents Gemini display-contents scans from passing non-elements to getComputedStyle.
+- Notes: Marker visibility scanning now ignores comment and other non-element child nodes while preserving text-node visibility and element-box checks. Updated the current version to `0.59.4(244)`.
+
+## 243
+
+- Date: 2026-09-29
+- Version: 0.59.3
+- Summary: Keeps expanded user Maker rows left aligned after interaction.
+- Notes: Expanded window Maker cards and their text wrappers explicitly retain left alignment and zero text indentation after a user-group click. Updated the current version to `0.59.3(243)`.
+
+## 242
+
+- Date: 2026-09-29
+- Version: 0.59.2
+- Summary: Locks window Maker text to the left edge on Gemini and other platforms.
+- Notes: Window Maker buttons and their text wrappers now explicitly reset flex alignment, text alignment, margins, padding, and text indentation so Gemini user messages do not appear centered while loading. Updated the current version to `0.59.2(242)`.
+
+## 241
+
+- Date: 2026-09-29
+- Version: 0.59.1
+- Summary: Removes excess Maker text indentation during window rendering.
+- Notes: Folded and earlier Maker rows now align their text to the left edge. Hidden streaming indicators no longer reserve space, while active AI streaming shows a compact 10px loader on the left. Updated the current version to `0.59.1(241)`.
+
+## 240
+
+- Date: 2026-09-29
+- Version: 0.59.0
+- Summary: Gives Polaris settings a focused page-navigation header.
+- Notes: Settings now use a cleaner circular gear icon. Entering settings replaces the brand header with a back-navigation bar and removes the duplicate in-body title and back button. Updated the current version to `0.59.0(240)`.
+
+## 239
+
+- Date: 2026-09-29
+- Version: 0.58.0
+- Summary: Simplifies the Polaris window title bar with a centered platform icon and circular settings control.
+- Notes: The active platform is represented by its bundled favicon in a floating centered title-bar control. Settings now use a circular icon button with an accessible label and tooltip. Model labels are removed from the window header so platforms without model metadata keep the same layout. Updated the current version to `0.58.0(239)`.
+
+## 238
+
+- Date: 2026-09-29
+- Version: 0.57.0
+- Summary: Redesigns the browser side panel and standalone Polaris window around a warm terracotta visual system.
+- Notes: The two window surfaces now share a responsive brand header, warm light and dark palettes, quieter left/right Maker cards, clear search-empty recovery, a compact chapter selector, and grouped settings entered from the brand area. Settings restore the previous view, search focus, and scroll position. Streaming updates retain keyed rows and use only a fixed loading indicator. The in-page floating panel, protocols, and stored configuration remain unchanged. Updated the current version to `0.57.0(238)`.
+
+## 237
+
+- Date: 2026-09-28
+- Version: 0.56.13
+- Summary: Reconciles Home and Side Panel Maker rows in place during AI streaming.
+- Notes: The navigation body and Maker list now preserve keyed DOM nodes instead of rebuilding on every snapshot. Existing user-group text is written once and remains stable, while changing AI rows update in place with a reserved loading icon and text-color breathing. Snapshot revisions no longer reset conversation-scoped window state. Updated the current version to `0.56.13(237)`.
+
+## 236
+
+- Date: 2026-09-28
+- Version: 0.56.12
+- Summary: Keeps user Maker text stable while AI content streams.
+- Notes: Existing user Maker rows are no longer rewritten during AI streaming scans, preventing transient text, width, and layout changes. Normal renders still synchronize the final user content, while the active AI Maker keeps the loading icon and text-color breathing treatment. Updated the current version to `0.56.12(236)`.
+
+## 235
+
+- Date: 2026-09-28
+- Version: 0.56.11
+- Summary: Keeps temporarily hidden assistant nodes out of the Chrome extension error list.
+- Notes: A scan that only finds hidden or pre-rendered assistant nodes now emits one readable info line instead of a warning with an object argument. The scan behavior is unchanged, while Chrome no longer records the normal temporary state as an extension error or renders `[object Object]`. Updated the current version to `0.56.11(235)`.
+
+## 234
+
+- Date: 2026-09-28
+- Version: 0.56.10
+- Summary: Stabilizes AI Maker cards while response content streams.
+- Notes: AI Maker cards now keep a stable width and single-line ellipsis while their titles update. Only the currently changing AI Maker shows a reserved left-side loading icon and text-color breathing, which stops after a short quiet period and respects reduced-motion preferences. Updated the current version to `0.56.10(234)`.
+
 ## 233
 
 - Date: 2026-09-28

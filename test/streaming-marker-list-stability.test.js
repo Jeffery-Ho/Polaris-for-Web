@@ -70,6 +70,13 @@ test("流式渲染不再清空列表或取消进行中的滚动", () => {
   assert.doesNotMatch(renderSource, /stopMarkerListScrollAnimation/);
 });
 
+test("AI 流式渲染期间不重写既有用户 Maker 文本", () => {
+  assert.match(
+    renderSource,
+    /markerListReconciler\.reconcile\([\s\S]*?shouldUpdate: \(item\) => !\(suppressMarkerMotion && item\.type === "user"\)/
+  );
+});
+
 test("Maker 卡片 wheel 使用列表原生滚动并取消自动定位", () => {
   assert.match(listInteractionSource, /createMarkerListNativeWheelHandler/);
   assert.match(listInteractionSource, /cancelAutoPosition: \(\) => markerListScrollPersistence\.cancel\(\)/);

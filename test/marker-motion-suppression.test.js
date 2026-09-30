@@ -2,7 +2,10 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-import { createMarkerMotionSuppressor } from "../src/marker-motion-suppression.js";
+import {
+  createMarkerMotionSuppressor,
+  createMarkerStreamingIndicator
+} from "../src/marker-motion-suppression.js";
 
 const styles = readFileSync(new URL("../src/styles.css", import.meta.url), "utf8");
 
@@ -90,4 +93,36 @@ test("流式抑制样式覆盖 Marker、分组、折叠卡片、浮层与箭头"
     styles,
     /is-marker-motion-suppressed \.gpt-paragraph-nav__marker,[\s\S]*?is-marker-motion-suppressed \.gpt-paragraph-nav__fold,[\s\S]*?is-marker-motion-suppressed \.gpt-paragraph-nav__label,[\s\S]*?is-marker-motion-suppressed \.gpt-paragraph-nav__user-chevron,[\s\S]*?is-marker-motion-suppressed \.gpt-paragraph-nav__fold-chevron \{\n  transition: none;\n\}/
   );
+});
+
+test("只有正在更新的 AI Maker 显示 loading，并在静默后停止", () => {
+  const timers = [];
+  const changes = [];
+  const indicator = createMarkerStreamingIndicator({
+    setActive: (marker, isActive) => changes.push([marker, isActive]),
+    setTimer(callback, delay) {
+      const timer = { callback, delay, cancelled: false };
+      timers.push(timer);
+      return timer;
+    },
+    clearTimer(timer) {
+      timer.cancelled = true;
+    }
+  });
+  const first = { id: "first" };
+  const second = { id: "second" };
+
+  indicator.pulse(first);
+  indicator.pulse(second);
+
+  assert.deepEqual(changes, [
+    [first, true],
+    [first, false],
+    [second, true]
+  ]);
+  assert.equal(timers[0].cancelled, true);
+  assert.equal(timers[1].delay, 900);
+
+  timers[1].callback();
+  assert.deepEqual(changes.at(-1), [second, false]);
 });

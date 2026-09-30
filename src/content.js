@@ -22,8 +22,12 @@ import { hasRelevantMarkerMutation } from "./marker-mutation-relevance.js";
 import { createMarkerListReconciler } from "./marker-list-reconciler.js";
 import { createMarkerListScrollPersistence } from "./marker-list-scroll-persistence.js";
 import { createMarkerScanContext } from "./marker-scan-context.js";
+import { buildWindowChapterOutline } from "./window-chapter-outline.js";
 import { limitMarkerGroups } from "./marker-group-limit.js";
-import { createMarkerMotionSuppressor } from "./marker-motion-suppression.js";
+import {
+  createMarkerMotionSuppressor,
+  createMarkerStreamingIndicator
+} from "./marker-motion-suppression.js";
 import { createMarkerRenderStateMachine } from "./marker-render-state-machine.js";
 import { createRuntimeMarkerKeySequence } from "./runtime-marker-key-sequence.js";
 import {
@@ -72,9 +76,11 @@ import {
 } from "./hashed-markdown.js";
 import {
   CHATGPT_LEGACY_ASSISTANT_SELECTOR,
-  CHATGPT_LEGACY_USER_SELECTOR,
+  CHATGPT_USER_SELECTOR,
   CHATGPT_PROSE_SELECTOR,
-  mergeChatGptAssistantNodes
+  isChatGptUserTurnNode,
+  mergeChatGptAssistantNodes,
+  stripChatGptUserRolePrefix
 } from "./chatgpt-messages.js";
 import {
   routeFallbackDiagnosticDecision,
@@ -430,6 +436,11 @@ import {
       document.getElementById(ROOT_ID)?.classList.toggle(MARKER_MOTION_SUPPRESSION_CLASS, isSuppressed);
     }
   });
+  const markerStreamingIndicator = createMarkerStreamingIndicator({
+    setActive(marker, isActive) {
+      marker.classList.toggle("is-streaming", isActive);
+    }
+  });
   const markerListReconciler = createMarkerListReconciler({
     createRow: createMarkerRenderRow,
     updateRow: updateMarkerRenderRow
@@ -636,6 +647,7 @@ import {
     window.clearTimeout(state.scheduled);
     state.scheduledRenderSuppressesMarkerMotion = false;
     markerMotionSuppressor.reset();
+    markerStreamingIndicator.reset();
     markerRenderStateMachine.reset();
     markerListReconciler.reset();
     markerListActiveTracker.reset();
@@ -2637,6 +2649,112 @@ import {
     });
   }
 
+  function closestWindowChapterSourceElement(container, headingElement) {
+    if (!(container instanceof HTMLElement) || !(headingElement instanceof HTMLElement)) {
+      return null;
+    }
+    const listItem = headingElement.closest("li");
+    if (listItem instanceof HTMLElement && container.contains(listItem)) {
+      return listItem;
+    }
+    let source = headingElement.matches(EXPLOSION_BLOCK_SELECTOR)
+      ? headingElement
+      : headingElement.closest(EXPLOSION_BLOCK_SELECTOR);
+    if (!(source instanceof HTMLElement) || !container.contains(source)) {
+      return headingElement;
+    }
+    while (source.parentElement instanceof HTMLElement
+      && source.parentElement !== container
+      && source.parentElement.matches(EXPLOSION_BLOCK_SELECTOR)
+      && container.contains(source.parentElement)) {
+      source = source.parentElement;
+    }
+    return source;
+  }
+
+  function windowChapterBlocksFromRange(container, heading, nextHeading) {
+    const sourceElement = closestWindowChapterSourceElement(container, heading.element);
+    const sourceListItem = sourceElement?.closest?.("li");
+    if (sourceListItem instanceof HTMLElement && container.contains(sourceListItem)) {
+      const block = explosionBlockFromElement(sourceListItem);
+      const normalizedTitle = normalizeExplosionText(heading.title || "");
+      return (block.text || block.hasImage)
+        && block.text !== normalizedTitle
+        && (!block.text || !isDecorativeExplosionText(block.text))
+        ? [{ ...block, tagName: "p" }]
+        : [];
+    }
+
+    const blocks = collectExplosionBlocksFromContainer(container);
+    const startIndex = blocks.findIndex((block) => block.element === sourceElement
+      || block.element?.contains?.(heading.element));
+    if (startIndex < 0) {
+      const fallback = sourceElement instanceof HTMLElement ? explosionBlockFromElement(sourceElement) : null;
+      return fallback && fallback.text && fallback.text !== heading.title ? [fallback] : [];
+    }
+    const nextSource = nextHeading
+      ? closestWindowChapterSourceElement(container, nextHeading.element)
+      : null;
+    const nextIndex = nextSource
+      ? blocks.findIndex((block, index) => index > startIndex
+        && (block.element === nextSource || block.element?.contains?.(nextHeading.element)))
+      : -1;
+    const range = blocks.slice(startIndex, nextIndex > startIndex ? nextIndex : blocks.length);
+    const headingText = normalizeExplosionText(heading.element.innerText || heading.element.textContent || "");
+    return range.filter((block, index) => !(index === 0 && block.text === headingText));
+  }
+
+  function collectWindowChapterSections() {
+    const snapshot = collectMarkerRenderSnapshot();
+    const boundHeadings = snapshot.headings
+      .map((heading) => {
+        const element = currentElementForHeading(heading);
+        if (!(element instanceof HTMLElement)) {
+          return null;
+        }
+        const containerIndex = snapshot.assistantContainers.findIndex((container) => container.contains(element));
+        return containerIndex >= 0
+          ? {
+              ...heading,
+              element,
+              isListItem: Boolean(element.closest("li")),
+              containerKey: `assistant-${containerIndex}`,
+              markerKey: markerKeyForHeading({ ...heading, element })
+            }
+          : null;
+      })
+      .filter(Boolean);
+    if (!boundHeadings.length) {
+      return snapshot.assistantContainers.length
+        ? [fallbackExplosionSection(collectExplosionBlocks(snapshot.assistantContainers))]
+        : [];
+    }
+
+    const outline = buildWindowChapterOutline(boundHeadings);
+    return outline.map((heading) => {
+      const containerIndex = Number(heading.containerKey.replace("assistant-", ""));
+      const container = snapshot.assistantContainers[containerIndex];
+      const nextHeading = heading.endIndex < outline.length
+        && outline[heading.endIndex].containerKey === heading.containerKey
+        ? outline[heading.endIndex]
+        : null;
+      const blocks = container
+        ? windowChapterBlocksFromRange(container, heading, nextHeading)
+        : [];
+      return {
+        id: heading.id,
+        title: heading.title,
+        markerKey: heading.markerKey,
+        depth: heading.depth,
+        parentKey: heading.parentKey,
+        startElement: heading.element,
+        endElement: nextHeading?.element || null,
+        blocks,
+        paragraphs: blocks.map((block) => block.text)
+      };
+    });
+  }
+
   function activeExplosionSectionIndexFromState(sections = state.explosionSections) {
     if (!sections.length) {
       return 0;
@@ -3330,12 +3448,26 @@ import {
 
   let discardedConversationWarningRoute = "";
 
-  function visibleConversationNodes(selector, scanContext) {
-    return Array.from(document.querySelectorAll(selector))
+  function logDiscardedConversationNodes(matched) {
+    console.info(`[Polaris] Assistant message nodes matched but are currently hidden; skipping this scan. matched=${matched}`);
+  }
+
+  function getChatGptUserContainers(scanContext = null) {
+    const candidates = Array.from(document.querySelectorAll(CHATGPT_USER_SELECTOR))
       .filter((node) => node instanceof HTMLElement
+        && isChatGptUserTurnNode(node)
         && !isInsideNavigationRoot(node)
         && !isUserInputContext(node)
         && isVisible(node, scanContext));
+    const candidateSet = new Set(candidates);
+    return candidates.filter((candidate) => {
+      for (let parent = candidate.parentElement; parent instanceof HTMLElement; parent = parent.parentElement) {
+        if (candidateSet.has(parent)) {
+          return false;
+        }
+      }
+      return true;
+    });
   }
 
   function getChatGptAssistantContainers(scanContext = null) {
@@ -3354,7 +3486,7 @@ import {
       legacy: visible[CHATGPT_LEGACY_ASSISTANT_SELECTOR] || [],
       hashed: visible[HASHED_MARKDOWN_ROOT_SELECTOR] || [],
       prose: visible[CHATGPT_PROSE_SELECTOR] || [],
-      users: visibleConversationNodes(CHATGPT_LEGACY_USER_SELECTOR, scanContext)
+      users: getChatGptUserContainers(scanContext)
     });
     if (merged.length > 0) {
       return merged.map((item) => item.node);
@@ -3366,7 +3498,7 @@ import {
     const routeKey = currentRouteKey();
     if (matched > 0 && discardedConversationWarningRoute !== routeKey) {
       discardedConversationWarningRoute = routeKey;
-      console.warn("[Polaris] Assistant message nodes were found but none were visible, so no sections will be sent to the side panel.", { matched });
+      logDiscardedConversationNodes(matched);
     }
     return [];
   }
@@ -3394,7 +3526,7 @@ import {
     const routeKey = currentRouteKey();
     if (matched > 0 && discardedConversationWarningRoute !== routeKey) {
       discardedConversationWarningRoute = routeKey;
-      console.warn("[Polaris] Assistant message nodes were found but none were visible, so no sections will be sent to the side panel.", { matched });
+      logDiscardedConversationNodes(matched);
     }
 
     return [];
@@ -3442,7 +3574,7 @@ import {
     }
 
     if (isChatGPTPage()) {
-      return [CHATGPT_LEGACY_USER_SELECTOR, USER_MESSAGE_SELECTOR];
+      return [CHATGPT_USER_SELECTOR, USER_MESSAGE_SELECTOR];
     }
 
     return [USER_MESSAGE_SELECTOR];
@@ -3459,6 +3591,9 @@ import {
   }
 
   function getUserContainers(scanContext = null) {
+    if (isChatGPTPage()) {
+      return getChatGptUserContainers(scanContext);
+    }
     for (const selector of getUserContainerSelectors()) {
       const containers = Array.from(document.querySelectorAll(selector))
         .filter((node) => node instanceof HTMLElement
@@ -3517,8 +3652,11 @@ import {
         }
       }
     }
-    return (element.innerText || element.textContent || "")
-      .replace(GEMINI_USER_ROLE_PREFIX_PATTERN, "");
+    const text = element.innerText || element.textContent || "";
+    if (isChatGPTPage()) {
+      return stripChatGptUserRolePrefix(text);
+    }
+    return text.replace(GEMINI_USER_ROLE_PREFIX_PATTERN, "");
   }
 
   function userMessageImageSelector() {
@@ -4721,6 +4859,15 @@ import {
         marker.appendChild(imageCount);
       }
 
+      if (item.type === "ai") {
+        const streamingLoader = document.createElement("img");
+        streamingLoader.className = "gpt-paragraph-nav__streaming-loader";
+        streamingLoader.src = chrome.runtime.getURL("icons/loader-2.svg");
+        streamingLoader.alt = "";
+        streamingLoader.setAttribute("aria-hidden", "true");
+        marker.appendChild(streamingLoader);
+      }
+
       const preview = document.createElement("span");
       preview.className = "gpt-paragraph-nav__preview";
       marker.appendChild(preview);
@@ -5194,13 +5341,20 @@ import {
     if (!isTopLevelFrame() || !isExtensionContextValid()) {
       return;
     }
-    const sections = collectExplosionSections().map((section) => ({
+    const sections = collectWindowChapterSections().map((section) => ({
       id: section.id,
       markerKey: section.markerKey,
+      depth: section.depth || 0,
+      parentKey: section.parentKey || "",
       blocks: (section.blocks || []).map((block) => ({
         hasImage: Boolean(block.hasImage),
-        tagName: block.tagName || "p",
-        text: block.text || ""
+        tagName: ["ul", "ol"].includes(block.tagName) ? "p" : (block.tagName || "p"),
+        text: ["ul", "ol"].includes(block.tagName) && block.element instanceof HTMLElement
+          ? Array.from(block.element.children)
+            .filter((item) => item instanceof HTMLLIElement)
+            .map((item, index) => `${block.tagName === "ol" ? `${index + 1}.` : "-"} ${normalizeExplosionText(item.innerText || item.textContent || "")}`)
+            .join("\n")
+          : (block.text || "")
       })),
       paragraphs: (section.paragraphs || []).filter(Boolean).slice(0, 240),
       title: section.title
@@ -5463,12 +5617,17 @@ import {
       return;
     }
 
+    const renderItems = markerRenderItems(visibleGroups, earlierUserGroupCount);
     const {
       changed: didChangeMarkerList,
+      changedKeys,
       scrollDelta: markerListScrollDelta
     } = markerListReconciler.reconcile(
       list,
-      markerRenderItems(visibleGroups, earlierUserGroupCount)
+      renderItems,
+      {
+        shouldUpdate: (item) => !(suppressMarkerMotion && item.type === "user")
+      }
     );
     if (didChangeMarkerList) {
       preserveMarkerListDragPosition({
@@ -5480,6 +5639,13 @@ import {
     }
     if (didChangeMarkerList && suppressMarkerMotion) {
       markerMotionSuppressor.suppress();
+      const changedKeySet = new Set(changedKeys);
+      const streamingItem = renderItems.findLast((item) => item.type === "ai" && changedKeySet.has(item.key));
+      const streamingRow = streamingItem
+        ? Array.from(list.children).find((row) => row.dataset.markerRenderKey === streamingItem.key)
+        : null;
+      const streamingMarker = streamingRow?.querySelector(".gpt-paragraph-nav__marker--ai") || null;
+      markerStreamingIndicator.pulse(streamingMarker);
     }
     syncLiquidGlassElements(root);
 
@@ -5508,6 +5674,7 @@ import {
     window.clearTimeout(state.scheduled);
     state.scheduledRenderSuppressesMarkerMotion = false;
     markerMotionSuppressor.reset();
+    markerStreamingIndicator.reset();
     markerRenderStateMachine.reset();
     markerListReconciler.reset();
     markerListActiveTracker.reset();

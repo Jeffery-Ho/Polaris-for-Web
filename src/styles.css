@@ -1496,9 +1496,54 @@ html.gpt-paragraph-nav--dragging * {
   pointer-events: auto;
 }
 
-.gpt-paragraph-nav__marker--ai,
+.gpt-paragraph-nav__marker--ai {
+  align-self: flex-start;
+  gap: 8px;
+  width: min(var(--gpt-nav-controls-width, 360px), calc(100vw - 48px));
+  min-width: 0;
+}
+
 .gpt-paragraph-nav__fold {
   align-self: flex-start;
+}
+
+.gpt-paragraph-nav__marker--ai .gpt-paragraph-nav__preview {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+.gpt-paragraph-nav__streaming-loader {
+  display: block;
+  flex: 0 0 12px;
+  width: 12px;
+  height: 12px;
+  opacity: 0;
+  visibility: hidden;
+  transform-origin: center;
+}
+
+.gpt-paragraph-nav__marker--ai.is-streaming .gpt-paragraph-nav__streaming-loader {
+  opacity: 0.72;
+  visibility: visible;
+  animation: polaris-marker-loader-spin 900ms linear infinite;
+}
+
+.gpt-paragraph-nav__marker--ai.is-streaming .gpt-paragraph-nav__preview {
+  animation: polaris-marker-text-breathe 1400ms ease-in-out infinite;
+}
+
+@keyframes polaris-marker-loader-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes polaris-marker-text-breathe {
+  0%, 100% { color: var(--polaris-text); }
+  50% { color: var(--polaris-text-tertiary); }
 }
 
 .gpt-paragraph-nav__marker.gpt-paragraph-nav__marker--user {
@@ -1940,5 +1985,10 @@ html.gpt-paragraph-nav--dragging * {
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+
+  .gpt-paragraph-nav__marker--ai.is-streaming .gpt-paragraph-nav__streaming-loader,
+  .gpt-paragraph-nav__marker--ai.is-streaming .gpt-paragraph-nav__preview {
+    animation: none !important;
   }
 }

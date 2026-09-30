@@ -89,3 +89,27 @@ test("display:contents message wrappers remain visible when text is a direct chi
   assert.equal(context.isVisible(parent), true);
   assert.equal(context.isVisible(emptyParent), false);
 });
+
+test("display:contents message wrappers ignore comment nodes", () => {
+  const visibleChild = {
+    getBoundingClientRect() {
+      return { top: 10, bottom: 30, width: 120, height: 20 };
+    }
+  };
+  const parent = {
+    childNodes: [{ nodeType: 8, nodeValue: "hydration marker" }, visibleChild],
+    getBoundingClientRect() {
+      throw new Error("display:contents has no box");
+    }
+  };
+  const context = createMarkerScanContext({
+    getComputedStyle(element) {
+      if (element === parent) {
+        return { display: "contents", visibility: "visible" };
+      }
+      return { display: "block", visibility: "visible" };
+    }
+  });
+
+  assert.equal(context.isVisible(parent), true);
+});

@@ -2,7 +2,10 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-import { collectChatGptConversation } from "../src/chatgpt-messages.js";
+import {
+  collectChatGptConversation,
+  stripChatGptUserRolePrefix
+} from "../src/chatgpt-messages.js";
 
 const contentSource = readFileSync(new URL("../src/content.js", import.meta.url), "utf8");
 
@@ -98,6 +101,57 @@ test("ChatGPT keeps legacy and hashed turns in one conversation without duplicat
   assert.match(contentSource, /if \(isChatGPTPage\(\)\)/);
   assert.match(contentSource, /mergeChatGptAssistantNodes/);
   assert.match(contentSource, /CHATGPT_LEGACY_ASSISTANT_SELECTOR/);
-  assert.match(contentSource, /CHATGPT_LEGACY_USER_SELECTOR/);
+  assert.match(contentSource, /CHATGPT_USER_SELECTOR/);
+  assert.match(contentSource, /getChatGptUserContainers/);
+  assert.match(contentSource, /stripChatGptUserRolePrefix/);
   assert.match(contentSource, /CHATGPT_PROSE_SELECTOR/);
+});
+
+test("ChatGPT adapter recognizes the current conversation-turn user wrapper", () => {
+  const fixture = el("main", "", [
+    el("article", "", [
+      el("h5", "sr-only", [], "You said:"),
+      el("div", "", [], "Find the best extension architecture.")
+    ], "", { "data-testid": "conversation-turn-0", "data-turn": "user" }),
+    el("div", "", [
+      el("h5", "sr-only", [], "ChatGPT said:"),
+      el("h2", "", [], "You said:"),
+      el("div", "", [], "The response.")
+    ], "", { "data-testid": "conversation-turn-1", "data-turn": "assistant" }),
+    el("div", "", [
+      el("div", "markdown", [
+        el("h2", "", [], "Architecture")
+      ])
+    ], "", { "data-message-author-role": "assistant" })
+  ]);
+
+  const result = collectChatGptConversation(fixture);
+
+  assert.deepEqual(result.userMessages.map((message) => message.text), [
+    "You said: Find the best extension architecture."
+  ]);
+  assert.equal(
+    stripChatGptUserRolePrefix("You said:\nFind the best extension architecture."),
+    "Find the best extension architecture."
+  );
+});
+
+test("ChatGPT adapter recognizes a shared user turn from data-turn", () => {
+  const fixture = el("main", "", [
+    el("article", "", [
+      el("div", "", [], "Find the shared conversation prompt.")
+    ], "", { "data-testid": "conversation-turn-1", "data-turn": "user" }),
+    el("article", "", [
+      el("h6", "sr-only", [], "ChatGPT said:"),
+      el("div", "markdown", [
+        el("h2", "", [], "The response")
+      ])
+    ], "", { "data-testid": "conversation-turn-2", "data-turn": "assistant" })
+  ]);
+
+  const result = collectChatGptConversation(fixture);
+
+  assert.deepEqual(result.userMessages.map((message) => message.text), [
+    "Find the shared conversation prompt."
+  ]);
 });

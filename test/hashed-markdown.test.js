@@ -125,3 +125,14 @@ test("route fallback diagnostics are readable and suppress exact duplicates", ()
   assert.doesNotMatch(routeFallbackLogMessage(details), /\[object Object\]/);
   assert.doesNotMatch(contentSource, /console\.warn\("\[Polaris\] Route fallback did not deliver sections/);
 });
+
+test("hidden assistant node diagnostics stay out of the extension error list", () => {
+  assert.doesNotMatch(
+    contentSource,
+    /console\.warn\("\[Polaris\] Assistant message nodes were found but none were visible/
+  );
+  assert.match(
+    contentSource,
+    /console\.info\(`\[Polaris\] Assistant message nodes matched but are currently hidden; skipping this scan\. matched=\$\{matched\}`\)/
+  );
+});

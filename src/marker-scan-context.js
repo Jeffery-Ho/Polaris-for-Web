@@ -5,6 +5,10 @@ export function createMarkerScanContext({
   const rectCache = new WeakMap();
   const visibilityCache = new WeakMap();
 
+  function isElementLike(value) {
+    return Boolean(value && typeof value.getBoundingClientRect === "function");
+  }
+
   function rectFor(element) {
     if (!rectCache.has(element)) {
       rectCache.set(element, element.getBoundingClientRect());
@@ -13,6 +17,9 @@ export function createMarkerScanContext({
   }
 
   function isVisible(element) {
+    if (!isElementLike(element)) {
+      return false;
+    }
     if (!visibilityCache.has(element)) {
       const style = getComputedStyle(element);
       let visible = false;
@@ -25,7 +32,7 @@ export function createMarkerScanContext({
             if (child?.nodeType === 3) {
               return Boolean(String(child.nodeValue || "").trim());
             }
-            return child && isVisible(child);
+            return isElementLike(child) && isVisible(child);
           });
         } else {
           const rect = rectFor(element);

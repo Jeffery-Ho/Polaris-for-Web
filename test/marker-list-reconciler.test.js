@@ -90,9 +90,30 @@ test("标题变化时原位更新同一 Maker 行", () => {
   const result = reconciler.reconcile(list, [item("heading", "完整标题")]);
 
   assert.equal(result.changed, true);
+  assert.deepEqual(result.changedKeys, ["heading"]);
   assert.equal(list.children[0], originalRow);
   assert.equal(originalRow.item.signature, "完整标题");
   assert.deepEqual(updated, [originalRow]);
+});
+
+test("AI 流式更新期间保留既有用户 Maker 文本，结束后再同步", () => {
+  const { list, reconciler, updated } = createHarness();
+  reconciler.reconcile(list, [item("user", "原始用户消息")]);
+  const userRow = list.children[0];
+
+  const streamingResult = reconciler.reconcile(
+    list,
+    [item("user", "流式扫描中的临时文本"), item("ai", "新增 AI Maker")],
+    { shouldUpdate: (nextItem) => nextItem.key !== "user" }
+  );
+
+  assert.equal(userRow.item.signature, "原始用户消息");
+  assert.deepEqual(updated, []);
+  assert.deepEqual(streamingResult.changedKeys, ["ai"]);
+
+  reconciler.reconcile(list, [item("user", "最终用户消息"), item("ai", "新增 AI Maker")]);
+  assert.equal(userRow.item.signature, "最终用户消息");
+  assert.deepEqual(updated, [userRow]);
 });
 
 test("追加和排序仅移动必要行并保留已有节点身份", () => {

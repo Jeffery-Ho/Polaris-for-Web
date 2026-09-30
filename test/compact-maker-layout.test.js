@@ -43,6 +43,21 @@ test("用户 Maker 默认以单行末尾省略长标题，并保留折叠箭头"
   );
 });
 
+test("生成中的 AI Maker 保持稳定尺寸并仅以文字呼吸和左侧 loading 提示", () => {
+  assert.match(
+    styles,
+    /\.gpt-paragraph-nav__marker--ai \{[\s\S]*?width: min\(var\(--gpt-nav-controls-width, 360px\), calc\(100vw - 48px\)\);[\s\S]*?min-width: 0;/
+  );
+  assert.match(
+    styles,
+    /\.gpt-paragraph-nav__marker--ai \.gpt-paragraph-nav__preview \{[\s\S]*?overflow: hidden;[\s\S]*?text-overflow: ellipsis;[\s\S]*?white-space: nowrap;/
+  );
+  assert.match(styles, /\.gpt-paragraph-nav__marker--ai\.is-streaming \.gpt-paragraph-nav__preview \{\n  animation: polaris-marker-text-breathe/);
+  assert.match(styles, /\.gpt-paragraph-nav__marker--ai\.is-streaming \.gpt-paragraph-nav__streaming-loader \{[\s\S]*?animation: polaris-marker-loader-spin/);
+  assert.match(contentSource, /streamingLoader\.src = chrome\.runtime\.getURL\("icons\/loader-2\.svg"\)/);
+  assert.match(contentSource, /markerStreamingIndicator\.pulse\(streamingMarker\)/);
+});
+
 test("用户 Maker 图片缩略图固定尺寸，纯图片消息不显示空标题", () => {
   assert.match(
     styles,

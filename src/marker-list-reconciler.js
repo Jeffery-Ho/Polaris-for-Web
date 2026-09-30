@@ -25,9 +25,10 @@ function restoreScrollAnchor(list, anchor) {
 export function createMarkerListReconciler({ createRow, updateRow }) {
   const entries = new Map();
 
-  function reconcile(list, items) {
+  function reconcile(list, items, { shouldUpdate = () => true } = {}) {
     const anchor = captureScrollAnchor(list);
     const nextKeys = new Set(items.map((item) => item.key));
+    const changedKeys = [];
     let changed = false;
 
     entries.forEach((entry, key) => {
@@ -49,10 +50,12 @@ export function createMarkerListReconciler({ createRow, updateRow }) {
           signature: item.signature
         };
         entries.set(item.key, entry);
+        changedKeys.push(item.key);
         changed = true;
-      } else if (entry.signature !== item.signature) {
+      } else if (entry.signature !== item.signature && shouldUpdate(item, entry.row)) {
         updateRow(entry.row, item);
         entry.signature = item.signature;
+        changedKeys.push(item.key);
         changed = true;
       }
 
@@ -68,6 +71,7 @@ export function createMarkerListReconciler({ createRow, updateRow }) {
     }
     return {
       changed,
+      changedKeys,
       scrollDelta: list.scrollTop - anchor.scrollTop
     };
   }

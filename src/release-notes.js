@@ -1,5 +1,60 @@
 const RELEASE_NOTES = Object.freeze([
   {
+    version: "0.61.0",
+    en: {
+      title: "Chapter outlines that match their source",
+      changes: ["Chapter hierarchy and reading content now come from the same source nodes. Parent chapters include nested content, child items show their own source row, and the selected chapter stays stable while a reply updates."]
+    },
+    zh: {
+      title: "目录与原文保持对应",
+      changes: ["章节层级与阅读正文现在来自同一组来源节点；父章节包含下属内容，子项展示对应原文，并在回复更新时保持当前章节选择。"]
+    }
+  },
+  {
+    version: "0.60.0",
+    en: {
+      title: "A clearer chapter reading view",
+      changes: ["Browse the full chapter list beside the reading area, then expand the directory in place without moving the article. Chapter text renders supported Markdown formatting."]
+    },
+    zh: {
+      title: "更清晰的章节阅读",
+      changes: ["在正文旁浏览章节列表，或在原位置展开完整目录而不移动正文；章节内容支持 Markdown 格式渲染。"]
+    }
+  },
+  {
+    version: "0.59.0",
+    en: {
+      title: "Settings with a native page header",
+      changes: ["The settings entry now uses a cleaner gear icon, and the settings view switches the Polaris header to a focused back-navigation bar instead of repeating the brand controls."]
+    },
+    zh: {
+      title: "设置页采用独立页面导航",
+      changes: ["设置入口现在使用更简洁的齿轮图标；进入设置后，Polaris 标题栏切换为专注的返回导航，不再重复品牌和平台控件。"]
+    }
+  },
+  {
+    version: "0.58.0",
+    en: {
+      title: "A quieter Polaris title bar",
+      changes: ["The active platform is now represented by a centered floating favicon, settings use a circular icon button, and model labels are removed from the window header so the layout stays consistent across platforms."]
+    },
+    zh: {
+      title: "更克制的 Polaris 标题栏",
+      changes: ["当前平台现在用标题栏中央的悬浮 favicon 表达，设置改用圆形图标按钮，窗口头部移除模型文字，让不同平台保持一致的布局。"]
+    }
+  },
+  {
+    version: "0.57.0",
+    en: {
+      title: "Warm, focused Polaris windows",
+      changes: ["The browser side panel and standalone window now use a responsive brand header, warm terracotta accents, quieter left/right Maker cards, recoverable search-empty states, a compact chapter picker, and grouped settings that restore the previous view, search focus, and scroll position. Streaming keeps stable rows and uses only a fixed loading indicator."]
+    },
+    zh: {
+      title: "更温暖、更专注的 Polaris 窗口",
+      changes: ["浏览器系统侧栏与独立窗口现在使用自适应品牌区、赤陶橙细节、更克制的左右 Maker 卡片、可清除的搜索空状态、紧凑章节选择器，以及能恢复原视图、搜索焦点和滚动位置的分组设置。流式更新继续保持节点稳定，只显示固定加载指示。"]
+    }
+  },
+  {
     version: "0.56.0",
     en: {
       title: "Native browser side panel",
