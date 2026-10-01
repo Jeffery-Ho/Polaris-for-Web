@@ -10,6 +10,55 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 259
+
+- Date: 2026-10-01
+- Version: 0.62.0
+- Summary: Restores user Maker image thumbnails across every supported AI platform.
+- Notes: Claude, Grok, Doubao, Kimi, Qwen, Yuanbao, and Xiaohongshu now scan images inside the verified user-message container, joining the existing ChatGPT and Gemini support. Avatar regions, unrelated messages, unsafe URLs, and empty image sources remain excluded. Updated the current version to `0.62.0(259)`.
+
+## 258
+
+- Date: 2026-10-01
+- Version: 0.61.7
+- Summary: Prevents empty Gemini image sources from creating a false thumbnail column.
+- Notes: Empty or whitespace-only image source attributes are now rejected before URL resolution, so they cannot resolve to the current Gemini page URL and insert a 36px thumbnail slot when a user Maker is toggled. Updated the current version to `0.61.7(258)`.
+
+## 257
+
+- Date: 2026-10-01
+- Version: 0.61.6
+- Summary: Removes Dia's native press inset from Gemini user Maker cards.
+- Notes: User Maker cards now use a keyboard-accessible neutral container instead of a native button, so pointer presses cannot apply browser-owned text inset while Enter and Space activation remain available. Updated the current version to `0.61.6(257)`.
+
+## 256
+
+- Date: 2026-10-01
+- Version: 0.61.5
+- Summary: Keeps the Gemini user Maker text geometry stable when toggling its group.
+- Notes: Side Panel user-group toggles now update the collapsed state and publish one window snapshot without rebuilding the content-script Maker interface. Updated the current version to `0.61.5(256)`.
+
+## 255
+
+- Date: 2026-10-01
+- Version: 0.61.4
+- Summary: Prevents native button press feedback from shrinking Gemini user Maker text.
+- Notes: Disabled the browser-native button appearance on Maker cards while preserving the custom hover, focus, active-color, and chevron states. Updated the current version to `0.61.4(255)`.
+
+## 254
+
+- Date: 2026-10-01
+- Version: 0.61.3
+- Summary: Keeps Gemini user Maker text stationary during expand and collapse.
+- Notes: Removed the press transform and transform transition from Maker cards while retaining the chevron rotation. User-message text now stays fixed throughout the click animation. Updated the current version to `0.61.3(254)`.
+
+## 253
+
+- Date: 2026-10-01
+- Version: 0.61.2
+- Summary: Keeps Gemini user Maker text stable after navigation clicks.
+- Notes: Maker jumps now scroll directly to the source heading without rewriting the host page URL. This prevents Polaris's route bridge from treating its own jump as a Gemini conversation change, so the Side Panel no longer clears, rescans, and redraws the user Maker card after every click. Updated the current version to `0.61.2(253)`.
+
 ## 252
 
 - Date: 2026-09-30

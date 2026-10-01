@@ -13,6 +13,8 @@ const contentSource = await readFile(new URL("../src/content.js", import.meta.ur
 
 test("用户消息缩略图接受安全的图片 data 地址并拒绝脚本化 SVG", () => {
   const baseUrl = "https://chatgpt.com/c/example";
+  assert.equal(safeUserMessageImageUrl("", baseUrl), "");
+  assert.equal(safeUserMessageImageUrl("   ", baseUrl), "");
   assert.equal(safeUserMessageImageUrl("/images/example.png", baseUrl), "https://chatgpt.com/images/example.png");
   assert.equal(safeUserMessageImageUrl("blob:https://chatgpt.com/asset", baseUrl), "blob:https://chatgpt.com/asset");
   assert.equal(safeUserMessageImageUrl("blob:https://gemini.google.com/asset", baseUrl), "");
@@ -127,15 +129,35 @@ test("只有当前用户消息中经过验证的上传附件能成为 Maker 图�
     ownerMatches: true,
     inAttachmentRegion: true,
     excluded: false
-  }), false);
+  }), true);
 });
 
-test("图片扫描只为 ChatGPT 和 Gemini 提供语义附件选择器", () => {
+test("九个平台的用户 Maker 都能扫描当前消息中的图片附件", () => {
+  const platforms = [
+    "chatgpt",
+    "claude",
+    "gemini",
+    "grok",
+    "doubao",
+    "kimi",
+    "qianwen",
+    "yuanbao",
+    "xiaohongshu"
+  ];
   const chatgptSelector = userMessageImageSelectorForPlatform("chatgpt");
   assert.match(chatgptSelector, /uploaded image/);
   assert.match(chatgptSelector, /image-attachment/);
   assert.equal(userMessageImageSelectorForPlatform("gemini"), "user-query-file-preview img, user-query-file-carousel img");
-  assert.equal(userMessageImageSelectorForPlatform("claude"), "");
+  platforms.forEach((platform) => {
+    assert.notEqual(userMessageImageSelectorForPlatform(platform), "");
+  });
+  assert.equal(userMessageImageSelectorForPlatform("claude"), "img");
+  assert.equal(userMessageImageSelectorForPlatform("grok"), "img");
+  assert.equal(userMessageImageSelectorForPlatform("doubao"), "img");
+  assert.equal(userMessageImageSelectorForPlatform("kimi"), "img");
+  assert.equal(userMessageImageSelectorForPlatform("qianwen"), "img");
+  assert.equal(userMessageImageSelectorForPlatform("yuanbao"), "img");
+  assert.equal(userMessageImageSelectorForPlatform("xiaohongshu"), "img");
   assert.equal(userMessageImageSelectorForPlatform("default"), "");
   assert.notEqual(chatgptSelector.trim(), "img");
 
@@ -154,7 +176,8 @@ test("图片地址属性变化会触发用户 Maker 刷新", () => {
 
 test("用户图片可从延迟加载属性读取地址并避免失败图重复显示", () => {
   assert.match(contentSource, /function firstImageSrcsetUrl\(image\)/);
-  assert.match(contentSource, /function userMessageImageSource\(image\) \{[\s\S]*?const candidates = \[[\s\S]*?getAttribute\("data-src"\)[\s\S]*?getAttribute\("data-original"\)[\s\S]*?getAttribute\("data-url"\)[\s\S]*?candidates\.find\(\(candidate\) => safeUserMessageImageUrl\(candidate, window\.location\.href\)\)/);
+  assert.match(contentSource, /function userMessageImageSource\(image\) \{[\s\S]*?const candidates = \[[\s\S]*?getAttribute\("src"\)[\s\S]*?firstImageSrcsetUrl\(image\)[\s\S]*?getAttribute\("data-src"\)[\s\S]*?getAttribute\("data-original"\)[\s\S]*?getAttribute\("data-url"\)[\s\S]*?candidates\.find\(\(candidate\) => safeUserMessageImageUrl\(candidate, window\.location\.href\)\)/);
+  assert.doesNotMatch(contentSource, /function userMessageImageSource\(image\) \{[\s\S]*?image\.(?:currentSrc|src),[\s\S]*?\n  \}/);
   assert.match(contentSource, /thumbnail\.dataset\.failedSrc/);
   assert.match(contentSource, /labelThumbnail\.removeAttribute\("src"\)/);
   assert.match(contentSource, /thumbnail\.removeAttribute\("src"\)/);

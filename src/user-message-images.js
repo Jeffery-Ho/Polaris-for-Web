@@ -7,7 +7,18 @@ const CHATGPT_USER_IMAGE_SELECTOR = [
   '[class*="image-preview" i] img'
 ].join(", ");
 const GEMINI_USER_IMAGE_SELECTOR = "user-query-file-preview img, user-query-file-carousel img";
-const USER_IMAGE_PLATFORMS = new Set(["chatgpt", "gemini"]);
+const GENERIC_USER_IMAGE_SELECTOR = "img";
+const USER_IMAGE_PLATFORMS = new Set([
+  "chatgpt",
+  "claude",
+  "gemini",
+  "grok",
+  "doubao",
+  "kimi",
+  "qianwen",
+  "yuanbao",
+  "xiaohongshu"
+]);
 
 function isSafeDataImageUrl(value) {
   return SAFE_DATA_IMAGE_URL.test(String(value || ""));
@@ -34,7 +45,7 @@ export function userMessageImageSelectorForPlatform(platform) {
   if (platform === "gemini") {
     return GEMINI_USER_IMAGE_SELECTOR;
   }
-  return "";
+  return USER_IMAGE_PLATFORMS.has(platform) ? GENERIC_USER_IMAGE_SELECTOR : "";
 }
 
 export function isOwnedUserAttachmentCandidate({
@@ -87,9 +98,13 @@ export async function inlineUserMessageImageSource(source, {
 }
 
 export function safeUserMessageImageUrl(value, baseUrl) {
+  const source = String(value || "").trim();
+  if (!source) {
+    return "";
+  }
   try {
     const pageUrl = new URL(baseUrl);
-    const url = new URL(String(value || ""), pageUrl);
+    const url = new URL(source, pageUrl);
     if (url.protocol === "data:") {
       return isSafeDataImageUrl(url.href) ? url.href : "";
     }

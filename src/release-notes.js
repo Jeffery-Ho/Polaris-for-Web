@@ -1,5 +1,16 @@
 const RELEASE_NOTES = Object.freeze([
   {
+    version: "0.62.0",
+    en: {
+      title: "Maker image thumbnails on every platform",
+      changes: ["User Makers can once again show image thumbnails on ChatGPT, Claude, Gemini, Grok, Doubao, Kimi, Qwen, Yuanbao, and Xiaohongshu while keeping avatars, empty sources, and unrelated images out."]
+    },
+    zh: {
+      title: "全平台 Maker 图片缩略图",
+      changes: ["ChatGPT、Claude、Gemini、Grok、豆包、Kimi、千问、元宝和小红书点点的用户 Maker 现在都能显示图片缩略图，同时继续排除头像、空地址和非当前消息图片。"]
+    }
+  },
+  {
     version: "0.61.0",
     en: {
       title: "Chapter outlines that match their source",

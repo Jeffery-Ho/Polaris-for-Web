@@ -3707,8 +3707,7 @@ import {
 
   function userMessageImageSource(image) {
     const candidates = [
-      image.currentSrc,
-      image.src,
+      image.getAttribute("src"),
       firstImageSrcsetUrl(image),
       image.getAttribute("data-src"),
       image.getAttribute("data-original"),
