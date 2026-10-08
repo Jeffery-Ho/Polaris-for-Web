@@ -10,6 +10,20 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 261
+
+- Date: 2026-10-08
+- Version: 0.64.0
+- Summary: Adds Manus conversation navigation and Chapter View.
+- Notes: Scoped Manus message scanning groups every mounted AI reply with the user in the same turn, excludes non-message cards, and reuses heading, list, table, image-preview, search, and chapter behavior. Inner SimpleBar scrolling updates the existing active Maker state. Updated the current version to `0.64.0(261)`.
+
+## 260
+
+- Date: 2026-10-08
+- Version: 0.63.0
+- Summary: Jumps to a chapter's source conversation when its directory entry is selected.
+- Notes: Selecting a chapter now updates the reading view and navigates the original conversation to the matching DOM node, bringing that window forward. The separate source-jump button was removed. Updated the current version to `0.63.0(260)`.
+
 ## 259
 
 - Date: 2026-10-01

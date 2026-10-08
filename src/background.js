@@ -29,6 +29,7 @@ function isSupportedCandidateUrl(url) {
       "claude.ai",
       "gemini.google.com",
       "grok.com",
+      "manus.im",
       "www.doubao.com",
       "www.kimi.com",
       "kimi.com",

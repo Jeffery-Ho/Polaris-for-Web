@@ -3,6 +3,13 @@ import assert from "node:assert/strict";
 
 import { isFeatureVersion, releaseNotesForUpdate } from "../src/release-notes.js";
 
+test("Manus 功能版本提供内置更新说明", () => {
+  const note = releaseNotesForUpdate("0.63.0", "0.64.0")[0];
+  assert.equal(note.version, "0.64");
+  assert.equal(note.isFallback, undefined);
+  assert.match(note.zh.changes[0], /Manus/);
+});
+
 test("只接受精确的 x.y.0 功能版本", () => {
   assert.equal(isFeatureVersion("0.29.0"), true);
   assert.equal(isFeatureVersion("0.29.0.1"), false);

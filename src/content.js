@@ -83,6 +83,13 @@ import {
   stripChatGptUserRolePrefix
 } from "./chatgpt-messages.js";
 import {
+  collectManusConversation,
+  manusUserMessageText,
+  isManusConversationScrollTarget,
+  MANUS_ASSISTANT_SELECTOR,
+  MANUS_USER_CONTAINER_SELECTOR
+} from "./manus-messages.js";
+import {
   routeFallbackDiagnosticDecision,
   routeFallbackLogLevel,
   routeFallbackLogMessage
@@ -299,7 +306,7 @@ import {
     { key: "foldThreshold", label: t("settings.foldThreshold"), min: 2, max: 80, step: 1, unit: "" },
     { key: "tooltipMaxWidth", label: t("settings.tooltipMaxWidth"), min: 160, max: 720, step: 10, unit: "px" }
   ];
-  const PLATFORM_KEYS = ["chatgpt", "claude", "gemini", "grok", "doubao", "kimi", "qianwen", "yuanbao", "xiaohongshu", "default"];
+  const PLATFORM_KEYS = ["chatgpt", "claude", "gemini", "grok", "doubao", "kimi", "qianwen", "yuanbao", "xiaohongshu", "manus", "default"];
   const MARKER_LEVEL_OPTIONS = [1, 2, 3, 4];
   const DEFAULT_ENABLED_LEVELS_BY_PLATFORM = Object.freeze({
     chatgpt: [1, 2, 3],
@@ -311,6 +318,7 @@ import {
     qianwen: [1, 2, 3],
     yuanbao: [1, 2],
     xiaohongshu: [1, 2, 3, 4],
+    manus: [1, 2, 3],
     default: [1, 2, 3]
   });
   const DEFAULT_UNORDERED_LIST_BY_PLATFORM = Object.freeze({
@@ -323,6 +331,7 @@ import {
     qianwen: true,
     yuanbao: true,
     xiaohongshu: true,
+    manus: true,
     default: true
   });
   const DEFAULT_ENABLED_ORDERED_LIST_BY_PLATFORM = Object.freeze({
@@ -335,6 +344,7 @@ import {
     qianwen: false,
     yuanbao: false,
     xiaohongshu: false,
+    manus: false,
     default: false
   });
   const DEFAULT_ENABLED_STRONG_BY_PLATFORM = Object.freeze({
@@ -347,6 +357,7 @@ import {
     qianwen: true,
     yuanbao: true,
     xiaohongshu: true,
+    manus: true,
     default: true
   });
   const DEFAULT_CONFIG = Object.freeze({
@@ -655,6 +666,7 @@ import {
     window.clearTimeout(state.markerNoticeTimer);
     window.clearTimeout(state.windowSnapshotTimer);
     state.observer?.disconnect();
+    document.removeEventListener("scroll", handleManusConversationScroll, true);
     state.pageThemeWatcher?.dispose();
     state.pageThemeWatcher = null;
     state.liquidGlassObserver?.disconnect();
@@ -3261,6 +3273,11 @@ import {
   }
 
   function getConversationHeaderHeight() {
+    if (isManusPage()) {
+      const chatBox = document.getElementById("manus-chat-box");
+      const height = chatBox && Number.parseFloat(window.getComputedStyle(chatBox).getPropertyValue("--chat-box-header-occupied-height"));
+      return height > 0 ? Math.round(height) : DEFAULT_HEADER_HEIGHT;
+    }
     const headers = Array.from(document.querySelectorAll(CONVERSATION_HEADER_SELECTOR))
       .filter((header) => header instanceof HTMLElement && isVisible(header))
       .map((header) => header.getBoundingClientRect())
@@ -3342,6 +3359,10 @@ import {
     return window.location.hostname === "grok.com";
   }
 
+  function isManusPage() {
+    return window.location.hostname === "manus.im";
+  }
+
   function currentPlatformKey() {
     if (isChatGPTPage()) {
       return "chatgpt";
@@ -3354,6 +3375,9 @@ import {
     }
     if (isGrokPage()) {
       return "grok";
+    }
+    if (isManusPage()) {
+      return "manus";
     }
     if (isDoubaoPage()) {
       return "doubao";
@@ -3394,6 +3418,9 @@ import {
   }
 
   function getAssistantContainerSelectors() {
+    if (isManusPage()) {
+      return [MANUS_ASSISTANT_SELECTOR];
+    }
     if (isUnsupportedXiaohongshuMainPage()) {
       return [];
     }
@@ -3503,7 +3530,19 @@ import {
     return [];
   }
 
+  function getManusConversation(scanContext = null) {
+    return collectManusConversation(document, {
+      acceptNode: (node) => node instanceof HTMLElement
+        && !isInsideNavigationRoot(node)
+        && !isUserInputContext(node)
+        && isVisible(node, scanContext)
+    });
+  }
+
   function getAssistantContainers(scanContext = null) {
+    if (isManusPage()) {
+      return getManusConversation(scanContext).assistantContainers;
+    }
     if (isChatGPTPage()) {
       return getChatGptAssistantContainers(scanContext);
     }
@@ -3533,6 +3572,9 @@ import {
   }
 
   function getUserContainerSelectors() {
+    if (isManusPage()) {
+      return [MANUS_USER_CONTAINER_SELECTOR];
+    }
     if (isUnsupportedXiaohongshuMainPage()) {
       return [];
     }
@@ -3591,6 +3633,9 @@ import {
   }
 
   function getUserContainers(scanContext = null) {
+    if (isManusPage()) {
+      return getManusConversation(scanContext).userContainers;
+    }
     if (isChatGPTPage()) {
       return getChatGptUserContainers(scanContext);
     }
@@ -3637,6 +3682,9 @@ import {
   }
 
   function userMessageText(element) {
+    if (isManusPage()) {
+      return manusUserMessageText(element);
+    }
     if (isGeminiPage()) {
       for (const selector of GEMINI_USER_TEXT_SELECTOR.split(", ")) {
         const textElements = Array.from(element.querySelectorAll(selector))
@@ -3767,7 +3815,7 @@ import {
     return null;
   }
 
-  function collectMarkerGroups(userContainers, assistantContainers, headings, scanContext = null) {
+  function collectMarkerGroups(userContainers, assistantContainers, headings, scanContext = null, assistantUserElements = null) {
     const userItems = userContainers
       .map((element) => makeUserMarkerItem(element))
       .filter((user) => Boolean(user.title))
@@ -3785,7 +3833,12 @@ import {
       ...userContainers.map((element) => ({ type: "user", element })),
       ...assistantContainers.map((element) => ({ type: "assistant", element }))
     ].sort((left, right) => compareConversationPosition(left.element, right.element, scanContext));
-    const groupsByKey = new Map();
+    const groupsByKey = new Map(userItems.map((user) => [user.markerKey, {
+      key: user.markerKey,
+      user,
+      headings: [],
+      hasAssistantMessage: false
+    }]));
     const orphanGroup = { key: "orphan", user: null, headings: [] };
     const assistantToUser = new Map();
     let currentUser = null;
@@ -3797,15 +3850,12 @@ import {
           return;
         }
         currentUser = user;
-        groupsByKey.set(user.markerKey, {
-          key: user.markerKey,
-          user,
-          headings: [],
-          hasAssistantMessage: false
-        });
         return;
       }
 
+      if (assistantUserElements) {
+        currentUser = userItemByElement.get(assistantUserElements.get(entry.element)) || null;
+      }
       assistantToUser.set(entry.element, currentUser);
       if (currentUser) {
         groupsByKey.get(currentUser.markerKey).hasAssistantMessage = true;
@@ -5489,8 +5539,9 @@ import {
       getComputedStyle: (element) => window.getComputedStyle(element),
       scrollY: window.scrollY
     });
-    const assistantContainers = getAssistantContainers(scanContext);
-    const userContainers = getUserContainers(scanContext);
+    const manus = isManusPage() ? getManusConversation(scanContext) : null;
+    const assistantContainers = manus ? manus.assistantContainers : getAssistantContainers(scanContext);
+    const userContainers = manus ? manus.userContainers : getUserContainers(scanContext);
     const hasConversation = assistantContainers.length > 0
       || userContainers.length > 0;
     if (!hasConversation) {
@@ -5506,7 +5557,7 @@ import {
 
     const headings = collectHeadings(assistantContainers, { applyConfig: false, scanContext });
     const markerGroups = dedupeAdjacentGroupHeadings(
-      collectMarkerGroups(userContainers, assistantContainers, headings, scanContext)
+      collectMarkerGroups(userContainers, assistantContainers, headings, scanContext, manus?.assistantToUser)
     );
     const renderHeadings = markerGroups
       .flatMap((group) => group.headings)
@@ -5928,6 +5979,12 @@ import {
       state.floatingScheduled = 0;
       updateFloatingActiveMarker(markerListActiveTracker.current());
     });
+  }
+
+  function handleManusConversationScroll(event) {
+    if (state.isExtensionContextInvalidated || isInsideNavigationRoot(event.target)
+      || !isManusConversationScrollTarget(event.target)) return;
+    scheduleScrollWork();
   }
 
   function scheduleScrollWork() {
@@ -6396,6 +6453,9 @@ import {
     });
 
     window.addEventListener("scroll", scheduleScrollWork, { passive: true });
+    if (isManusPage()) {
+      document.addEventListener("scroll", handleManusConversationScroll, { capture: true, passive: true });
+    }
     window.addEventListener("pointerdown", handlePointerDown, { capture: true });
     window.addEventListener("pointermove", handlePointerMove, { passive: false, capture: true });
     window.addEventListener("pointerup", handlePointerUp, { capture: true });

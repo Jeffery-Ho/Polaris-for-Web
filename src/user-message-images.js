@@ -17,7 +17,8 @@ const USER_IMAGE_PLATFORMS = new Set([
   "kimi",
   "qianwen",
   "yuanbao",
-  "xiaohongshu"
+  "xiaohongshu",
+  "manus"
 ]);
 
 function isSafeDataImageUrl(value) {

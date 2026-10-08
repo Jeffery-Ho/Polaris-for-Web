@@ -132,7 +132,7 @@ test("只有当前用户消息中经过验证的上传附件能成为 Maker 图�
   }), true);
 });
 
-test("九个平台的用户 Maker 都能扫描当前消息中的图片附件", () => {
+test("支持的平台均能扫描当前用户消息中的图片附件", () => {
   const platforms = [
     "chatgpt",
     "claude",
@@ -142,7 +142,8 @@ test("九个平台的用户 Maker 都能扫描当前消息中的图片附件", (
     "kimi",
     "qianwen",
     "yuanbao",
-    "xiaohongshu"
+    "xiaohongshu",
+    "manus"
   ];
   const chatgptSelector = userMessageImageSelectorForPlatform("chatgpt");
   assert.match(chatgptSelector, /uploaded image/);

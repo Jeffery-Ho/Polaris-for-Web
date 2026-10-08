@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { access, readFile } from "node:fs/promises";
 
-const platformFaviconFiles = ["chatgpt", "claude", "gemini", "grok", "doubao", "kimi", "qianwen", "yuanbao", "xiaohongshu"];
+const platformFaviconFiles = ["chatgpt", "claude", "gemini", "grok", "doubao", "kimi", "qianwen", "yuanbao", "xiaohongshu", "manus"];
 const [buildManifest, background, content, windowSource, windowHtml, sidePanelHtml, windowCss, searchInputSource, tokensCss] = await Promise.all([
   readFile(new URL("../manifest.build.json", import.meta.url), "utf8").then(JSON.parse),
   readFile(new URL("../src/background.js", import.meta.url), "utf8"),
@@ -153,6 +153,12 @@ test("窗口搜索空状态可清除，章节目录在原位置覆盖展开", ()
   assert.match(windowSource, /chapter-more/);
   assert.match(windowSource, /copy-full-text/);
   assert.match(windowSource, /writeClipboardAndConfirm/);
+});
+
+test("点击章节目录会跳转原会话并保留所选章节", () => {
+  assert.match(windowSource, /const selection = chapterSelectionIdentity\(chapters, entry\);\s*state\.chapterSelection = selection;\s*state\.pendingChapterJump = selection;\s*if \(entry\.markerKey\) \{\s*send\(\{ command: "jump-to-chapter", markerKey: entry\.markerKey \}\);/);
+  assert.doesNotMatch(windowSource, /const jump = element\("button", "secondary-button", locale === "zh" \? "跳转来源" : "Jump to source"\)/);
+  assert.match(windowSource, /const copy = element\("button", "secondary-button", locale === "zh" \? "复制本章" : "Copy chapter"\)/);
 });
 
 test("AI 流式快照原位协调 Maker，用户分组正文不再重建", () => {

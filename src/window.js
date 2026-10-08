@@ -27,7 +27,8 @@ import { didWindowConversationChange } from "./window-source-state.js";
     { key: "kimi", label: "Kimi", favicon: "icons/platform-kimi.png" },
     { key: "qianwen", label: "Qwen", favicon: "icons/platform-qianwen.png" },
     { key: "yuanbao", label: "Yuanbao", favicon: "icons/platform-yuanbao.png" },
-    { key: "xiaohongshu", label: "点点 AI", favicon: "icons/platform-xiaohongshu.png" }
+    { key: "xiaohongshu", label: "点点 AI", favicon: "icons/platform-xiaohongshu.png" },
+    { key: "manus", label: "Manus", favicon: "icons/platform-manus.png" }
   ];
   const state = {
     snapshot: null,
@@ -651,8 +652,12 @@ import { didWindowConversationChange } from "./window-source-state.js";
       option.addEventListener("click", () => {
         state.chapterSelectorScrollTop = selector.scrollTop;
         state.chapterKey = entry.markerKey || "";
-        state.chapterSelection = chapterSelectionIdentity(chapters, entry);
-        state.pendingChapterJump = null;
+        const selection = chapterSelectionIdentity(chapters, entry);
+        state.chapterSelection = selection;
+        state.pendingChapterJump = selection;
+        if (entry.markerKey) {
+          send({ command: "jump-to-chapter", markerKey: entry.markerKey });
+        }
         state.chapterDirectoryExpanded = false;
         state.chapterFocusPending = true;
         render();
@@ -718,19 +723,12 @@ import { didWindowConversationChange } from "./window-source-state.js";
     const copy = element("button", "secondary-button", locale === "zh" ? "复制本章" : "Copy chapter");
     copy.type = "button";
     copy.addEventListener("click", () => writeClipboardAndConfirm(copy, chapterPlainText(chapter)));
-    const jump = element("button", "secondary-button", locale === "zh" ? "跳转来源" : "Jump to source");
-    jump.type = "button";
-    jump.addEventListener("click", () => {
-      state.pendingChapterJump = chapterSelectionIdentity(chapters, chapter);
-      send({ command: "jump-to-chapter", markerKey: chapter.markerKey });
-    });
     const more = element("details", "chapter-more");
     const moreLabel = element("summary", "secondary-button", locale === "zh" ? "更多" : "More");
     const full = element("button", "chapter-more-action copy-full-text", locale === "zh" ? "复制全文" : "Copy full text");
     full.type = "button";
     full.addEventListener("click", () => writeClipboardAndConfirm(full, chapters.map(chapterPlainText).join("\n\n")));
     more.append(moreLabel, full);
-    actions.appendChild(jump);
     if (blocks.length) actions.append(copy, more);
     card.appendChild(actions);
     layout.appendChild(card);
@@ -919,7 +917,7 @@ import { didWindowConversationChange } from "./window-source-state.js";
     panel.appendChild(recognitionSection);
     const helpSection = element("section", "settings-section");
     helpSection.appendChild(element("h2", "settings-section-title", locale === "zh" ? "帮助与诊断" : "Help and diagnostics"));
-    helpSection.appendChild(element("p", "settings-supported", locale === "zh" ? "支持 ChatGPT、Claude、Gemini、Grok、Doubao、Kimi、Qwen、Yuanbao 和点点 AI。" : "Supports ChatGPT, Claude, Gemini, Grok, Doubao, Kimi, Qwen, Yuanbao, and Diandian AI."));
+    helpSection.appendChild(element("p", "settings-supported", locale === "zh" ? "支持 ChatGPT、Claude、Gemini、Grok、Doubao、Kimi、Qwen、Yuanbao、点点 AI 和 Manus。" : "Supports ChatGPT, Claude, Gemini, Grok, Doubao, Kimi, Qwen, Yuanbao, Diandian AI, and Manus."));
     const footer = element("div", "settings-footer");
     [[locale === "zh" ? "恢复默认" : "Reset", "reset-config"], [locale === "zh" ? "下载诊断" : "Download diagnostics", "download-diagnostics"], [locale === "zh" ? "发送诊断" : "Send diagnostics", "send-diagnostics"]].forEach(([label, command]) => {
       const button = element("button", "secondary-button", label);

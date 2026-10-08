@@ -1,5 +1,16 @@
 const RELEASE_NOTES = Object.freeze([
   {
+    version: "0.64.0",
+    en: {
+      title: "Manus conversation navigation",
+      changes: ["Manus now supports user groups, headings, lists, tables, message image previews, and Chapter View. Every mounted AI reply belongs to its own user turn, while task controls and unrelated cards stay out of navigation."]
+    },
+    zh: {
+      title: "支持 Manus 会话导航",
+      changes: ["Manus 现支持用户分组、标题、列表、表格、消息图片预览与章节视图；已挂载的 AI 回复按同轮用户消息归组，任务控件和非消息卡片不进入导航。"]
+    }
+  },
+  {
     version: "0.62.0",
     en: {
       title: "Maker image thumbnails on every platform",
