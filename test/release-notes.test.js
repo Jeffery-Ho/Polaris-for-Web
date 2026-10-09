@@ -3,6 +3,13 @@ import assert from "node:assert/strict";
 
 import { isFeatureVersion, releaseNotesForUpdate } from "../src/release-notes.js";
 
+test("DeepSeek 功能版本提供最终回答导航更新说明", () => {
+  const note = releaseNotesForUpdate("0.64.0", "0.65.0")[0];
+  assert.equal(note.version, "0.65");
+  assert.match(note.en.title, /DeepSeek/);
+  assert.match(note.zh.changes[0], /最终回答/);
+});
+
 test("Manus 功能版本提供内置更新说明", () => {
   const note = releaseNotesForUpdate("0.63.0", "0.64.0")[0];
   assert.equal(note.version, "0.64");

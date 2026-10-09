@@ -1,5 +1,16 @@
 const RELEASE_NOTES = Object.freeze([
   {
+    version: "0.65.0",
+    en: {
+      title: "DeepSeek conversation navigation",
+      changes: ["DeepSeek now supports user groups, final-answer headings, lists, tables, message image previews, search, and Chapter View. Navigation follows the mounted virtual-list DOM and inner conversation scrolling, while thinking content, disclaimers, and controls stay out."]
+    },
+    zh: {
+      title: "支持 DeepSeek 会话导航",
+      changes: ["DeepSeek 现支持用户分组、最终回答中的标题、列表、表格、消息图片预览、搜索与章节视图；导航读取当前挂载的虚拟列表 DOM，适配会话内层滚动，并排除思考过程、免责声明和操作控件。"]
+    }
+  },
+  {
     version: "0.64.0",
     en: {
       title: "Manus conversation navigation",

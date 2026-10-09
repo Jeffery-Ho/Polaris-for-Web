@@ -33,8 +33,11 @@ Do not load the repository root. The root is source, not an extension package. `
 - Yuanbao
 - Xiaohongshu Diandian AI
 - Manus
+- DeepSeek
 
 Manus navigation reads only mounted message DOM inside the conversation list. All AI text replies are grouped by their user turn; task status, tool controls, suggestions, and upgrade cards are excluded.
+
+DeepSeek navigation reads only mounted messages inside its virtual list. Final-answer Markdown is grouped with the preceding mounted user message when virtual item keys are consecutive; thinking content, disclaimers, controls, and unrelated page content are excluded. Missing user messages remain ungrouped, and Makers follow the inner conversation scroller.
 
 ## Marker Rules
 
@@ -44,7 +47,7 @@ Manus navigation reads only mounted message DOM inside the conversation list. Al
 - Detects standalone bold text and bold-first list titles when the separate **Bold text** setting is enabled; it is enabled by default on every platform.
 - Detects every visible response table across all supported platforms as one H3-level marker, titled from its first row's non-empty cells; every Maker locates the nearest conversation scroll container and preserves space for the fixed header.
 - Kimi and Yuanbao display H1 and H2 markers by default.
-- ChatGPT, Claude, Gemini, Grok, Doubao, Qwen, and Manus display H1, H2, and H3 markers by default.
+- ChatGPT, Claude, Gemini, Grok, Doubao, Qwen, Manus, and DeepSeek display H1, H2, and H3 markers by default.
 - Xiaohongshu Diandian AI displays H1, H2, H3, and H4 markers by default.
 - Video titles in Qwen video lists and Yuanbao large video cards can also appear as markers.
 
@@ -91,7 +94,7 @@ The Diagnostics section keeps a bounded session-only event log in the current ta
 ## Chapter View
 
 - Click **Chapters** in the Polaris window.
-- Available on every supported platform: ChatGPT, Claude, Gemini, Grok, Doubao, Kimi, Qwen, Yuanbao, Xiaohongshu Diandian AI, and Manus.
+- Available on every supported platform: ChatGPT, Claude, Gemini, Grok, Doubao, Kimi, Qwen, Yuanbao, Xiaohongshu Diandian AI, Manus, and DeepSeek.
 - Processes only AI response content on the current page; input fields, sidebars, and the extension's own interface are excluded.
 - Rebuilds supported rendered Markdown with a strict element and URL allowlist; images load from existing `http`/`https` page URLs and open in a new tab when clicked.
 - Formats unrendered raw Markdown text safely, including mixed inline styles, nested task lists, code blocks, tables, and Unicode characters; raw image syntax and HTML remain text.
@@ -116,7 +119,7 @@ Do not commit `dist/` or load `dist.zip` as the extension. The release workflow 
 
 ## Version
 
-Current version: `0.64.0(261)`
+Current version: `0.65.0(262)`
 
 ## License
 

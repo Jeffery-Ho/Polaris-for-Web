@@ -30,6 +30,7 @@ function isSupportedCandidateUrl(url) {
       "gemini.google.com",
       "grok.com",
       "manus.im",
+      "chat.deepseek.com",
       "www.doubao.com",
       "www.kimi.com",
       "kimi.com",

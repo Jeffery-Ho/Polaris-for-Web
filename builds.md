@@ -10,6 +10,13 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 262
+
+- Date: 2026-10-09
+- Version: 0.65.0
+- Summary: Adds DeepSeek final-answer navigation and Chapter View.
+- Notes: Reads mounted virtual-list message DOM, groups final answers only across consecutive known items, excludes thinking content and controls, and reuses image previews, search, chapters, source jumps, and inner-scroll tracking. Updated the current version to `0.65.0(262)`.
+
 ## 261
 
 - Date: 2026-10-08

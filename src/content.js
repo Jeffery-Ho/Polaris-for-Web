@@ -90,6 +90,15 @@ import {
   MANUS_USER_CONTAINER_SELECTOR
 } from "./manus-messages.js";
 import {
+  collectDeepSeekConversation,
+  deepseekUserMessageText,
+  isDeepSeekConversationScrollTarget,
+  isDeepSeekConversationMutation,
+  DEEPSEEK_OBSERVED_ATTRIBUTES,
+  DEEPSEEK_ASSISTANT_SELECTOR,
+  DEEPSEEK_USER_CONTAINER_SELECTOR
+} from "./deepseek-messages.js";
+import {
   routeFallbackDiagnosticDecision,
   routeFallbackLogLevel,
   routeFallbackLogMessage
@@ -306,7 +315,7 @@ import {
     { key: "foldThreshold", label: t("settings.foldThreshold"), min: 2, max: 80, step: 1, unit: "" },
     { key: "tooltipMaxWidth", label: t("settings.tooltipMaxWidth"), min: 160, max: 720, step: 10, unit: "px" }
   ];
-  const PLATFORM_KEYS = ["chatgpt", "claude", "gemini", "grok", "doubao", "kimi", "qianwen", "yuanbao", "xiaohongshu", "manus", "default"];
+  const PLATFORM_KEYS = ["chatgpt", "claude", "gemini", "grok", "doubao", "kimi", "qianwen", "yuanbao", "xiaohongshu", "manus", "deepseek", "default"];
   const MARKER_LEVEL_OPTIONS = [1, 2, 3, 4];
   const DEFAULT_ENABLED_LEVELS_BY_PLATFORM = Object.freeze({
     chatgpt: [1, 2, 3],
@@ -319,6 +328,7 @@ import {
     yuanbao: [1, 2],
     xiaohongshu: [1, 2, 3, 4],
     manus: [1, 2, 3],
+    deepseek: [1, 2, 3],
     default: [1, 2, 3]
   });
   const DEFAULT_UNORDERED_LIST_BY_PLATFORM = Object.freeze({
@@ -332,6 +342,7 @@ import {
     yuanbao: true,
     xiaohongshu: true,
     manus: true,
+    deepseek: true,
     default: true
   });
   const DEFAULT_ENABLED_ORDERED_LIST_BY_PLATFORM = Object.freeze({
@@ -345,6 +356,7 @@ import {
     yuanbao: false,
     xiaohongshu: false,
     manus: false,
+    deepseek: false,
     default: false
   });
   const DEFAULT_ENABLED_STRONG_BY_PLATFORM = Object.freeze({
@@ -358,6 +370,7 @@ import {
     yuanbao: true,
     xiaohongshu: true,
     manus: true,
+    deepseek: true,
     default: true
   });
   const DEFAULT_CONFIG = Object.freeze({
@@ -667,6 +680,7 @@ import {
     window.clearTimeout(state.windowSnapshotTimer);
     state.observer?.disconnect();
     document.removeEventListener("scroll", handleManusConversationScroll, true);
+    document.removeEventListener("scroll", handleDeepSeekConversationScroll, true);
     state.pageThemeWatcher?.dispose();
     state.pageThemeWatcher = null;
     state.liquidGlassObserver?.disconnect();
@@ -3363,6 +3377,10 @@ import {
     return window.location.hostname === "manus.im";
   }
 
+  function isDeepSeekPage() {
+    return window.location.hostname === "chat.deepseek.com";
+  }
+
   function currentPlatformKey() {
     if (isChatGPTPage()) {
       return "chatgpt";
@@ -3378,6 +3396,9 @@ import {
     }
     if (isManusPage()) {
       return "manus";
+    }
+    if (isDeepSeekPage()) {
+      return "deepseek";
     }
     if (isDoubaoPage()) {
       return "doubao";
@@ -3418,6 +3439,9 @@ import {
   }
 
   function getAssistantContainerSelectors() {
+    if (isDeepSeekPage()) {
+      return [DEEPSEEK_ASSISTANT_SELECTOR];
+    }
     if (isManusPage()) {
       return [MANUS_ASSISTANT_SELECTOR];
     }
@@ -3539,7 +3563,19 @@ import {
     });
   }
 
+  function getDeepSeekConversation(scanContext = null) {
+    return collectDeepSeekConversation(document, {
+      acceptNode: (node) => node instanceof HTMLElement
+        && !isInsideNavigationRoot(node)
+        && !isUserInputContext(node)
+        && isVisible(node, scanContext)
+    });
+  }
+
   function getAssistantContainers(scanContext = null) {
+    if (isDeepSeekPage()) {
+      return getDeepSeekConversation(scanContext).assistantContainers;
+    }
     if (isManusPage()) {
       return getManusConversation(scanContext).assistantContainers;
     }
@@ -3572,6 +3608,9 @@ import {
   }
 
   function getUserContainerSelectors() {
+    if (isDeepSeekPage()) {
+      return [DEEPSEEK_USER_CONTAINER_SELECTOR];
+    }
     if (isManusPage()) {
       return [MANUS_USER_CONTAINER_SELECTOR];
     }
@@ -3633,6 +3672,9 @@ import {
   }
 
   function getUserContainers(scanContext = null) {
+    if (isDeepSeekPage()) {
+      return getDeepSeekConversation(scanContext).userContainers;
+    }
     if (isManusPage()) {
       return getManusConversation(scanContext).userContainers;
     }
@@ -3682,6 +3724,9 @@ import {
   }
 
   function userMessageText(element) {
+    if (isDeepSeekPage()) {
+      return deepseekUserMessageText(element);
+    }
     if (isManusPage()) {
       return manusUserMessageText(element);
     }
@@ -5540,8 +5585,9 @@ import {
       scrollY: window.scrollY
     });
     const manus = isManusPage() ? getManusConversation(scanContext) : null;
-    const assistantContainers = manus ? manus.assistantContainers : getAssistantContainers(scanContext);
-    const userContainers = manus ? manus.userContainers : getUserContainers(scanContext);
+    const conversation = manus || (isDeepSeekPage() ? getDeepSeekConversation(scanContext) : null);
+    const assistantContainers = conversation ? conversation.assistantContainers : getAssistantContainers(scanContext);
+    const userContainers = conversation ? conversation.userContainers : getUserContainers(scanContext);
     const hasConversation = assistantContainers.length > 0
       || userContainers.length > 0;
     if (!hasConversation) {
@@ -5557,7 +5603,7 @@ import {
 
     const headings = collectHeadings(assistantContainers, { applyConfig: false, scanContext });
     const markerGroups = dedupeAdjacentGroupHeadings(
-      collectMarkerGroups(userContainers, assistantContainers, headings, scanContext, manus?.assistantToUser)
+      collectMarkerGroups(userContainers, assistantContainers, headings, scanContext, conversation?.assistantToUser)
     );
     const renderHeadings = markerGroups
       .flatMap((group) => group.headings)
@@ -5856,7 +5902,8 @@ import {
     if (mutations.every(shouldIgnoreMutation)) {
       return;
     }
-    if (!hasRelevantMarkerMutation({
+    const hasDeepSeekMutation = isDeepSeekPage() && mutations.some(isDeepSeekConversationMutation);
+    if (!hasDeepSeekMutation && !hasRelevantMarkerMutation({
       mutations,
       knownContainers: state.markerSourceContainers,
       sourceSelectors: [
@@ -5984,6 +6031,12 @@ import {
   function handleManusConversationScroll(event) {
     if (state.isExtensionContextInvalidated || isInsideNavigationRoot(event.target)
       || !isManusConversationScrollTarget(event.target)) return;
+    scheduleScrollWork();
+  }
+
+  function handleDeepSeekConversationScroll(event) {
+    if (state.isExtensionContextInvalidated || isInsideNavigationRoot(event.target)
+      || !isDeepSeekConversationScrollTarget(event.target)) return;
     scheduleScrollWork();
   }
 
@@ -6446,7 +6499,9 @@ import {
     state.observer = new MutationObserver(handleDocumentMutations);
     state.observer.observe(document.body, {
       attributes: true,
-      attributeFilter: USER_MESSAGE_IMAGE_ATTRIBUTE_FILTER,
+      attributeFilter: isDeepSeekPage()
+        ? [...USER_MESSAGE_IMAGE_ATTRIBUTE_FILTER, ...DEEPSEEK_OBSERVED_ATTRIBUTES]
+        : USER_MESSAGE_IMAGE_ATTRIBUTE_FILTER,
       childList: true,
       subtree: true,
       characterData: true
@@ -6455,6 +6510,9 @@ import {
     window.addEventListener("scroll", scheduleScrollWork, { passive: true });
     if (isManusPage()) {
       document.addEventListener("scroll", handleManusConversationScroll, { capture: true, passive: true });
+    }
+    if (isDeepSeekPage()) {
+      document.addEventListener("scroll", handleDeepSeekConversationScroll, { capture: true, passive: true });
     }
     window.addEventListener("pointerdown", handlePointerDown, { capture: true });
     window.addEventListener("pointermove", handlePointerMove, { passive: false, capture: true });

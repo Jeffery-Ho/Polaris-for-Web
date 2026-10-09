@@ -18,7 +18,8 @@ const USER_IMAGE_PLATFORMS = new Set([
   "qianwen",
   "yuanbao",
   "xiaohongshu",
-  "manus"
+  "manus",
+  "deepseek"
 ]);
 
 function isSafeDataImageUrl(value) {

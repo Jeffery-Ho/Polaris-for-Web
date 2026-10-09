@@ -42,6 +42,7 @@ export function hasRelevantMarkerMutation({ mutations, knownContainers, sourceSe
 
     return [...mutation.addedNodes, ...mutation.removedNodes].some((node) => (
       isInsideKnownContainer(node, knownContainers)
+        || (typeof node?.contains === "function" && knownContainers.some((container) => node.contains(container)))
         || matchesMarkerSource(node, sourceSelectors)
     ));
   });

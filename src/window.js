@@ -28,7 +28,8 @@ import { didWindowConversationChange } from "./window-source-state.js";
     { key: "qianwen", label: "Qwen", favicon: "icons/platform-qianwen.png" },
     { key: "yuanbao", label: "Yuanbao", favicon: "icons/platform-yuanbao.png" },
     { key: "xiaohongshu", label: "点点 AI", favicon: "icons/platform-xiaohongshu.png" },
-    { key: "manus", label: "Manus", favicon: "icons/platform-manus.png" }
+    { key: "manus", label: "Manus", favicon: "icons/platform-manus.png" },
+    { key: "deepseek", label: "DeepSeek", favicon: "icons/platform-deepseek.ico" }
   ];
   const state = {
     snapshot: null,
