@@ -1,4 +1,5 @@
 import "./i18n.js";
+import { createSidepanelChapterReader } from "./sidepanel-chapter-reader.js";
 import { matchesSearch } from "./window-search.js";
 import { bindSearchInput } from "./search-input.js";
 import { sendRuntimeMessage } from "./runtime-message.js";
@@ -47,10 +48,14 @@ import { didWindowConversationChange } from "./window-source-state.js";
     chapterSelectorScrollTop: 0,
     chapterFocusPending: false,
     chapters: [],
+    treeChapters: [],
     imageUrls: [],
     imageIndex: 0,
     sourceTabId: null,
-    routeKey: ""
+    routeKey: "",
+    navigationScrollY: 0,
+    pendingModeTarget: "",
+    isChangingMode: false
   };
   const markerStreamingIndicator = createMarkerStreamingIndicator({
     setActive(marker, isActive) {
@@ -61,7 +66,53 @@ import { didWindowConversationChange } from "./window-source-state.js";
     createRow: renderMarker,
     updateRow: updateWindowMarker
   });
+  const isSidepanel = document.documentElement.dataset.windowType === "sidepanel";
+  const chapterReader = isSidepanel ? createSidepanelChapterReader({
+    document, locale,
+    onQueryChange(query) {
+      state.chapterQuery = query;
+      const input = root.querySelector(".window-search input");
+      if (input) input.value = query;
+    },
+    async onCopy(text) {
+      if (!navigator.clipboard?.writeText) throw new Error("Clipboard unavailable");
+      await navigator.clipboard.writeText(text);
+    },
+    async onLocate(markerKey) {
+      const response = await chrome.runtime.sendMessage({
+        type: "POLARIS_WINDOW_COMMAND", command: "jump-to-chapter", markerKey,
+        expectedTabId: state.sourceTabId, expectedRouteKey: state.routeKey, expectResult: true
+      });
+      if (!response?.ok) throw new Error("Source unavailable");
+    }
+  }) : null;
   let sourceRetryTimer = 0;
+
+  function changeContentMode(nextTab) {
+    const previousTab = state.activeTab;
+    if (previousTab === nextTab) return;
+    if (previousTab === "navigation") state.navigationScrollY = window.scrollY;
+    state.activeTab = nextTab;
+    state.isChangingMode = isSidepanel && ["navigation", "chapters"].includes(previousTab)
+      && ["navigation", "chapters"].includes(nextTab);
+    render();
+    state.isChangingMode = false;
+    if (nextTab === "navigation") window.scrollTo({ top: state.navigationScrollY, behavior: "auto" });
+  }
+
+  function selectContentTab(key) {
+    if (key === state.activeTab) {
+      if (key === "navigation") state.pendingModeTarget = "";
+      return;
+    }
+    if (key === "chapters" && state.snapshot?.hasConversation && state.chaptersStatus !== "ready") {
+      state.pendingModeTarget = "chapters";
+      if (state.chaptersStatus !== "loading") requestChapters();
+      return;
+    }
+    state.pendingModeTarget = "";
+    changeContentMode(key);
+  }
 
   function requestSourceState() {
     send({ command: "refresh-state" });
@@ -203,10 +254,18 @@ import { didWindowConversationChange } from "./window-source-state.js";
           selectionEnd: document.activeElement.selectionEnd
         }
       : null;
+    const focusedTab = document.activeElement?.dataset?.windowTab || "";
     document.querySelector(".image-preview")?.remove();
     applyTheme(snapshot);
     syncSourceRetry(state.snapshot);
-    root.replaceChildren(renderHeader(snapshot), renderBody(snapshot, { isLoading, existingBody }));
+    if (state.activeTab !== "chapters") chapterReader?.suspend();
+    const body = renderBody(snapshot, { isLoading, existingBody });
+    const header = renderHeader(snapshot);
+    const oldHeader = root.querySelector(":scope > .window-header");
+    if (isSidepanel && existingBody === body && oldHeader) {
+      oldHeader.replaceWith(header);
+    } else root.replaceChildren(header, body);
+    if (focusedTab) header.querySelector(`[data-window-tab="${focusedTab}"]`)?.focus({ preventScroll: true });
     if (activeSearch && state.activeTab !== "settings") {
       focusSearchInput(activeSearch);
     }
@@ -350,13 +409,10 @@ import { didWindowConversationChange } from "./window-source-state.js";
     ].forEach(([key, label]) => {
       const button = element("button", `window-tab${state.activeTab === key ? " is-active" : ""}`);
       button.type = "button";
+      button.dataset.windowTab = key;
       button.setAttribute("aria-pressed", String(state.activeTab === key));
       button.append(element("span", "window-tab-label", label));
-      button.addEventListener("click", () => {
-        state.activeTab = key;
-        if (key === "chapters") requestChapters();
-        render();
-      });
+      button.addEventListener("click", () => selectContentTab(key));
       tabs.appendChild(button);
     });
     header.append(tabs);
@@ -386,12 +442,14 @@ import { didWindowConversationChange } from "./window-source-state.js";
       && existingBody.dataset.activeTab === state.activeTab;
     const body = canReuseBody ? existingBody : element("section", "window-body");
     body.dataset.activeTab = state.activeTab;
+    body.classList.toggle("is-mode-transition", state.isChangingMode);
     if (state.activeTab === "settings") {
       body.replaceChildren(renderSettings(snapshot));
       return body;
     }
     if (state.activeTab === "chapters") {
-      body.replaceChildren(renderChapters(snapshot));
+      const panel = renderChapters(snapshot);
+      if (body.firstElementChild !== panel) body.replaceChildren(panel);
       return body;
     }
     const existingPanel = canReuseBody ? body.querySelector(":scope > .navigation-panel") : null;
@@ -599,6 +657,13 @@ import { didWindowConversationChange } from "./window-source-state.js";
   }
 
   function renderChapters(snapshot) {
+    if (chapterReader) return chapterReader.update({
+      conversationKey: `${state.sourceTabId}:${state.routeKey}`,
+      nodes: state.treeChapters,
+      preferredKey: snapshot.activeMarkerKey,
+      query: state.chapterQuery,
+      ready: state.chaptersStatus === "ready" || !snapshot.hasConversation
+    });
     const panel = element("div", "chapters-panel");
     const hasLoadedChapters = state.chaptersStatus === "ready";
     const chapters = hasLoadedChapters ? state.chapters : (snapshot.headings || []).map((heading) => ({
@@ -975,6 +1040,7 @@ import { didWindowConversationChange } from "./window-source-state.js";
       if (changedConversation) {
         const pendingChapterJump = state.pendingChapterJump;
         state.chapters = [];
+        state.treeChapters = [];
         state.imageUrls = [];
         state.imageIndex = 0;
         state.chapterKey = pendingChapterJump?.markerKey || "";
@@ -989,7 +1055,12 @@ import { didWindowConversationChange } from "./window-source-state.js";
       state.sourceTabId = nextTabId;
       state.routeKey = message.snapshot.routeKey || "";
       state.snapshot = message.snapshot;
-      if (state.activeTab === "chapters" && state.chaptersStatus === "idle" && message.snapshot.hasConversation) requestChapters();
+      if (!message.snapshot.hasConversation && state.pendingModeTarget === "chapters") {
+        state.pendingModeTarget = "";
+        changeContentMode("chapters");
+      }
+      if ((state.activeTab === "chapters" || state.pendingModeTarget === "chapters")
+        && state.chaptersStatus === "idle" && message.snapshot.hasConversation) requestChapters();
       render();
       if (message.expectAck && typeof sendResponse === "function") {
         sendResponse({
@@ -1000,6 +1071,9 @@ import { didWindowConversationChange } from "./window-source-state.js";
       }
     }
     if (message.type === "POLARIS_WINDOW_CHAPTERS") {
+      if (message.tabId != null && message.tabId !== state.sourceTabId) return;
+      if (message.routeKey && message.routeKey !== state.routeKey) return;
+      state.treeChapters = Array.isArray(message.treeChapters) ? message.treeChapters : [];
       state.chapters = Array.isArray(message.chapters) ? message.chapters : [];
       state.chaptersStatus = "ready";
       const preferredSelection = state.pendingChapterJump || state.chapterSelection;
@@ -1007,7 +1081,10 @@ import { didWindowConversationChange } from "./window-source-state.js";
       const selectedChapter = state.chapters.find((chapter) => chapter.markerKey === state.chapterKey) || null;
       state.chapterSelection = chapterSelectionIdentity(state.chapters, selectedChapter);
       state.pendingChapterJump = null;
-      render();
+      if (state.pendingModeTarget === "chapters" && state.activeTab === "navigation") {
+        state.pendingModeTarget = "";
+        changeContentMode("chapters");
+      } else render();
     }
     if (message.type === "POLARIS_WINDOW_IMAGE") {
       state.imageUrls = Array.isArray(message.imageUrls) ? message.imageUrls : [];
@@ -1019,19 +1096,26 @@ import { didWindowConversationChange } from "./window-source-state.js";
   render();
   startThemeObserver();
   startSourceObserver();
+  if (isSidepanel) window.setInterval(() => {
+    if (state.activeTab === "chapters" && !document.hidden && state.snapshot?.hasConversation) {
+      send({ command: "request-chapters", onlyIfChanged: true });
+    }
+  }, 1500);
   window.addEventListener("resize", () => {
     if (!state.chapterDirectoryExpanded) return;
     const shell = document.querySelector(".chapter-selector-shell.is-expanded");
     const selector = shell?.querySelector(".chapter-selector");
     if (shell && selector) fitExpandedChapterDirectory(shell, selector);
   });
+  if (isSidepanel) window.addEventListener("scroll", () => {
+    if (state.activeTab === "navigation") state.navigationScrollY = window.scrollY;
+  }, { passive: true });
   window.addEventListener("keydown", (event) => {
     if ((event.metaKey || event.ctrlKey) && !event.altKey && event.key.toLowerCase() === "f") {
       event.preventDefault();
       if (event.shiftKey) {
-        state.activeTab = "chapters";
         state.chapterQuery = "";
-        requestChapters();
+        selectContentTab("chapters");
       }
       render();
       focusSearchInput({ select: true });

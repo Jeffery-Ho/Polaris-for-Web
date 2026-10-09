@@ -57,6 +57,7 @@ DeepSeek navigation reads only mounted messages inside its virtual list. Final-a
 - Maker navigation is generated only from currently mounted user and AI response DOM. A route change removes the previous list immediately; only a later non-Polaris page mutation can populate the new list. DOM removal also removes its Makers, and a DOM remount receives new runtime keys.
 - Progressive Maker rendering begins during streaming output as soon as the first non-empty supported marker is available; fixed 120ms render batches reuse existing Maker nodes and update only changed items, preserving list scrolling, focus, hover, and manual collapse state. Wheel, trackpad, or list-drag input on a Maker or group card immediately takes control from temporary Active Maker positioning, so any Maker can remain outside the list viewport while streaming continues.
 - Click-to-jump navigation, active-section highlighting, and a scrollable marker queue.
+- Sidepanel Chapter View reads as an expandable outline. Each bullet opens chapter actions: focus a subtree, locate its source, copy the chapter, or copy all chapter content. Search and returning to an ancestor preserve the reading state within the panel session.
 - User Maker tooltips show the first message image; clicking that image opens an in-page preview, with previous/next navigation for multi-image messages. The Maker capsule itself remains an expand/collapse control.
 - Visible titles inside AI markers, user groups, and the floating active marker are left-aligned; user group capsules remain on the queue's right edge while AI markers and folded stacks remain on the left.
 - Platform-specific marker filters for H1, H2, H3, H4, bold text, unordered lists, and ordered lists.
@@ -119,7 +120,7 @@ Do not commit `dist/` or load `dist.zip` as the extension. The release workflow 
 
 ## Version
 
-Current version: `0.65.0(262)`
+Current version: `0.67.0(267)`
 
 ## License
 

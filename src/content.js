@@ -22,6 +22,7 @@ import { hasRelevantMarkerMutation } from "./marker-mutation-relevance.js";
 import { createMarkerListReconciler } from "./marker-list-reconciler.js";
 import { createMarkerListScrollPersistence } from "./marker-list-scroll-persistence.js";
 import { createMarkerScanContext } from "./marker-scan-context.js";
+import { collectSidepanelChapters } from "./sidepanel-chapter-content.js";
 import { buildWindowChapterOutline } from "./window-chapter-outline.js";
 import { limitMarkerGroups } from "./marker-group-limit.js";
 import {
@@ -2730,7 +2731,7 @@ import {
     return range.filter((block, index) => !(index === 0 && block.text === headingText));
   }
 
-  function collectWindowChapterSections() {
+  function collectWindowChapterSections(treeResult = null) {
     const snapshot = collectMarkerRenderSnapshot();
     const boundHeadings = snapshot.headings
       .map((heading) => {
@@ -2750,6 +2751,7 @@ import {
           : null;
       })
       .filter(Boolean);
+    if (treeResult) treeResult.push(...collectSidepanelChapters(snapshot.assistantContainers, buildWindowChapterOutline(boundHeadings), { baseUrl: location.href, fullTextTitle: t("chapters.fullText") }));
     if (!boundHeadings.length) {
       return snapshot.assistantContainers.length
         ? [fallbackExplosionSection(collectExplosionBlocks(snapshot.assistantContainers))]
@@ -5431,11 +5433,17 @@ import {
     }, 0);
   }
 
-  function publishWindowChapters() {
+  let chapterContentRevision = 0;
+  let lastChapterPublication = "";
+  function publishWindowChapters({ onlyIfChanged = false } = {}) {
     if (!isTopLevelFrame() || !isExtensionContextValid()) {
       return;
     }
-    const sections = collectWindowChapterSections().map((section) => ({
+    const publicationKey = JSON.stringify([currentRouteKey(), chapterContentRevision, state.config]);
+    if (onlyIfChanged && publicationKey === lastChapterPublication) return;
+    lastChapterPublication = publicationKey;
+    const treeChapters = [];
+    const sections = collectWindowChapterSections(treeChapters).map((section) => ({
       id: section.id,
       markerKey: section.markerKey,
       depth: section.depth || 0,
@@ -5455,6 +5463,8 @@ import {
     }));
     sendRuntimeMessage(chrome, {
       type: "POLARIS_WINDOW_CHAPTERS",
+      routeKey: currentRouteKey(),
+      treeChapters,
       chapters: sections
     });
   }
@@ -5485,7 +5495,7 @@ import {
       return;
     }
     if (message.command === "request-chapters") {
-      publishWindowChapters();
+      publishWindowChapters({ onlyIfChanged: Boolean(message.onlyIfChanged) });
       return;
     }
     if (message.command === "request-image-preview") {
@@ -5542,13 +5552,16 @@ import {
       return;
     }
     if (message.command === "jump-to-marker" || message.command === "jump-to-chapter") {
+      if (message.expectedRouteKey && message.expectedRouteKey !== currentRouteKey()) return { ok: false };
       const markerKey = String(message.markerKey || "");
       const heading = state.headings.find((item) => markerKeyForHeading(item) === markerKey);
       if (heading && jumpToHeading(heading)) {
         state.activeMarkerKey = markerKey;
         updateActiveMarker();
         publishWindowSnapshot();
+        return { ok: true };
       }
+      return { ok: false };
     }
   }
 
@@ -5556,7 +5569,7 @@ import {
     if (!isTopLevelFrame() || !isExtensionContextValid()) {
       return;
     }
-    chrome.runtime.onMessage.addListener((message) => {
+    chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       if (message?.type === "POLARIS_WINDOW_REQUEST_STATE") {
         if (!state.awaitingRouteDom && state.markerSourceContainers.length === 0) {
           render();
@@ -5564,7 +5577,8 @@ import {
         }
         publishWindowSnapshot();
       } else if (message?.type === "POLARIS_WINDOW_COMMAND") {
-        handleWindowCommand(message);
+        const result = handleWindowCommand(message);
+        if (message.expectResult) sendResponse(result || { ok: false });
       }
     });
   }
@@ -5913,6 +5927,7 @@ import {
     })) {
       return;
     }
+    chapterContentRevision += 1;
     window.clearTimeout(routeDomFallbackTimer);
     routeDomFallbackTimer = 0;
     state.awaitingRouteDom = false;

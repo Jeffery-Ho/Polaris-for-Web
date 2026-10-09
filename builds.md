@@ -10,6 +10,41 @@
 - Version update type must be declared by the user before recording a build.
 - After each build is recorded, confirm the build number and version with the user.
 
+## 267
+
+- Date: 2026-10-09
+- Version: 0.67.0
+- Summary: Adds a lightweight content fade between sidepanel Navigation and Chapters.
+- Notes: Waits for chapter data before switching, keeps navigation and chapter reading positions, respects reduced-motion preferences, and leaves standalone interactions unchanged. Updated the current version to `0.67.0(267)`.
+
+## 266
+
+- Date: 2026-10-09
+- Version: 0.66.3
+- Summary: Fits chapter tables within the available sidepanel reading width.
+- Notes: Reduces the minimum table column width from 96px to 64px so nested three-column tables wrap within their content region. Keeps horizontal scrolling inside wide tables and preserves standalone styling. Updated the current version to `0.66.3(266)`.
+
+## 265
+
+- Date: 2026-10-09
+- Version: 0.66.2
+- Summary: Matches the visible size of chapter disclosure triangles and bullets.
+- Notes: Uses the same 6px marker size for both shapes while retaining the 24px by 28px disclosure target and state-aware tooltips. Updated the current version to `0.66.2(265)`.
+
+## 264
+
+- Date: 2026-10-09
+- Version: 0.66.1
+- Summary: Enlarges and aligns sidepanel chapter disclosure controls.
+- Notes: Centers a 16px triangle icon with each bullet, increases the control width to 24px, and adds state-aware Expand/Collapse tooltips. Updated the current version to `0.66.1(264)`.
+
+## 263
+
+- Date: 2026-10-09
+- Version: 0.66.0
+- Summary: Rebuilds sidepanel Chapter View as an expandable reading outline with bullet menus.
+- Notes: Adds subtree focus and breadcrumb return, explicit source location, source-range content ownership, copy without duplicate descendants, scoped search, and per-conversation session reading state. The standalone chapter view keeps its existing layout. Updated the current version to `0.66.0(263)`.
+
 ## 262
 
 - Date: 2026-10-09

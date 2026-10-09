@@ -1,5 +1,16 @@
 const RELEASE_NOTES = Object.freeze([
   {
+    version: "0.66.0",
+    en: {
+      title: "Read chapters as an outline",
+      changes: ["Sidepanel chapters expand inline. Open a bullet menu to focus a chapter, locate its source, or copy content. Return through the chapter path and keep your reading position."]
+    },
+    zh: {
+      title: "在层级列表中阅读章节",
+      changes: ["侧栏章节可直接展开正文；点击圆点进入章节、定位原文或复制内容，通过顶部路径返回并保留阅读位置。"]
+    }
+  },
+  {
     version: "0.65.0",
     en: {
       title: "DeepSeek conversation navigation",

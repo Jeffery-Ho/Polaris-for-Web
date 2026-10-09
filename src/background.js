@@ -331,14 +331,18 @@ async function forwardCommand(message) {
   if (!tab?.id) {
     return;
   }
+  if (message.expectResult && message.expectedTabId !== tab.id) return { ok: false };
   currentTabId = tab.id;
+  let result;
   try {
-    await sendContentMessage(tab.id, message, {
+    result = await sendContentMessage(tab.id, message, {
       injectIfMissing: isSupportedCandidateUrl(tab.url)
     });
   } catch {
     // Unsupported pages and pages that are still loading have no receiver.
+    if (message.expectResult) return { ok: false };
   }
+  if (message.expectResult && !result?.ok) return { ok: false };
   if (message.command === "jump-to-marker" || message.command === "jump-to-chapter") {
     try {
       await chrome.tabs.update(tab.id, { active: true });
@@ -347,6 +351,7 @@ async function forwardCommand(message) {
       // The tab may have closed between the send and the focus request.
     }
   }
+  return { ok: true };
 }
 
 async function isCurrentSourceTab(tab) {
@@ -547,6 +552,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.command === "update-config" || message.command === "reset-config") {
       void persistWindowConfigCommand(message).catch(() => {});
     }
+    if (message.expectResult) {
+      void forwardCommand(message).then((result) => sendResponse(result || { ok: false })).catch(() => sendResponse({ ok: false }));
+      return true;
+    }
     void forwardCommand(message);
     return;
   }
@@ -562,7 +571,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       if (!isCurrent) return;
       return chrome.runtime.sendMessage({
         type: "POLARIS_WINDOW_CHAPTERS",
-        chapters: message.chapters
+        chapters: message.chapters,
+        treeChapters: message.treeChapters,
+        tabId: sender.tab?.id ?? null,
+        routeKey: message.routeKey
       });
     }).catch(() => {});
     return;
